@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Transcendence</title>
+    <link href="output.css" rel="stylesheet" />
+  </head>
+  <body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen space-y-4">
+    <h1 class="text-4xl font-bold mb-4">Bienvenue sur Transcendence 🎮</h1>
+    <p class="text-lg mb-6">Connecte-toi pour commencer à jouer.</p>
+
+    <!-- Formulaire de login -->
+    <div class="flex flex-col space-y-4 bg-gray-800 p-6 rounded-lg shadow-lg w-80">
+      <input
+        type="email"
+        id="email"
+        placeholder="Email"
+        class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none"
+      />
+      <input
+        type="password"
+        id="password"
+        placeholder="Mot de passe"
+        class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none"
+      />
+      <button
+        id="loginBtn"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded"
+      >
+        Se connecter
+      </button>
+    </div>
+
+    <script>
+      document.getElementById('loginBtn').addEventListener('click', async () => {
+        const email = document.getElementById('email').value
+        const password = document.getElementById('password').value
+
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        })
+
+        const data = await response.json()
+
+        if (response.ok) {
+          alert('Connexion réussie ✅')
+          console.log(data)
+        } else {
+          alert('Erreur de connexion ❌')
+          console.error(data)
+        }
+      })
+    </script>
+  </body>
+</html>

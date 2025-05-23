@@ -1,0 +1,16 @@
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./backend/data/db.sqlite:/app/data/db.sqlite
+    environment:
+      - NODE_ENV=development
+    command: node server.js
+
+volumes:
+  sqlite_data:
+    driver: local
