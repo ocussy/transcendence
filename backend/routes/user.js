@@ -1,49 +1,64 @@
-const {
-    getUser,
-    postUser,
-} = require('../controllers/users');
+import { getUser, postUser, debugDb} from '../controllers/users.js'
 
 const User = {
-    type: 'object',
-    properties: {
-        login: { type: 'string' },
-        password: { type: 'string' },
-    },
+  type: 'object',
+  properties: {
+    login: { type: 'string' },
+    email : { type: 'string' },
+    password: { type: 'string' },
+  },
 }
 
 const getUserOptions = {
-    schema: {
-        response: {
-            200: {
-                type: 'array',
-                items: User,
-            },
-        },
+  schema: {
+    response: {
+      200: {
+        type: 'array',
+        items: { type: 'object', properties: { login: { type: 'string' } } },
+      },
     },
-    handler: getUser,
+  },
+  handler: getUser,
 }
 
 const postUserOptions = {
-    schema: {
-        body: {
-            type: 'object',
-            required: ['login', 'password'],
-            properties: {
-                login: { type: 'string' },
-                password: { type: 'string' },
-            },
-        },
-        response: {
-            201: User,
-        },
+  schema: {
+    body: {
+      type: 'object',
+      required: ['login', 'password', 'email'],
+      properties: {
+        login: { type: 'string' },
+        password: { type: 'string' },
+        email: { type: 'string'},
+      },
     },
-    handler: postUser,
+    response: {
+      201: {
+        type: 'object',
+        properties: {
+          login: { type: 'string' },
+        },
+      },
+    },
+  },
+  handler: postUser,
 }
 
-function userRoutes(fastify, options, done) {
-    fastify.get('/user', getUserOptions)
-    fastify.post('/user', postUserOptions)
-    done()
+const debugOptions = {
+  schema: {
+    response: {
+      200: {
+        type: 'array',
+        items: User,
+      },
+    },
+  },
+  handler: debugDb,
 }
 
-module.exports = userRoutes
+
+export default async function userRoutes(fastify, options) {
+  fastify.get('/user', getUserOptions)
+  fastify.post('/user', postUserOptions)
+  fastify.get('/debug/users', debugOptions)
+}

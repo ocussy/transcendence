@@ -1,19 +1,36 @@
-const sqlite3 = require('sqlite3').verbose()
-const db = new sqlite3.Database('./data/db.sqlite')
+import db from '../src/db.js'
 
-exports.getUser = (req, reply) => {
-  db.all('SELECT login FROM users', (err, rows) => {
-    if (err) return reply.status(500).send(err)
-    reply.send(rows)
-  })
+// Handler pour GET /user
+export function getUser(req, reply) {
+  try { 
+    const rows = db.prepare('SELECT login FROM users').all();
+    reply.send(rows);
+  }
+  catch (err) {
+    reply.status(500).send({ error: err.message });
+  }
 }
 
-exports.postUser = (req, reply) => {
+// Handler pour POST /user
+export function postUser(req, reply) {
   const { login, password } = req.body
 
-  const stmt = db.prepare('INSERT INTO users (login, password) VALUES (?, ?)')
-  stmt.run(login, password, function (err) {
-    if (err) return reply.status(500).send(err)
-    reply.code(201).send({ login, password }) // attention : à ne pas envoyer en prod
-  })
+  try { 
+    const stmt = db.prepare('INSERT INTO users (login, password, email) VALUES (?, ?, ?)')
+    stmt.run(login, password, `${login}@example.com`);
+    reply.code(201).send({login})
+  }
+  catch (err) {
+    reply.status(500).send({ error: err.message });
+  }
+};
+
+export function debugDb(req, reply) {
+  try {
+    const rows = db.prepare('SELECT * FROM users').all();
+    reply.send(rows);
+  }
+  catch (err) {
+    reply.status(500).send({ error: err.message });
+  }
 }
