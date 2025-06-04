@@ -1,5 +1,4 @@
-import db from '../src/db.js'
-
+import db from '../db.js'
 // Handler pour match creation
 
 export function postMatch(req, reply) {

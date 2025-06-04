@@ -11,19 +11,37 @@ const db = new Database(dbPath)
 
 db.exec(`
     CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         login TEXT UNIQUE NOT NULL,
         email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL
+        password TEXT NOT NULL,
+        language TEXT DEFAULT 'fr',
+        avatarUrl TEXT DEFAULT 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=oceane',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS matches (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         player1 TEXT NOT NULL,
         player2 TEXT NOT NULL,
+        winner TEXT,
         score1 INTEGER DEFAULT 0,
         score2 INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        tournamentId INTEGER,
+        duration INTEGER DEFAULT 0,
+        mode TEXT DEFAULT 'normal'
+    );
+
+    CREATE TABLE IF NOT EXISTS tournaments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        organizer TEXT NOT NULL,
+        maxPlayers INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        start_at TIMESTAMP
     );
 `);
+
 
 export default db;

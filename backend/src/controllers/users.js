@@ -1,4 +1,4 @@
-import db from '../src/db.js'
+import db from '../db.js'
 
 // Handler pour GET /user
 export function getUser(req, reply) {

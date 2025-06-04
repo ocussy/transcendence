@@ -3,8 +3,8 @@ import path from 'path'
 import fastifyStatic from '@fastify/static'
 import { fileURLToPath } from 'url'
 import db from './db.js'
-import userRoutes from '../routes/user.js'
-import matchRoutes from '../routes/matches.js'
+import userRoutes from './routes/user.js'
+import matchRoutes from './routes/matches.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

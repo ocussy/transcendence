@@ -85,5 +85,5 @@ export default async function matchRoutes(fastify, options) {
     fastify.get('/matches', getMatchesOptions);
     fastify.get('/match/:id', getMatchByIdOptions);
     fastify.post('/match', postMatchOptions);
-    fastify.patch('/match/:id', updateMatchOptions);
+    fastify.put('/match/:id', updateMatchOptions);
 }
