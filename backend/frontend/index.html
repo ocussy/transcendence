@@ -12,8 +12,8 @@
     <!-- Formulaire de login -->
     <div class="flex flex-col space-y-4 bg-gray-800 p-6 rounded-lg shadow-lg w-80">
       <input
-        type="email"
-        id="email"
+        type="login"
+        id="login"
         placeholder="Email"
         class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none"
       />
@@ -33,15 +33,15 @@
 
     <script>
       document.getElementById('loginBtn').addEventListener('click', async () => {
-        const email = document.getElementById('email').value
+        const login = document.getElementById('login').value
         const password = document.getElementById('password').value
 
-        const response = await fetch('/api/login', {
+        const response = await fetch('/user', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ login, password})
         })
 
         const data = await response.json()

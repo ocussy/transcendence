@@ -1,4 +1,4 @@
-import { getUser, postUser, debugDb} from '../controllers/users.js'
+import { getUser, debugDb} from '../controllers/users.js'
 
 const User = {
   type: 'object',
@@ -21,29 +21,6 @@ const getUserOptions = {
   handler: getUser,
 }
 
-const postUserOptions = {
-  schema: {
-    body: {
-      type: 'object',
-      required: ['login', 'password', 'email'],
-      properties: {
-        login: { type: 'string' },
-        password: { type: 'string' },
-        email: { type: 'string'},
-      },
-    },
-    response: {
-      201: {
-        type: 'object',
-        properties: {
-          login: { type: 'string' },
-        },
-      },
-    },
-  },
-  handler: postUser,
-}
-
 const debugOptions = {
   schema: {
     response: {
@@ -59,6 +36,5 @@ const debugOptions = {
 
 export default async function userRoutes(fastify, options) {
   fastify.get('/user', getUserOptions)
-  fastify.post('/user', postUserOptions)
   fastify.get('/debug/users', debugOptions)
 }

@@ -11,19 +11,6 @@ export function getUser(req, reply) {
   }
 }
 
-// Handler pour POST /user
-export function postUser(req, reply) {
-  const { login, password } = req.body
-
-  try { 
-    const stmt = db.prepare('INSERT INTO users (login, password, email) VALUES (?, ?, ?)')
-    stmt.run(login, password, `${login}@example.com`);
-    reply.code(201).send({login})
-  }
-  catch (err) {
-    reply.status(500).send({ error: err.message });
-  }
-};
 
 export function debugDb(req, reply) {
   try {
