@@ -1,4 +1,4 @@
-import { signUp, signUpGoogle } from '../controllers/auth.js'
+import { signUp, signUpGoogle, signIn } from '../controllers/auth.js'
 
 const signUpOptions = {
   schema: {
@@ -15,7 +15,7 @@ const signUpOptions = {
       201: {
         type: 'object',
         properties: {
-          login: { type: 'string' },
+          token: { type: 'string' },
         },
       },
     },
@@ -40,12 +40,42 @@ const signUpGoogleOptions = {
           email : { type: 'string' },
         },
       },
+      400: {
+        type: 'object',
+        properties: {
+          error: { type: 'string' },
+        },
+      },
     },
   },
   handler: signUpGoogle,
 }
 
+const signInOptions = {
+  schema: {
+    body: {
+      type: 'object',
+      required: ['givenLogin', 'password'],
+      properties: {
+        givenLogin: { type: 'string' },
+        password: { type: 'string' },
+      },
+    },
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          login: { type: 'string' },
+          email : { type: 'string' },
+        },
+      },
+    },
+  },
+  handler: signIn,
+}
+
 export default async function authRoutes(fastify, options) {
   fastify.post('/auth/signup', signUpOptions)
   fastify.post('/auth/signup/google', signUpGoogleOptions)
+  fastify.post('/auth/login', signInOptions)
 }

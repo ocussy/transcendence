@@ -1,0 +1,36 @@
+### 🔍 Liste des utilisateurs (debug)
+GET http://localhost:8000/debug/users
+Content-Type: application/json
+
+###
+
+### ❌ Tentative de connexion avec mauvais mot de passe
+POST http://localhost:8000/auth/login
+Content-Type: application/json
+
+{
+  "login": "ocussy",
+  "password": "caca"
+}
+
+###
+
+### ✅ Connexion avec bon mot de passe
+curl -X POST http://localhost:8000/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"login": "ocussy", "password": "Opale28130!"}'
+
+
+###
+
+### 🚫 Connexion avec login inexistant
+POST http://localhost:8000/auth/login
+Content-Type: application/json
+
+{
+  "login": "utilisateur_inexistant",
+  "password": "nimportequoi"
+}
+
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJsb2dpbiI6Im9jdXNzeSIsImVtYWlsIjoib2NlYW5lLmN1c3N5QGdtYWlsLmNvbSIsImF2YXRhclVybCI6Imh0dHBzOi8vYXBpLmRpY2ViZWFyLmNvbS85LngvYm90dHRzLW5ldXRyYWwvc3ZnP3NlZWQ9b2N1c3N5IiwiaWF0IjoxNzQ5MjE4OTQ1fQ.zeRZm2Dcd2J-ZW25_s__vaUR3npCTKmA_ci26-0Ikro

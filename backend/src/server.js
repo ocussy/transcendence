@@ -8,14 +8,24 @@ import matchRoutes from './routes/matches.js'
 import formbody from '@fastify/formbody'
 import cors from '@fastify/cors'
 import authRoutes from './routes/auth.js'
+import jwt from '@fastify/jwt'
+import dotenv from 'dotenv'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+dotenv.config()
 
 const app = fastify()
 
 await app.register(cors, {
   origin : true
+})
+
+console.log('JWT secret:', process.env.JWT_SECRET)
+
+
+app.register(jwt,  {
+  secret: process.env.JWT_SECRET
 })
 
 app.register(fastifyStatic, {

@@ -64,7 +64,8 @@ export async function signUp(req, reply) {
   try {
     const stmt = db.prepare('INSERT INTO users (login, password, email, avatarUrl) VALUES (?, ?, ?, ?)');
     stmt.run(login, password, email, avatarUrl);
-    reply.code(201).send({ login, email });
+    const token = await reply.jwtSign({ login, email, avatarUrl });
+    reply.code(201).send({ token });
   } catch (err) {
     reply.status(500).send({ error: err.message });
   }
@@ -104,5 +105,47 @@ export async function signUpGoogle(req, reply) {
   } catch (err) {
     console.error('Google sign-up error:', err);
     reply.status(401).send({ error: 'Invalid Google token' });
+  }
+}
+
+export async function signIn(req, reply) {
+  let { givenLogin, password } = req.body;
+
+  try {
+    await req.jwtVerify();
+
+    const {login, email, avatarUrl} = req.user;
+    console.log('User authenticated:', login, email, avatarUrl);
+    if (!login || !password) {
+      return reply.status(400).send({ error: 'Login and password are required' });
+    }
+
+    givenLogin = givenLogin.trim();
+
+    const stmt = db.prepare(`
+      SELECT * FROM users
+      WHERE login = ?
+      LIMIT 1
+    `);
+    const user = stmt.get(login);
+
+    if (!user) {
+      return reply.status(401).send({ error: 'Invalid login or password' });
+    }
+
+    // 🛡️ À FAIRE : remplacer par bcrypt.compare(password, user.password)
+    if (password !== user.password) {
+      return reply.status(401).send({ error: 'Invalid password' });
+    }
+
+    // 🛡️ TODO: ajouter 2FA et générer un token JWT ici
+    console.log('Sign-in attempt:', req.user);
+    return reply.code(200).send({
+      login: user.login,
+      email: user.email,});
+  } 
+  catch (err) {
+    console.error('Sign-in error:', err);
+    return reply.status(500).send({ error: 'Internal server error' });
   }
 }
