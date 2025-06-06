@@ -47,5 +47,5 @@ const signUpGoogleOptions = {
 
 export default async function authRoutes(fastify, options) {
   fastify.post('/auth/signup', signUpOptions)
-  fastify.post('auth/signup/google', signUpGoogleOptions)
+  fastify.post('/auth/signup/google', signUpGoogleOptions)
 }

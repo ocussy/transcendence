@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <title>Transcendence</title>
     <link href="output.css" rel="stylesheet" />
+
+    <!-- ID client Google -->
+    <meta name="google-signin-client_id" content="1560847651-b31pkjflds74sb9s6g1s3enpo71bd5kn.apps.googleusercontent.com" />
+
+    <!-- Nouveau script Google Identity -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
   </head>
   <body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen space-y-4">
     <h1 class="text-4xl font-bold mb-4">Bienvenue sur Transcendence 🎮</h1>
@@ -31,29 +38,70 @@
       </button>
     </div>
 
+    <!-- Bouton Google -->
+    <div id="g_id_onload"
+     data-client_id="1560847651-b31pkjflds74sb9s6g1s3enpo71bd5kn.apps.googleusercontent.com"
+     data-callback="handleCredentialResponse"
+     data-auto_prompt="false">
+    </div>
+
+    <div class="g_id_signin"
+        data-type="standard"
+        data-size="large"
+        data-theme="outline"
+        data-text="sign_in_with"
+        data-shape="rectangular"
+        data-logo_alignment="left">
+    </div>
+
+
+    <!-- Script connexion classique -->
     <script>
       document.getElementById('loginBtn').addEventListener('click', async () => {
-        const login = document.getElementById('login').value
-        const password = document.getElementById('password').value
+        const login = document.getElementById('login').value;
+        const password = document.getElementById('password').value;
 
-        const response = await fetch('/user', {
+        const response = await fetch('auth/signup/google', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ login, password})
-        })
+          body: JSON.stringify({ login, password })
+        });
 
-        const data = await response.json()
+        const data = await response.json();
 
         if (response.ok) {
-          alert('Connexion réussie ✅')
-          console.log(data)
+          alert('Connexion réussie ✅');
+          console.log(data);
         } else {
-          alert('Erreur de connexion ❌')
-          console.error(data)
+          alert('Erreur de connexion ❌');
+          console.error(data);
         }
-      })
+      });
     </script>
+
+    <!-- Script Google Sign-In -->
+    <script>
+    window.handleCredentialResponse = function(response) {
+      const id_token = response.credential;
+      console.log('ID token:', id_token);
+
+      fetch('/auth/signup/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: id_token })
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log('Connexion Google réussie ✅', data);
+        // Rediriger ou stocker les infos
+      })
+      .catch(err => {
+        console.error('Erreur Google Sign-In ❌', err);
+      });
+    }
+    </script>
+
   </body>
 </html>
