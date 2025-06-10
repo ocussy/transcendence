@@ -112,11 +112,7 @@ export async function signIn(req, reply) {
   let { givenLogin, password } = req.body;
 
   try {
-    await req.jwtVerify();
-
-    const {login, email, avatarUrl} = req.user;
-    console.log('User authenticated:', login, email, avatarUrl);
-    if (!login || !password) {
+    if (!givenLogin || !password) {
       return reply.status(400).send({ error: 'Login and password are required' });
     }
 
@@ -124,25 +120,32 @@ export async function signIn(req, reply) {
 
     const stmt = db.prepare(`
       SELECT * FROM users
-      WHERE login = ?
+      WHERE login = ? OR email = ?
       LIMIT 1
     `);
-    const user = stmt.get(login);
+    const user = stmt.get(givenLogin, givenLogin);  // cherche par login ou email
 
     if (!user) {
       return reply.status(401).send({ error: 'Invalid login or password' });
     }
 
-    // 🛡️ À FAIRE : remplacer par bcrypt.compare(password, user.password)
+    // askip bcrypt.compare(password, user.password) c est mieux mais jsp
     if (password !== user.password) {
       return reply.status(401).send({ error: 'Invalid password' });
     }
 
-    // 🛡️ TODO: ajouter 2FA et générer un token JWT ici
-    console.log('Sign-in attempt:', req.user);
+    // JWT pour user
+    const token = await reply.jwtSign({ 
+      login: user.login, 
+      email: user.email, 
+      avatarUrl: user.avatarUrl 
+    });
+
     return reply.code(200).send({
+      token,
       login: user.login,
-      email: user.email,});
+      email: user.email,
+    });
   } 
   catch (err) {
     console.error('Sign-in error:', err);
