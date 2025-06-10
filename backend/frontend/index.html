@@ -61,7 +61,7 @@
         const login = document.getElementById('login').value;
         const password = document.getElementById('password').value;
 
-        const response = await fetch('auth/signup/google', {
+        const response = await fetch('auth/signup', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

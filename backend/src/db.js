@@ -18,7 +18,10 @@ db.exec(`
         language TEXT DEFAULT 'fr',
         avatarUrl TEXT DEFAULT 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=coco',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        auth_provider TEXT DEFAULT 'local'
+        auth_provider TEXT DEFAULT 'local',
+        secure_auth BOOLEAN DEFAULT FALSE,
+        otp_code INTEGER DEFAULT NULL,
+        otp_expires TIMESTAMP DEFAULT NULL
     );
 
     CREATE TABLE IF NOT EXISTS matches (
@@ -42,6 +45,7 @@ db.exec(`
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         start_at TIMESTAMP
     );
+
 `);
 
 

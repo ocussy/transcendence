@@ -10,6 +10,7 @@ import cors from '@fastify/cors'
 import authRoutes from './routes/auth.js'
 import jwt from '@fastify/jwt'
 import dotenv from 'dotenv'
+import cookie from '@fastify/cookie'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -19,6 +20,11 @@ const app = fastify()
 
 await app.register(cors, {
   origin : true
+})
+
+await app.register(cookie, {
+  secret: process.env.COOKIE_SECRET, // This is used to sign the cookie
+  hook: 'onRequest', // This will run on every request
 })
 
 console.log('JWT secret:', process.env.JWT_SECRET)

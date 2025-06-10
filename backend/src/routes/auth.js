@@ -1,4 +1,5 @@
-import { signUp, signUpGoogle, signIn } from '../controllers/auth.js'
+import { signUp, signUpGoogle, signIn, signOut, verify2FA} from '../controllers/auth.js'
+import { verifyUser } from '../controllers/users.js'
 
 const signUpOptions = {
   schema: {
@@ -65,8 +66,7 @@ const signInOptions = {
       200: {
         type: 'object',
         properties: {
-          login: { type: 'string' },
-          email : { type: 'string' },
+          token: { type: 'string' },
         },
       },
     },
@@ -74,8 +74,51 @@ const signInOptions = {
   handler: signIn,
 }
 
+const signOutOptions = {
+  preHandler: verifyUser,
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          message: { type: 'string' },
+        },
+      },
+    },
+    handler: signOut,
+}
+
+const verify2FAOptions = {
+  schema: {
+    body: {
+      type: 'object',
+      required: ['otp'],
+      properties: {
+        otp: { type: 'string' },
+      },
+    },
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          message: { type: 'string' },
+        },
+      },
+      400: {
+        type: 'object',
+        properties: {
+          error: { type: 'string' },
+        },
+      },
+    },
+  },
+  handler: verify2FA,
+  }
+
+
 export default async function authRoutes(fastify, options) {
   fastify.post('/auth/signup', signUpOptions)
   fastify.post('/auth/signup/google', signUpGoogleOptions)
-  fastify.post('/auth/login', signInOptions)
+  fastify.post('/auth/signin', signInOptions)
+  fastify.get('/auth/signout', signOutOptions)
+  fastify.post('/auth/verify2FA', verify2FAOptions)
 }

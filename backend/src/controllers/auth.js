@@ -1,8 +1,10 @@
 import db from '../db.js'
 import validator from 'validator';
 import { OAuth2Client } from 'google-auth-library';
+import nodemailer from 'nodemailer';
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 
 export async function loginExist(login) {
   const stmt = db.prepare(`
@@ -65,7 +67,18 @@ export async function signUp(req, reply) {
     const stmt = db.prepare('INSERT INTO users (login, password, email, avatarUrl) VALUES (?, ?, ?, ?)');
     stmt.run(login, password, email, avatarUrl);
     const token = await reply.jwtSign({ login, email, avatarUrl });
-    reply.code(201).send({ token });
+
+    reply
+      .setCookie('token', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Strict',
+        path: '/',
+        maxAge: 60 * 60, // 1 heure
+      })
+      .code(201)
+      .send({ token });
+
   } catch (err) {
     reply.status(500).send({ error: err.message });
   }
@@ -101,22 +114,46 @@ export async function signUpGoogle(req, reply) {
     const stmt = db.prepare('INSERT INTO users (login, email, avatarUrl, auth_provider) VALUES (?, ?, ?, ?)');
     stmt.run(login, email, avatarUrl, 'google');
 
-    reply.code(201).send({ login, email });
+    const tokenJWT = await reply.jwtSign({ login, email, avatarUrl });
+    reply
+      .setCookie('token', tokenJWT, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Strict',
+        path: '/',
+        maxAge: 60 * 60, // 1 hour
+      })
+      .code(201)
+      .send({ message: 'User created successfully'});
+
   } catch (err) {
     console.error('Google sign-up error:', err);
     reply.status(401).send({ error: 'Invalid Google token' });
   }
 }
 
+async function send2FACode(email, code) {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    }
+  });
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: 'Your 2FA Code',
+    text: `Your 2FA code is: ${code}. It is valid for 5 minutes.`,
+  });
+}
+
+
 export async function signIn(req, reply) {
   let { givenLogin, password } = req.body;
 
   try {
-    await req.jwtVerify();
-
-    const {login, email, avatarUrl} = req.user;
-    console.log('User authenticated:', login, email, avatarUrl);
-    if (!login || !password) {
+    if (!givenLogin || !password) {
       return reply.status(400).send({ error: 'Login and password are required' });
     }
 
@@ -127,25 +164,112 @@ export async function signIn(req, reply) {
       WHERE login = ?
       LIMIT 1
     `);
-    const user = stmt.get(login);
+    const user = stmt.get(givenLogin);
+    //Si deja connecté, on ne peut pas se reconnecter
+    
 
     if (!user) {
       return reply.status(401).send({ error: 'Invalid login or password' });
     }
-
     // 🛡️ À FAIRE : remplacer par bcrypt.compare(password, user.password)
     if (password !== user.password) {
       return reply.status(401).send({ error: 'Invalid password' });
     }
+ 
+    if (user.secure_auth === true) {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      db.prepare(`UPDATE users SET otp_code = ?, otp_expires = ? WHERE id = ?`)
+        .run(code, Date.now() + 5 * 60 * 1000, user.id);
+      await send2FACode(user.email, code);
+      return reply.status(200).send({
+        message: '2FA code sent to your email. Please verify to complete sign-in.',
+        requires2FA: true,
+        user: {
+          login: user.login,
+          email: user.email,
+          avatarUrl: user.avatarUrl,
+        }
+      });
+    }
 
-    // 🛡️ TODO: ajouter 2FA et générer un token JWT ici
-    console.log('Sign-in attempt:', req.user);
-    return reply.code(200).send({
+    const token = await reply.jwtSign({
       login: user.login,
-      email: user.email,});
-  } 
+      email: user.email,
+      avatarUrl: user.avatarUrl,
+    });
+
+  reply
+    .setCookie('token', token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'Strict',
+      path: '/',
+      maxAge: 60 * 60, // 1 hour
+    })
+    .code(200)
+    .send({ token });
+  }
+
   catch (err) {
     console.error('Sign-in error:', err);
+    return reply.status(500).send({ error: 'Internal server error' });
+  }
+}
+
+export async function signOut(req, reply) {
+  try {
+
+    reply
+      .clearCookie('token', {
+        path: '/',
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Strict',
+      })
+      .code(200)
+      .send({ message: 'Successfully signed out' });
+  }
+
+  catch (err) {
+    console.error('Sign-out error:', err);
+    return reply.status(500).send({ error: 'Internal server error' });
+  }
+}
+
+
+export async function verify2FA(req, reply) {
+  const { login, otp } = req.body;
+  try {
+    const user = db.prepare(`SELECT * FROM users WHERE login = ?`).get(login);
+    if (!user) {
+      return reply.status(400).send({ error: 'User not found' });
+    }
+    if (!otp) {
+      return reply.status(400).send({ error: 'OTP is required' });
+    }
+    if (user.otp_code !== otp || Date.now() > user.otp_expires_at) {
+      return reply.status(400).send({ error: 'Invalid OTP' });
+    }
+    db.prepare(`UPDATE users SET otp_code = NULL, otp_expires = NULL WHERE id = ?`)
+      .run(user.id);
+    const token = await reply.jwtSign({
+      login: user.login,
+      email: user.email,
+      avatarUrl: user.avatarUrl,
+    });
+    reply
+      .setCookie('token', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Strict',
+        path: '/',
+        maxAge: 60 * 60, // 1 hour
+      })
+      .code(200)
+      .send({ token, message: '2FA verification successful' });
+  }
+  catch (err) {
+    console.error('2FA verification error:', err);
     return reply.status(500).send({ error: 'Internal server error' });
   }
 }
