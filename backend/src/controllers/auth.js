@@ -178,7 +178,7 @@ export async function signIn(req, reply) {
 
     const stmt = db.prepare(`
       SELECT * FROM users
-      WHERE login = ? OR email = ?
+      WHERE login = ? 
       LIMIT 1
     `);
     const user = stmt.get(givenLogin);
@@ -186,7 +186,7 @@ export async function signIn(req, reply) {
     
 
     if (!user) {
-      return reply.status(401).send({ error: "Invalid login or password" });
+      return reply.status(401).send({ error: "User not found" });
     }
     // 🛡️ À FAIRE : remplacer par bcrypt.compare(password, user.password)
     if (password !== user.password) {
@@ -224,7 +224,7 @@ export async function signIn(req, reply) {
       maxAge: 60 * 60, // 1 hour
     })
     .code(200)
-    .send({ token });
+    .send({ login: user.login });
   }
 
   catch (err) {

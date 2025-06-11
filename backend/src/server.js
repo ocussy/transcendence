@@ -22,16 +22,18 @@ await app.register(cors, {
   origin: true,
 });
 
-await app.register(cookie, {
-  secret: process.env.COOKIE_SECRET, // This is used to sign the cookie
-  hook: 'onRequest', // This will run on every request
-})
-
-console.log('JWT secret:', process.env.JWT_SECRET)
 
 app.register(jwt, {
   secret: process.env.JWT_SECRET,
+  cookie: {
+    cookieName: 'token',
+    signed: false, // Set to true if you want to sign the cookie
+  },
 });
+
+await app.register(cookie, {
+  hook: 'onRequest', // This will run on every request
+})
 
 app.register(fastifyStatic, {
   root: path.join(__dirname, "../frontend"),

@@ -12,4 +12,4 @@ COPY . .
 # Build Tailwind and TypeScript
 RUN npm run build
 
-CMD ["npm", "run", "build"]
+CMD ["npm", "run", "dev"]

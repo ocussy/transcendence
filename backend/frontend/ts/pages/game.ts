@@ -19,6 +19,23 @@ export class GamePage {
       this.showSection("tournament");
     }
   }
+  
+  private async loadUserProfile(): Promise<void> {
+    try {
+      const res = await fetch("/user", { credentials: "include" });
+      if (!res.ok) throw new Error("Not authenticated");
+      const user = await res.json();
+      // Remplir les champs du profil
+      const usernameInput = document.getElementById("profile-username") as HTMLInputElement;
+      const emailInput = document.getElementById("profile-email") as HTMLInputElement;
+      const avatarImg = document.getElementById("user-avatar") as HTMLImageElement;
+      if (usernameInput) usernameInput.value = user.login;
+      if (emailInput) emailInput.value = user.email;
+      if (avatarImg && user.avatarUrl) avatarImg.src = user.avatarUrl;
+    } catch (err) {
+      console.error("Erreur chargement profil:", err);
+    }
+  }
 
   private render(): void {
     const app = document.getElementById("app")!;
@@ -113,7 +130,7 @@ export class GamePage {
                             </div>
                         </div>
 
-                        <!-- Tournament Management -->
+                        <!-- Tournament Managem    // ...existing code..ent -->
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
                                 <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
@@ -184,12 +201,12 @@ export class GamePage {
                                 <div class="space-y-5">
                                     <div>
                                         <label class="block font-mono text-sm text-gray-400 mb-2">username</label>
-                                        <input type="text" id="profile-username" value="a venir avec jwt" readonly
+                                        <input type="text" id="profile-username" value="" readonly
                                                class="w-full px-5 py-4 border border-gray-800 rounded-lg font-mono bg-gray-800 text-gray-400 transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-blue-500/30 focus:border-blue-500">
                                     </div>
                                     <div>
                                         <label class="block font-mono text-sm text-gray-400 mb-2">email.address</label>
-                                        <input type="email" id="profile-email" value="a venir avec jwt" readonly
+                                        <input type="email" id="profile-email" value="" readonly
                                                class="w-full px-5 py-4 border border-gray-800 rounded-lg font-mono bg-gray-800 text-gray-400 transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-blue-500/30 focus:border-blue-500">
                                     </div>
                                     <button class="group relative px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white border-none rounded-lg font-mono font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/30 overflow-hidden">
@@ -204,7 +221,7 @@ export class GamePage {
                                 <h3 class="font-mono font-bold text-lg mb-6 text-purple-400">$ avatar.sys</h3>
                                 <div class="text-center">
                                     <div class="w-32 h-32 bg-gray-800 border border-gray-700 rounded-full mx-auto mb-6 flex items-center justify-center overflow-hidden">
-                                        <img id="user-avatar" src="https://api.dicebear.com/9.x/bottts-neutral/svg?seed=default"
+                                        <img id="user-avatar" value=""
                                              alt="User Avatar"
                                              class="w-full h-full object-cover"
                                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -221,6 +238,7 @@ export class GamePage {
                 </div>
             </div>
         `;
+        this.loadUserProfile();
   }
 
   private attachEvents(): void {
@@ -259,68 +277,6 @@ export class GamePage {
         this.handleAvatarUpload();
       });
   }
-  //load jwt a revoir
-  // private async loadUserProfile(): Promise<void> {
-  //   try {
-  //     // Essayer l'API d'abord
-  //     const response = await fetch("/api/user/profile", {
-  //       headers: {
-  //         Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-  //       },
-  //     });
-
-  //     if (response.ok) {
-  //       const userData = await response.json();
-  //       this.updateProfileData(userData);
-  //       return;
-  //     }
-  //   } catch (error) {
-  //     console.log("API not ready, trying JWT data:", error);
-  //   }
-
-  //   const token = localStorage.getItem("authToken");
-  //   if (token) {
-  //     try {
-  //       const payload = JSON.parse(atob(token.split(".")[1]));
-
-  //       const userData = {
-  //         login: payload.login,
-  //         email: payload.email,
-  //         avatarUrl: payload.avatarUrl,
-  //       };
-
-  //       if (userData.login) {
-  //         this.updateProfileData(userData);
-  //       }
-  //     } catch (error) {
-  //       console.log("JWT decode failed:", error);
-  //     }
-  //   }
-  // }
-
-  //set les data user apres les avoir load (a rvoir)
-  // private updateProfileData(userData: any): void {
-  //   const avatarImg = document.getElementById(
-  //     "user-avatar",
-  //   ) as HTMLImageElement;
-  //   if (avatarImg && userData.avatarUrl) {
-  //     avatarImg.src = userData.avatarUrl;
-  //   }
-
-  //   const usernameInput = document.getElementById(
-  //     "profile-username",
-  //   ) as HTMLInputElement;
-  //   const emailInput = document.getElementById(
-  //     "profile-email",
-  //   ) as HTMLInputElement;
-
-  //   if (usernameInput && userData.login) {
-  //     usernameInput.value = userData.login;
-  //   }
-  //   if (emailInput && userData.email) {
-  //     emailInput.value = userData.email;
-  //   }
-  // }
 
   //bouton retour avant a revoir
   private handleBrowserNavigation(): void {
@@ -417,6 +373,11 @@ export class GamePage {
 
     this.currentSection = sectionName;
     console.log(`Section active: ${sectionName}`);
+
+    if (sectionName === "profile") {
+    this.loadUserProfile();
+    }
+
   }
 
   private startGame(mode: "local" | "ai" | "tournament"): void {
@@ -438,9 +399,17 @@ export class GamePage {
         `;
   }
 
-  private handleLogout(): void {
+  private async handleLogout(): Promise<void> {
     if (confirm("$ logout: Are you sure you want to exit?")) {
       console.log("Logging out...");
+      try {
+        await fetch("/auth/signout", {
+          method: "GET",
+          credentials: "include",
+        });
+      } catch (err) {
+        console.error("Logout failed:", err);
+      }
       setTimeout(() => {
         window.router.navigate("/");
       }, 500);

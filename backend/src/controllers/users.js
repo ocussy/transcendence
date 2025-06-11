@@ -35,6 +35,9 @@ export async function getUser(req, reply) {
   try {
     const login = req.user.login;
     const user = db.prepare('SELECT login, email, avatarUrl, language, password, secure_auth FROM users WHERE login = ?').get(login);
+    if (!user) {
+      return reply.status(404).send({ error: 'User not found' });
+    }
     reply.send(user);
   }
   catch (err) {

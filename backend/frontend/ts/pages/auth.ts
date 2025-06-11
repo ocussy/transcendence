@@ -1,5 +1,16 @@
+async function checkAuthAndRedirect() {
+  try {
+    const res = await fetch("/user", { credentials: "include" });
+    if (res.ok) {
+      window.router.navigate("/game");
+    }
+  } catch (err) {
+  }
+}
+
 export class AuthPage {
   constructor() {
+    checkAuthAndRedirect();
     this.render();
     this.attachEvents();
     this.initializeGoogleAuth();
@@ -259,10 +270,12 @@ export class AuthPage {
     btn.disabled = true;
 
     try {
-      const response = await fetch("/auth/login", {
+      const response = await fetch("/auth/signin", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "credentials": "include", // pour envoyer les cookies
+          
         },
         body: JSON.stringify({
           givenLogin: login,
@@ -328,7 +341,7 @@ export class AuthPage {
 
     btn.textContent = "$ creating account...";
     btn.disabled = true;
-
+   
     try {
       const response = await fetch("/auth/signup", {
         method: "POST",
@@ -425,7 +438,9 @@ export class AuthPage {
 
       fetch("/auth/signup/google", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json"
+          , "credentials": "include", // pour envoyer les cookies
+         },
         body: JSON.stringify({ token: id_token }),
       })
         .then((res) => res.json())
@@ -434,7 +449,11 @@ export class AuthPage {
           const message = isSignup
             ? `$ google account created for ${data.login}!`
             : `$ welcome back, ${data.login}!`;
-
+              if (!data || data.error) {
+              const alertIdErr = isSignup ? "signup-alert" : "signin-alert";
+              this.showAlert(alertIdErr, `$ ${data?.error || "google authentication failed"}`);
+              return;
+              }
           this.showAlert(alertId, message, "success");
           console.log("Google authentication successful ✅", data);
 

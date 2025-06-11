@@ -66,7 +66,7 @@ const signInOptions = {
       200: {
         type: 'object',
         properties: {
-          token: { type: 'string' },
+          login: { type: 'string' },
         },
       },
     },
