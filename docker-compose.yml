@@ -3,6 +3,8 @@ services:
     build: ./backend
     ports:
       - "8000:8000"
+    depends_on:
+      - frontend
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -11,5 +13,11 @@ services:
       - NODE_ENV=development
     command: npm run dev
 
+  frontend:
+    build: ./backend/frontend
+    volumes:
+      - ./backend/frontend/dist:/app/dist
+
 volumes:
   sqlite-data:
+    driver: local

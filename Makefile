@@ -3,7 +3,7 @@ DOCKER_COMPOSE = docker compose
 
 # Lancer avec --build (par défaut : make)
 .DEFAULT_GOAL := up
-
+ 
 # Lancer les conteneurs avec build
 up:
 	$(DOCKER_COMPOSE) up --build

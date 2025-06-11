@@ -1,107 +1,69 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Transcendence</title>
-    <link href="output.css" rel="stylesheet" />
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Transcendence</title>
 
-    <!-- ID client Google -->
-    <meta name="google-signin-client_id" content="1560847651-b31pkjflds74sb9s6g1s3enpo71bd5kn.apps.googleusercontent.com" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
 
-    <!-- Nouveau script Google Identity -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            mono: ["JetBrains Mono", "monospace"],
+                            sans: ["Inter", "sans-serif"],
+                        },
+                    },
+                },
+            };
+        </script>
 
-  </head>
-  <body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen space-y-4">
-    <h1 class="text-4xl font-bold mb-4">Bienvenue sur Transcendence 🎮</h1>
-    <p class="text-lg mb-6">Connecte-toi pour commencer à jouer.</p>
+        <meta
+            name="google-signin-client_id"
+            content="1560847651-b31pkjflds74sb9s6g1s3enpo71bd5kn.apps.googleusercontent.com"
+        />
+        <script
+            src="https://accounts.google.com/gsi/client"
+            async
+            defer
+        ></script>
+    </head>
+    <!-- conteneur spa injecté par ts -->
+    <body class="font-sans">
+        <div id="app">
+            <div
+                class="min-h-screen bg-gray-950 text-white flex items-center justify-center"
+            >
+                <div class="text-center">
+                    <div class="animate-pulse text-blue-500 font-mono">
+                        Loading...
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    <!-- Formulaire de login -->
-    <div class="flex flex-col space-y-4 bg-gray-800 p-6 rounded-lg shadow-lg w-80">
-      <input
-        type="login"
-        id="login"
-        placeholder="Email"
-        class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none"
-      />
-      <input
-        type="password"
-        id="password"
-        placeholder="Mot de passe"
-        class="p-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none"
-      />
-      <button
-        id="loginBtn"
-        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded"
-      >
-        Se connecter
-      </button>
-    </div>
+        <!-- syst ready -->
+        <div
+            class="fixed bottom-8 right-8 font-mono text-xs text-gray-500 bg-gray-900 px-4 py-2 rounded border border-gray-800 opacity-80"
+        >
+            <span class="text-green-500 animate-pulse">●</span> system ready
+        </div>
 
-    <!-- Bouton Google -->
-    <div id="g_id_onload"
-     data-client_id="1560847651-b31pkjflds74sb9s6g1s3enpo71bd5kn.apps.googleusercontent.com"
-     data-callback="handleCredentialResponse"
-     data-auto_prompt="false">
-    </div>
+        <div
+            id="g_id_onload"
+            data-client_id="1560847651-b31pkjflds74sb9s6g1s3enpo71bd5kn.apps.googleusercontent.com"
+            data-callback="handleCredentialResponse"
+            data-auto_prompt="false"
+        ></div>
 
-    <div class="g_id_signin"
-        data-type="standard"
-        data-size="large"
-        data-theme="outline"
-        data-text="sign_in_with"
-        data-shape="rectangular"
-        data-logo_alignment="left">
-    </div>
-
-
-    <!-- Script connexion classique -->
-    <script>
-      document.getElementById('loginBtn').addEventListener('click', async () => {
-        const login = document.getElementById('login').value;
-        const password = document.getElementById('password').value;
-
-        const response = await fetch('auth/signup', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ login, password })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          alert('Connexion réussie ✅');
-          console.log(data);
-        } else {
-          alert('Erreur de connexion ❌');
-          console.error(data);
-        }
-      });
-    </script>
-
-    <!-- Script Google Sign-In -->
-    <script>
-    window.handleCredentialResponse = function(response) {
-      const id_token = response.credential;
-      console.log('ID token:', id_token);
-
-      fetch('/auth/signup/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: id_token })
-      })
-      .then(res => res.json())
-      .then(data => {
-        console.log('Connexion Google réussie ✅', data);
-        // Rediriger ou stocker les infos
-      })
-      .catch(err => {
-        console.error('Erreur Google Sign-In ❌', err);
-      });
-    }
-    </script>
-
-  </body>
+        <script type="module" src="/dist/main.js"></script>
+    </body>
 </html>

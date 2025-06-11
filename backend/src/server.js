@@ -12,15 +12,15 @@ import jwt from '@fastify/jwt'
 import dotenv from 'dotenv'
 import cookie from '@fastify/cookie'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-dotenv.config()
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config();
 
-const app = fastify()
+const app = fastify();
 
 await app.register(cors, {
-  origin : true
-})
+  origin: true,
+});
 
 await app.register(cookie, {
   secret: process.env.COOKIE_SECRET, // This is used to sign the cookie
@@ -29,29 +29,42 @@ await app.register(cookie, {
 
 console.log('JWT secret:', process.env.JWT_SECRET)
 
-
-app.register(jwt,  {
-  secret: process.env.JWT_SECRET
-})
+app.register(jwt, {
+  secret: process.env.JWT_SECRET,
+});
 
 app.register(fastifyStatic, {
-  root: path.join(__dirname, '../frontend'),
-  prefix: '/'
-})
+  root: path.join(__dirname, "../frontend"),
+  prefix: "/",
+});
 
+app.register(formbody);
+app.register(userRoutes);
+app.register(matchRoutes);
+app.register(authRoutes);
 
-app.register(formbody)
-app.register(userRoutes)
-app.register(matchRoutes)
-app.register(authRoutes)
+// pour SPA sinon les routes pas trouve
+const spaRoutes = [
+  "/",
+  "/game",
+  "/auth",
+  "/game/tournament",
+  "/game/dashboard",
+  "/game/profile",
+];
 
+spaRoutes.forEach((route) => {
+  app.get(route, async (request, reply) => {
+    return reply.sendFile("index.html");
+  });
+});
+// fin de ce que jai rajoute + pour linstant refresh = deco pcq pas de jwt
 const start = async () => {
   try {
-    await app.listen({ port: 8000, host: '0.0.0.0' })
+    await app.listen({ port: 8000, host: "0.0.0.0" });
   } catch (err) {
-    console.error(err)
-    process.exit(1)
+    console.error(err);
+    process.exit(1);
   }
-}
-start()
-
+};
+start();
