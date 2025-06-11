@@ -5,7 +5,6 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Transcendence</title>
 
-        <!-- Google Fonts -->
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
@@ -13,10 +12,8 @@
             rel="stylesheet"
         />
 
-        <!-- ✅ TAILWIND CSS (comme requis par votre module) -->
         <script src="https://cdn.tailwindcss.com"></script>
         <script>
-            // Configuration Tailwind pour vos fonts
             tailwind.config = {
                 theme: {
                     extend: {
@@ -29,7 +26,6 @@
             };
         </script>
 
-        <!-- Google OAuth -->
         <meta
             name="google-signin-client_id"
             content="1560847651-b31pkjflds74sb9s6g1s3enpo71bd5kn.apps.googleusercontent.com"
@@ -40,11 +36,9 @@
             defer
         ></script>
     </head>
-
+    <!-- conteneur spa injecté par ts -->
     <body class="font-sans">
-        <!-- ✅ Container principal SPA -->
         <div id="app">
-            <!-- Le contenu sera injecté par TypeScript -->
             <div
                 class="min-h-screen bg-gray-950 text-white flex items-center justify-center"
             >
@@ -56,14 +50,13 @@
             </div>
         </div>
 
-        <!-- Status indicator -->
+        <!-- syst ready -->
         <div
             class="fixed bottom-8 right-8 font-mono text-xs text-gray-500 bg-gray-900 px-4 py-2 rounded border border-gray-800 opacity-80"
         >
             <span class="text-green-500 animate-pulse">●</span> system ready
         </div>
 
-        <!-- Google Sign-In Configuration -->
         <div
             id="g_id_onload"
             data-client_id="1560847651-b31pkjflds74sb9s6g1s3enpo71bd5kn.apps.googleusercontent.com"
@@ -71,7 +64,6 @@
             data-auto_prompt="false"
         ></div>
 
-        <!-- ✅ Scripts TypeScript compilés -->
         <script type="module" src="/dist/main.js"></script>
     </body>
 </html>
