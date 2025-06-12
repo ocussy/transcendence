@@ -11,8 +11,8 @@ let transporter = nodemailer.createTransport({
   service: 'gmail',
   secure: true,
   auth: {
-    user: 'oceane.cussy@gmail.com',
-    pass: 'eqdt sjkk czkx omxj'
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   }
 });
 
@@ -345,12 +345,12 @@ export async function verify2FA(req, reply) {
 		if (!user || !user.otp_code || !user.otp_expires_at) {
 			return reply.status(400).send({ error: 'OTP not found or expired' });
 		}
-  	const isValid = await bcrypt.compare(otp, otp_code);
+  	const isValid = await bcrypt.compare(otp, user.otp_code);
 		if (!isValid || Date.now() > user.otp_expires_at) {
   		return reply.status(400).send({ error: 'Invalid OTP' });
 		}
 
-    db.prepare(`UPDATE users SET otp_code = NULL, otp_expires = NULL WHERE login = ?`)
+    db.prepare(`UPDATE users SET otp_code = NULL, otp_expires_at = NULL WHERE login = ?`)
       .run(login);
     const token = await reply.jwtSign({
       login: user.login,

@@ -95,9 +95,10 @@ const verify2FAOptions = {
   schema: {
     body: {
       type: 'object',
-      required: ['otp'],
+      required: ['otp', 'token'],
       properties: {
         otp: { type: 'string' },
+        token: { type: 'string' },
       },
     },
     response: {
