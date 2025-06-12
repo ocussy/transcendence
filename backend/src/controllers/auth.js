@@ -1,9 +1,20 @@
 import db from '../db.js'
 import validator from 'validator';
-import { OAuth2Client } from 'google-auth-library';
+import { auth, OAuth2Client } from 'google-auth-library';
 import nodemailer from 'nodemailer';
+import bcrypt from 'bcrypt';
+import { send } from 'process';
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+let transporter = nodemailer.createTransport({
+  service: 'gmail',
+  secure: true,
+  auth: {
+    user: 'oceane.cussy@gmail.com',
+    pass: 'eqdt sjkk czkx omxj'
+  }
+});
 
 
 export async function loginExist(login) {
@@ -75,7 +86,7 @@ export async function signUp(req, reply) {
       "INSERT INTO users (login, password, email, avatarUrl) VALUES (?, ?, ?, ?)",
     );
     stmt.run(login, password, email, avatarUrl);
-    const token = await reply.jwtSign({ login, email, avatarUrl });
+    const token = await reply.jwtSign({ login, email, avatarUrl, auth_provider: 'local' });
 
     reply
       .setCookie('token', token, {
@@ -110,9 +121,8 @@ export async function signUpGoogle(req, reply) {
     }
 
     if (await emailExist(email)) {
-      return reply
-        .status(400)
-        .send({ error: "User with this email already exists" });
+      console.log("Google sign-up for existing user:", email);
+      return signIn(req, reply);
     }
 
     const login = name.replace(/\s+/g, "").toLowerCase();
@@ -129,7 +139,7 @@ export async function signUpGoogle(req, reply) {
     );
     stmt.run(login, email, avatarUrl, "google");
 
-    const tokenJWT = await reply.jwtSign({ login, email, avatarUrl });
+    const tokenJWT = await reply.jwtSign({ login, email, avatarUrl, auth_provider: 'google' });
     reply
       .setCookie('token', tokenJWT, {
         httpOnly: true,
@@ -165,68 +175,99 @@ async function send2FACode(email, code) {
 
 
 export async function signIn(req, reply) {
-  let { givenLogin, password } = req.body;
+  let { auth_provider } = req.body;
 
   try {
-    if (!givenLogin || !password) {
-      return reply
-        .status(400)
-        .send({ error: "Login and password are required" });
-    }
+    if (auth_provider && auth_provider === 'google') {
+      const token = req.body.token || req.body.idtoken;
+        const ticket = await client.verifyIdToken({
+          idToken: token,
+          audience: process.env.GOOGLE_CLIENT_ID,
+        });
 
-    givenLogin = givenLogin.trim();
+      const payload = ticket.getPayload();
+      const { email, name } = payload;
 
-    const stmt = db.prepare(`
-      SELECT * FROM users
-      WHERE login = ? 
-      LIMIT 1
-    `);
-    const user = stmt.get(givenLogin);
-    //Si deja connecté, on ne peut pas se reconnecter
-    
+      const login = name.replace(/\s+/g, "").toLowerCase();
+      if (!email || !name) {
+        return reply.status(400).send({ error: "Invalid Google token" });
+      }
 
-    if (!user) {
-      return reply.status(401).send({ error: "User not found" });
+      const stmt = db.prepare(`
+        SELECT * FROM users
+        WHERE login = ? AND email = ?
+        LIMIT 1
+      `);
+      const user = stmt.get(login, email);
+      if (!user) {
+        return reply.status(401).send({ error: "User not found" });
+      }
+      const tokenJWT = await reply.jwtSign({ login : user.login, email, avatarUrl : user.avatarUrl, auth_provider: 'google' });
+      reply
+        .setCookie('token', tokenJWT, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'Strict',
+          path: '/',
+          maxAge: 60 * 60, // 1 hour
+        })
+        .code(201)
+        .send({ login : user.login });
     }
-    // 🛡️ À FAIRE : remplacer par bcrypt.compare(password, user.password)
-    if (password !== user.password) {
-      return reply.status(401).send({ error: "Invalid password" });
-    }
- 
-    if (user.secure_auth === true) {
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      db.prepare(`UPDATE users SET otp_code = ?, otp_expires = ? WHERE id = ?`)
-        .run(code, Date.now() + 5 * 60 * 1000, user.id);
-      await send2FACode(user.email, code);
-      return reply.status(200).send({
-        message: '2FA code sent to your email. Please verify to complete sign-in.',
-        requires2FA: true,
-        user: {
+    else {
+      let { givenLogin, password } = req.body;
+      if (!givenLogin) {
+        return reply
+          .status(400)
+          .send({ error: "Login is required" });
+      }
+
+      givenLogin = givenLogin.trim();
+      const stmt = db.prepare(`
+        SELECT * FROM users
+        WHERE login = ? 
+        LIMIT 1
+      `);
+      const user = stmt.get(givenLogin);
+
+      if (!user) {
+        return reply.status(401).send({ error: "User not found" });
+      }
+      user.secure_auth = true;
+      if (user.secure_auth == true) {
+        const result = await sendOtpVerificationEmail(user, reply);
+        if (result) {
+          const token = await reply.jwtSign({
           login: user.login,
-          email: user.email,
-          avatarUrl: user.avatarUrl,
+          });
+          return reply.code(400).send({ message: 'OTP sent to email', token });
+        } else {
+          return reply.code(500).send({ error: 'Failed to send OTP verification email' });
         }
-      });
+      }
+      // 🛡️ À FAIRE : remplacer par bcrypt.compare(password, user.password)
+      if (password !== user.password) {
+        return reply.status(401).send({ error: "Invalid password" });
+      }
+      const token = await reply.jwtSign({
+        login: user.login,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        auth_provider: user.auth_provider
+        });
+
+      reply
+        .setCookie('token', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'Strict',
+        path: '/',
+        maxAge: 60 * 60, // 1 hour
+        })
+        .code(200)
+        .send({ login: user.login });
     }
-
-    const token = await reply.jwtSign({
-      login: user.login,
-      email: user.email,
-      avatarUrl: user.avatarUrl,
-    });
-
-  reply
-    .setCookie('token', token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'Strict',
-      path: '/',
-      maxAge: 60 * 60, // 1 hour
-    })
-    .code(200)
-    .send({ login: user.login });
   }
-
   catch (err) {
     console.error('Sign-in error:', err);
     return reply.status(500).send({ error: 'Internal server error' });
@@ -253,22 +294,64 @@ export async function signOut(req, reply) {
   }
 }
 
+export async function sendOtpVerificationEmail(user, reply) {
+  try { 
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    const mailOptions = {
+      from: `"Mon App" <test@openjavascript.info>`,
+      to: 'oceane.cussy@gmail.com',
+      subject: 'Your 2FA Code',
+      text: `Your 2FA code is: ${code}. It is valid for 5 minutes.`,
+      html: `<p>Your 2FA code is: <strong>${code}</strong>. It is valid for 5 minutes.</p>`,
+    };
+
+    const saltRounds = 10;
+    const hashedCode = await bcrypt.hash(code, saltRounds);
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes from now (in ms)
+    const stmt = db.prepare(`
+      UPDATE users
+      SET otp_code = ?, otp_expires_at = ?
+      WHERE login = ?
+    `);
+    stmt.run(hashedCode, expiresAt, user.login);
+
+    // Envoi de l'email après avoir stocké le code
+    await transporter.sendMail(mailOptions);
+    return true;
+  }
+  catch (err) {
+    console.error('Error sending OTP verification email:', err);
+    return false;
+  }
+}
+
 
 export async function verify2FA(req, reply) {
-  const { login, otp } = req.body;
+  const { token, otp } = req.body;
+  if (!token) {
+    return reply.status(400).send({ error: 'Token is required' });
+  }
+  let login;
   try {
-    const user = db.prepare(`SELECT * FROM users WHERE login = ?`).get(login);
-    if (!user) {
-      return reply.status(400).send({ error: 'User not found' });
-    }
-    if (!otp) {
-      return reply.status(400).send({ error: 'OTP is required' });
-    }
-    if (user.otp_code !== otp || Date.now() > user.otp_expires_at) {
-      return reply.status(400).send({ error: 'Invalid OTP' });
-    }
-    db.prepare(`UPDATE users SET otp_code = NULL, otp_expires = NULL WHERE id = ?`)
-      .run(user.id);
+    const decoded = await reply.jwtVerify(token);
+    login = decoded.login;
+		const stmt = db.prepare(`
+			SELECT otp_code, otp_expires_at, login
+			FROM users
+			WHERE login = ?
+			LIMIT 1
+		`);
+		const user = stmt.get(login);
+		if (!user || !user.otp_code || !user.otp_expires_at) {
+			return reply.status(400).send({ error: 'OTP not found or expired' });
+		}
+  	const isValid = await bcrypt.compare(otp, otp_code);
+		if (!isValid || Date.now() > user.otp_expires_at) {
+  		return reply.status(400).send({ error: 'Invalid OTP' });
+		}
+
+    db.prepare(`UPDATE users SET otp_code = NULL, otp_expires = NULL WHERE login = ?`)
+      .run(login);
     const token = await reply.jwtSign({
       login: user.login,
       email: user.email,

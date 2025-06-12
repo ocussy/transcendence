@@ -21,7 +21,7 @@ db.exec(`
         auth_provider TEXT DEFAULT 'local',
         secure_auth BOOLEAN DEFAULT FALSE,
         otp_code INTEGER DEFAULT NULL,
-        otp_expires TIMESTAMP DEFAULT NULL
+        otp_expires_at TIMESTAMP DEFAULT NULL
     );
 
     CREATE TABLE IF NOT EXISTS matches (

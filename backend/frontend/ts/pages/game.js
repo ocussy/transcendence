@@ -386,12 +386,23 @@ class GamePage {
         `;
     }
     handleLogout() {
-        if (confirm("$ logout: Are you sure you want to exit?")) {
-            console.log("Logging out...");
-            setTimeout(() => {
-                window.router.navigate("/");
-            }, 500);
-        }
+        return __awaiter(this, void 0, void 0, function* () {
+            if (confirm("$ logout: Are you sure you want to exit?")) {
+                console.log("Logging out...");
+                try {
+                    yield fetch("/auth/signout", {
+                        method: "GET",
+                        credentials: "include",
+                    });
+                }
+                catch (err) {
+                    console.error("Logout failed:", err);
+                }
+                setTimeout(() => {
+                    window.router.navigate("/");
+                }, 500);
+            }
+        });
     }
 }
 exports.GamePage = GamePage;

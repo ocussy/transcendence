@@ -280,6 +280,7 @@ export class AuthPage {
         body: JSON.stringify({
           givenLogin: login,
           password,
+          auth_provider: "local", // pour l'authentification locale
         }),
       });
 
@@ -348,7 +349,7 @@ export class AuthPage {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ login, email, password }),
+        body: JSON.stringify({ login, email, password, auth_provider: "local" }),
       });
 
       const data = await response.json();
@@ -438,28 +439,29 @@ export class AuthPage {
 
       fetch("/auth/signup/google", {
         method: "POST",
-        headers: { "Content-Type": "application/json"
-          , "credentials": "include", // pour envoyer les cookies
-         },
-        body: JSON.stringify({ token: id_token }),
+        headers: { 
+          "Content-Type": "application/json",
+          "credentials": "include", // pour envoyer les cookies
+        },
+        body: JSON.stringify({ token: id_token, auth_provider: "google" }),
       })
         .then((res) => res.json())
         .then((data) => {
           const alertId = isSignup ? "signup-success" : "signin-success";
           const message = isSignup
-            ? `$ google account created for ${data.login}!`
-            : `$ welcome back, ${data.login}!`;
-              if (!data || data.error) {
-              const alertIdErr = isSignup ? "signup-alert" : "signin-alert";
-              this.showAlert(alertIdErr, `$ ${data?.error || "google authentication failed"}`);
-              return;
-              }
+        ? `$ google account created for ${data.login}!`
+        : `$ welcome back, ${data.login}!`;
+          if (!data || data.error) {
+        const alertIdErr = isSignup ? "signup-alert" : "signin-alert";
+        this.showAlert(alertIdErr, `$ ${data?.error || "google authentication failed"}`);
+        return;
+          }
           this.showAlert(alertId, message, "success");
           console.log("Google authentication successful ✅", data);
 
           //go jeu quand c bon
           setTimeout(() => {
-            window.router.navigate("/game");
+        window.router.navigate("/game");
           }, 1000);
         })
         .catch((err) => {

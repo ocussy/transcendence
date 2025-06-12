@@ -1,3 +1,4 @@
+
 import { signUp, signUpGoogle, signIn, signOut, verify2FA} from '../controllers/auth.js'
 import { verifyUser } from '../controllers/users.js'
 
@@ -56,10 +57,12 @@ const signInOptions = {
   schema: {
     body: {
       type: 'object',
-      required: ['givenLogin', 'password'],
+      required: ['givenLogin', 'auth_provider'],
       properties: {
         givenLogin: { type: 'string' },
         password: { type: 'string' },
+        email: { type: 'string' },
+        auth_provider: { type: 'string'},
       },
     },
     response: {
@@ -67,6 +70,7 @@ const signInOptions = {
         type: 'object',
         properties: {
           login: { type: 'string' },
+          message: { type: 'string' },
         },
       },
     },

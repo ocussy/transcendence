@@ -242,6 +242,7 @@ export class AuthPage {
                 body: JSON.stringify({
                     givenLogin: login,
                     password,
+                    auth_provider: "local",
                 }),
             });
             const data = await response.json();
@@ -283,7 +284,7 @@ export class AuthPage {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ login, email, password }),
+                body: JSON.stringify({ login, email, password, auth_provider: "local" }),
             });
             const data = await response.json();
             if (response.ok) {
@@ -352,10 +353,11 @@ export class AuthPage {
             console.log("Google authentication:", isSignup ? "signup" : "signin");
             fetch("/auth/signup/google", {
                 method: "POST",
-                headers: { "Content-Type": "application/json",
+                headers: {
+                    "Content-Type": "application/json",
                     "credentials": "include",
                 },
-                body: JSON.stringify({ token: id_token }),
+                body: JSON.stringify({ token: id_token, auth_provider: "google" }),
             })
                 .then((res) => res.json())
                 .then((data) => {

@@ -1,4 +1,7 @@
 "use strict";
+
+const { auth } = require("google-auth-library");
+
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -10,8 +13,21 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthPage = void 0;
+function checkAuthAndRedirect() {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const res = yield fetch("/user", { credentials: "include" });
+            if (res.ok) {
+                window.router.navigate("/game");
+            }
+        }
+        catch (err) {
+        }
+    });
+}
 class AuthPage {
     constructor() {
+        checkAuthAndRedirect();
         this.render();
         this.attachEvents();
         this.initializeGoogleAuth();
@@ -251,6 +267,7 @@ class AuthPage {
                     body: JSON.stringify({
                         givenLogin: login,
                         password,
+                        auth_provider: "local",
                     }),
                 });
                 const data = yield response.json();
@@ -375,10 +392,11 @@ class AuthPage {
             console.log("Google authentication:", isSignup ? "signup" : "signin");
             fetch("/auth/signup/google", {
                 method: "POST",
-                headers: { "Content-Type": "application/json",
+                headers: {
+                    "Content-Type": "application/json",
                     "credentials": "include", // pour envoyer les cookies
                 },
-                body: JSON.stringify({ token: id_token }),
+                body: JSON.stringify({ token: id_token, auth_provider: "google" }),
             })
                 .then((res) => res.json())
                 .then((data) => {
