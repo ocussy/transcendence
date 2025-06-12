@@ -299,7 +299,7 @@ export async function sendOtpVerificationEmail(user, reply) {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     const mailOptions = {
       from: `"Mon App" <test@openjavascript.info>`,
-      to: 'oceane.cussy@gmail.com',
+      to: 'geoffreybougueroua@gmail.com',
       subject: 'Your 2FA Code',
       text: `Your 2FA code is: ${code}. It is valid for 5 minutes.`,
       html: `<p>Your 2FA code is: <strong>${code}</strong>. It is valid for 5 minutes.</p>`,
@@ -345,12 +345,12 @@ export async function verify2FA(req, reply) {
 		if (!user || !user.otp_code || !user.otp_expires_at) {
 			return reply.status(400).send({ error: 'OTP not found or expired' });
 		}
-  	const isValid = await bcrypt.compare(otp, otp_code);
+  	const isValid = await bcrypt.compare(otp, user.otp_code);
 		if (!isValid || Date.now() > user.otp_expires_at) {
   		return reply.status(400).send({ error: 'Invalid OTP' });
 		}
 
-    db.prepare(`UPDATE users SET otp_code = NULL, otp_expires = NULL WHERE login = ?`)
+    db.prepare(`UPDATE users SET otp_code = NULL, otp_expires_at = NULL WHERE login = ?`)
       .run(login);
     const token = await reply.jwtSign({
       login: user.login,
