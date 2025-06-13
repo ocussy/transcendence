@@ -23,7 +23,6 @@ db.exec(`
         otp_code INTEGER DEFAULT NULL,
         otp_expires_at TIMESTAMP DEFAULT NULL,
         nb_trys INTEGER DEFAULT 0,
-        friends TEXT DEFAULT '[]'
     );
 
     CREATE TABLE IF NOT EXISTS matches (
@@ -46,6 +45,14 @@ db.exec(`
         maxPlayers INTEGER NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         start_at TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS friends (
+        user_id INTEGER NOT NULL,
+        friend_id INTEGER NOT NULL,
+        PRIMARY KEY (user_id, friend_id),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+        FOREIGN KEY (friend_id) REFERENCES users(id)
     );
 
 `);

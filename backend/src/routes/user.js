@@ -1,3 +1,4 @@
+import { type } from 'os'
 import { getUser, debugDb, verifyUser, updateUser, getStatUser } from '../controllers/users.js'
 
 const User = {
@@ -22,8 +23,16 @@ const getUserOptions = {
           language: { type: 'string' },
           password: { type: 'string' },
           secure_auth: { type: 'boolean' },
+          friends: { type: 'array', items: { type: 'string' } },
+          stats : { type: 'array', items: { type: 'object', properties: {
+            player1: { type: 'string' },
+            player2: { type: 'string' },
+            score: { type: 'number' },
+            winner: { type: 'number' },
+            duration: { type: 'number' },
+            created_at: { type: 'string', format: 'date-time' },
+          } } }
         },
-        required: ['login', 'email', 'avatarUrl', 'language'],
       },
     },
   },

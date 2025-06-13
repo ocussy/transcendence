@@ -39,7 +39,16 @@ export async function getUser(req, reply) {
     if (!user) {
       return reply.status(404).send({ error: 'User not found' });
     }
-    reply.send(user);
+    const stats = db.prepare(`
+      SELECT * FROM matches
+      WHERE player1 = ? OR player2 = ?
+    `).all(login, login);
+    const friends= db.prepare(`
+      SELECT u.login FROM friends f
+      JOIN users u ON f.friend_id = u.id
+      WHERE f.user_id = (SELECT id FROM users WHERE login = ?)
+    `).all(login);
+    reply.send(user, friends, stats);
   }
   catch (err) {
     reply.status(500).send({ error: err.message });
@@ -47,9 +56,9 @@ export async function getUser(req, reply) {
 }
 
 async function verifData(req, reply) {
-  const { login, email, avatarUrl, language, password, secure_auth, friends } = req.body;
+  const { login, email, avatarUrl, language, password, secure_auth, friend } = req.body;
 
-  if (!email && !avatarUrl && !language && !password && !secure_auth && !login && !friends) {
+  if (!email && !avatarUrl && !language && !password && !secure_auth && !login && !friend) {
     return reply.status(400).send({
       error: 'No fields to update',
     });
@@ -74,9 +83,9 @@ async function verifData(req, reply) {
     });
   }
 
-  if (friends) {
+  if (friend) {
     const stmt = db.prepare(`SELECT login FROM users WHERE login = ?`);
-    const friend = stmt.get(friends);
+    const friend = stmt.get(friend);
     if (!friend) {
       return reply.status(400).send({
         error: 'Friend does not exist',
@@ -87,11 +96,30 @@ async function verifData(req, reply) {
   return null;
 }
 
+function addFriends(userId, friendLogin) {
+  const getId = db.prepare(`SELECT id FROM users WHERE login = ?`);
+  const friend = getId.get(friendLogin);
+  if (!friend)
+    return null;
+
+  const stmtCheck = db.prepare(`SELECT 1 FROM friends WHERE user_id = ? AND friend_id = ?`);
+  const already = stmtCheck.get(userId, friend);
+  if (!already) {
+    const stmtAdd = db.prepare(`INSERT INTO friends (user_id, friend_id) VALUES (?, ?)`);
+    stmtAdd.run(userId, friend);
+  }
+  else {
+    const stmtDelete = db.prepare(`DELETE FROM friends WHERE user_id = ? AND friend_id = ?`);
+    stmtDelete.run(userId, friend);
+  }
+  return friend;
+}
+
 export async function updateUser(req, reply) {
   const error = await verifData(req, reply);
   if (error) return error;
 
-  const { login, email, avatarUrl, language, password, secure_auth, friends } = req.body;
+  const { login, email, avatarUrl, language, password, secure_auth, friend } = req.body;
   const currentLogin = req.user.login;
 
   const updates = [];
@@ -122,16 +150,14 @@ export async function updateUser(req, reply) {
     updates.push("secure_auth = ?");
     values.push(secure_auth);
   }
-  if (friends) {
-    updates.push("friends = ?");
-    values.push(friends);
+  if (friend) {
+    friend = addFriends(user.id, friend)
+    if (!friend) {
+      return reply.status(400).send({ error: "Friend does not exist" });
+    }
   }
 
-  if (updates.length === 0) {
-    return reply.status(400).send({ error: "No valid fields to update" });
-  }
-
-  values.push(currentLogin); // for WHERE clause
+  values.push(currentLogin);
 
   const stmt = db.prepare(`
     UPDATE users
