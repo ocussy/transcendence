@@ -25,7 +25,8 @@ export async function buildUpdateQuery(table, updates, whereClause, whereArgs) {
     throw new Error('No fields to update');
   }
 
-  const sql = `UPDATE ${table} SET ${fields.join(', ')} WHERE ${whereClause}`;
+  const sql = `UPDATE ? SET ${fields.map(() => '? = ?').join(', ')} WHERE ${whereClause}`;
+  values.unshift(table, ...Object.keys(updates).filter(key => updates[key] !== undefined));
   return { sql, values: [...values, ...whereArgs] };
 }
 
@@ -46,9 +47,9 @@ export async function getUser(req, reply) {
 }
 
 async function verifData(req, reply) {
-  const { login, email, avatarUrl, language, password, secure_auth } = req.body;
+  const { login, email, avatarUrl, language, password, secure_auth, friends } = req.body;
 
-  if (!email && !avatarUrl && !language && !password && !secure_auth) {
+  if (!email && !avatarUrl && !language && !password && !secure_auth && !login && !friends) {
     return reply.status(400).send({
       error: 'No fields to update',
     });
@@ -73,41 +74,88 @@ async function verifData(req, reply) {
     });
   }
 
+  if (friends) {
+    const stmt = db.prepare(`SELECT login FROM users WHERE login = ?`);
+    const friend = stmt.get(friends);
+    if (!friend) {
+      return reply.status(400).send({
+        error: 'Friend does not exist',
+      });
+    }
+  }
+
   return null;
 }
 
+export async function updateUser(req, reply) {
+  const error = await verifData(req, reply);
+  if (error) return error;
 
-export async function updateUser(req, reply) { 
+  const { login, email, avatarUrl, language, password, secure_auth, friends } = req.body;
+  const currentLogin = req.user.login;
+
+  const updates = [];
+  const values = [];
+
+  if (login) {
+    updates.push("login = ?");
+    values.push(login);
+  }
+  if (email) {
+    updates.push("email = ?");
+    values.push(email);
+  }
+  if (avatarUrl) {
+    updates.push("avatarUrl = ?");
+    values.push(avatarUrl);
+  }
+  if (language) {
+    updates.push("language = ?");
+    values.push(language);
+  }
+  if (password) {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    updates.push("password = ?");
+    values.push(hashedPassword);
+  }
+  if (typeof secure_auth === "boolean") {
+    updates.push("secure_auth = ?");
+    values.push(secure_auth);
+  }
+  if (friends) {
+    updates.push("friends = ?");
+    values.push(friends);
+  }
+
+  if (updates.length === 0) {
+    return reply.status(400).send({ error: "No valid fields to update" });
+  }
+
+  values.push(currentLogin); // for WHERE clause
+
+  const stmt = db.prepare(`
+    UPDATE users
+    SET ${updates.join(", ")}
+    WHERE login = ?
+  `);
+  stmt.run(...values);
+
+  return reply.status(200).send({ message: "User updated successfully" });
+}
+
+
+export async function getStatUser(req, reply) {
   try {
-    const login = req.user.login;
-    const err = await verifData(req, reply);
-    if (err) return; // réponse déjà envoyée
-    
-    const { email, avatarUrl, language, password, secure_auth } = req.body;
-    // Convert boolean to integer for SQLite compatibility
-    const updateData = { 
-      email, 
-      avatarUrl, 
-      language, 
-      password, 
-      secure_auth: typeof secure_auth === 'boolean' ? (secure_auth ? 1 : 0) : secure_auth 
-    };
-
-    const { sql, values } = await buildUpdateQuery('users', updateData, 'login = ?', [login]);
-    db.prepare(sql).run(values);
-    const updatedUser = db.prepare('SELECT login, email, avatarUrl, language, secure_auth FROM users WHERE login = ?').get(login);
-    const newToken = await reply.jwtSign(updatedUser);
-
-    reply
-      .setCookie('token', newToken, {
-        httpOnly: true,      // ❗ Empêche JS d’y accéder → sécurité contre XSS
-        secure: true,        // ❗ HTTPS obligatoire (en local tu peux désactiver temporairement)
-        sameSite: 'Strict',  // Empêche l’envoi du cookie sur d'autres domaines (anti-CSRF)
-        path: '/',           // Cookie envoyé pour toutes les routes du site
-        maxAge: 3600         // 1h en secondes (optionnel)
-      })
-      .code(200)
-      .send({ message: 'User updated successfully'});
+    login = req.user.login;
+    const stats = db.prepare(`
+      SELECT * FROM matches
+      WHERE player1 = ? OR player2 = ?
+    `).all(login, login);
+    const user = db.prepare(`
+      SELECT login, email, avatarUrl, language FROM users
+      WHERE login = ?
+    `).get(login);
+    reply.send(stats, user)
   }
   catch (err) {
     reply.status(500).send({ error: err.message });

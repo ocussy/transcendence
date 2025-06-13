@@ -1,4 +1,4 @@
-import { getUser, debugDb, verifyUser, updateUser} from '../controllers/users.js'
+import { getUser, debugDb, verifyUser, updateUser, getStatUser } from '../controllers/users.js'
 
 const User = {
   type: 'object',
@@ -42,6 +42,7 @@ const updateUserOptions = {
         language: { type: 'string' },
         password: { type: 'string', minLength: 8 },
         secure_auth: { type: 'boolean' },
+        friends: {type: 'string'},
       },
       additionalProperties: false, // refuse les clés inconnues
       minProperties: 1, // exige au moins une propriété à modifier
@@ -64,7 +65,30 @@ const updateUserOptions = {
   handler: updateUser,
 }
 
-
+const getStatUserOptions = {
+  preHandler: verifyUser,
+  schema: {
+    params: {
+      type: 'object',
+      properties: {
+        login: { type: 'string' },
+      },
+      required: ['login'],
+    },
+    response: {
+      200: {
+        type: 'object',
+        properties: {
+          login: { type: 'string' },
+          email: { type: 'string' },
+          avatarUrl: { type: 'string' },
+          match: { type: 'array'},
+        }
+      }
+    }
+  },
+  handler: getStatUser,
+}
 
 const debugOptions = {
   schema: {
@@ -83,6 +107,7 @@ const debugOptions = {
 
 export default async function userRoutes(fastify, options) {
   fastify.get('/user', getUserOptions)
+  fastify.get('/user:login', getStatUserOptions)
   fastify.put('/user', updateUserOptions)
   fastify.get('/debug/users', debugOptions)
 }

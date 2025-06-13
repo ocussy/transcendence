@@ -10,6 +10,7 @@ async function checkAuthAndRedirect() {
 }
 export class AuthPage {
     constructor() {
+        this.pendingToken = null;
         checkAuthAndRedirect();
         this.render();
         this.attachEvents();
@@ -42,7 +43,7 @@ export class AuthPage {
                     </div>
 
                     <!-- Tab Navigation -->
-                    <div class="mb-8">
+                    <div class="mb-8" id="tab-navigation">
                         <div class="flex bg-gray-900 border border-gray-800 rounded-lg p-1">
                             <button class="tab-button flex-1 py-3 px-4 font-mono text-sm font-medium text-gray-400 rounded-md transition-all duration-200 hover:bg-gray-800 hover:text-white focus:outline-none"
                                     data-tab="signin" id="signin-tab">
@@ -51,6 +52,49 @@ export class AuthPage {
                             <button class="tab-button flex-1 py-3 px-4 font-mono text-sm font-medium text-gray-400 rounded-md transition-all duration-200 hover:bg-gray-800 hover:text-white focus:outline-none"
                                     data-tab="signup" id="signup-tab">
                                 $ sign-up
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 2FA Verification Tab -->
+                    <div id="verify2fa" class="tab-content hidden">
+                        <div class="bg-gray-900 border border-gray-800 rounded-xl p-10 mb-6 relative overflow-hidden backdrop-blur-sm">
+                            <!-- Top gradient line -->
+                            <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
+
+                            <div class="text-center mb-6">
+                                <div class="inline-flex items-center justify-center w-16 h-16 bg-amber-500/10 border border-amber-500/30 rounded-full mb-4">
+                                    <svg class="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                    </svg>
+                                </div>
+                                <h2 class="font-mono text-xl font-bold text-white mb-2">Two-Factor Authentication</h2>
+                                <p class="font-mono text-sm text-gray-400">Check your email for the verification code</p>
+                            </div>
+
+                            <!-- Alerts -->
+                            <div id="verify2fa-alert" class="hidden p-4 mb-6 border border-red-500 bg-red-500/10 text-red-400 rounded-lg font-mono text-sm"></div>
+                            <div id="verify2fa-success" class="hidden p-4 mb-6 border border-green-500 bg-green-500/10 text-green-400 rounded-lg font-mono text-sm"></div>
+
+                            <!-- OTP Input -->
+                            <div class="mb-8">
+                                <label class="block font-mono text-sm font-medium text-gray-400 mb-2">
+                                    verification code
+                                </label>
+                                <input type="text"
+                                       id="otp-input"
+                                       placeholder="0000"
+                                       maxlength="4"
+                                       class="w-full px-5 py-4 border border-gray-800 rounded-lg font-mono text-center text-2xl tracking-widest bg-gray-800 text-white placeholder-gray-500 transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-amber-500/30 focus:border-amber-500 focus:bg-gray-900">
+                            </div>
+
+                            <button id="verify2faBtn" class="group relative w-full py-4 px-6 bg-gradient-to-r from-amber-500 to-amber-600 text-white border-none rounded-lg font-mono font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-500/30 active:translate-y-0 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none overflow-hidden">
+                                <span class="relative z-10">$ verify</span>
+                                <div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-500 group-hover:translate-x-full"></div>
+                            </button>
+
+                            <button id="backToSigninBtn" class="w-full mt-4 py-3 px-6 bg-transparent text-gray-400 border border-gray-700 rounded-lg font-mono transition-all duration-200 hover:bg-gray-800 hover:text-white focus:outline-none">
+                                $ back to sign-in
                             </button>
                         </div>
                     </div>
@@ -204,10 +248,22 @@ export class AuthPage {
         document.getElementById("signupBtn").addEventListener("click", () => {
             this.handleSignUp();
         });
+        document.getElementById("verify2faBtn").addEventListener("click", () => {
+            this.handleVerify2FA();
+        });
+        document.getElementById("backToSigninBtn").addEventListener("click", () => {
+            this.backToSignin();
+        });
         this.setupKeyboardNavigation();
         this.switchTab("signin");
     }
     switchTab(tabName) {
+        if (tabName === "verify2fa") {
+            document.getElementById("tab-navigation").style.display = "none";
+        }
+        else {
+            document.getElementById("tab-navigation").style.display = "block";
+        }
         document.querySelectorAll(".tab-button").forEach((b) => {
             b.classList.remove("bg-blue-500", "text-white", "shadow-lg", "shadow-blue-500/30");
             b.classList.add("text-gray-400");
@@ -215,10 +271,12 @@ export class AuthPage {
         document
             .querySelectorAll(".tab-content")
             .forEach((c) => c.classList.add("hidden"));
-        const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
-        activeButton.classList.remove("text-gray-400");
-        activeButton.classList.add("bg-blue-500", "text-white", "shadow-lg", "shadow-blue-500/30");
         document.getElementById(tabName).classList.remove("hidden");
+        if (tabName !== "verify2fa") {
+            const activeButton = document.querySelector(`[data-tab="${tabName}"]`);
+            activeButton.classList.remove("text-gray-400");
+            activeButton.classList.add("bg-blue-500", "text-white", "shadow-lg", "shadow-blue-500/30");
+        }
         this.hideAllAlerts();
     }
     async handleSignIn() {
@@ -255,6 +313,15 @@ export class AuthPage {
                     window.router.navigate("/game");
                 }, 1000);
             }
+            else if (response.status === 400 && data.message === 'OTP sent to email') {
+                this.pendingToken = data.token;
+                btn.textContent = "$ 2FA required";
+                btn.style.background = "#f59e0b";
+                setTimeout(() => {
+                    this.switchTab("verify2fa");
+                    this.resetButton(btn, "$ authenticate");
+                }, 1000);
+            }
             else {
                 this.showAlert("signin-alert", `$ ${data.error || "authentication failed"}`);
                 this.resetButton(btn, "$ authenticate");
@@ -265,6 +332,61 @@ export class AuthPage {
             this.resetButton(btn, "$ authenticate");
             console.error("Network error:", error);
         }
+    }
+    async handleVerify2FA() {
+        const otp = document.getElementById("otp-input").value.trim();
+        const btn = document.getElementById("verify2faBtn");
+        console.log("Verifying 2FA with OTP:", otp, "and pending token:", this.pendingToken);
+        this.hideAlert("verify2fa-alert");
+        this.hideAlert("verify2fa-success");
+        if (!otp) {
+            this.showAlert("verify2fa-alert", "$ error: please enter verification code");
+            return;
+        }
+        if (!this.pendingToken) {
+            this.showAlert("verify2fa-alert", "$ error: session expired, please sign in again");
+            setTimeout(() => this.backToSignin(), 2000);
+            return;
+        }
+        btn.textContent = "$ verifying...";
+        btn.disabled = true;
+        try {
+            const response = await fetch("/auth/verify2FA", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${this.pendingToken}`,
+                },
+                credentials: "include",
+                body: JSON.stringify({
+                    otp: otp,
+                }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                btn.textContent = "$ verified";
+                btn.style.background = "#10b981";
+                this.showAlert("verify2fa-success", "$ 2FA verification successful!", "success");
+                console.log("2FA verification successful ✅", data);
+                setTimeout(() => {
+                    window.router.navigate("/game");
+                }, 1000);
+            }
+            else {
+                this.showAlert("verify2fa-alert", `$ ${data.error || "verification failed"}`);
+                this.resetButton(btn, "$ verify");
+            }
+        }
+        catch (error) {
+            this.showAlert("verify2fa-alert", "$ network error");
+            this.resetButton(btn, "$ verify");
+            console.error("2FA verification error:", error);
+        }
+    }
+    backToSignin() {
+        this.pendingToken = null;
+        document.getElementById("otp-input").value = "";
+        this.switchTab("signin");
     }
     async handleSignUp() {
         const login = document.getElementById("signup-login").value.trim();
@@ -290,6 +412,7 @@ export class AuthPage {
             if (response.ok) {
                 btn.textContent = "$ account created";
                 btn.style.background = "#10b981";
+                checkAuthAndRedirect();
                 this.showAlert("signup-success", `$ account created for ${login}! switching to sign-in...`, "success");
                 console.log("Account created successfully ✅", data);
                 setTimeout(() => {
@@ -424,6 +547,20 @@ export class AuthPage {
                 document.getElementById("signupBtn").click();
             }
         });
+        document
+            .getElementById("otp-input")
+            .addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                document.getElementById("verify2faBtn").click();
+            }
+        });
+        document
+            .getElementById("otp-input")
+            .addEventListener("input", (e) => {
+            const input = e.target;
+            input.value = input.value.replace(/[^0-9]/g, '');
+        });
     }
     showAlert(id, message, type = "error") {
         const alert = document.getElementById(id);
@@ -437,9 +574,12 @@ export class AuthPage {
         document.getElementById(id).classList.add("hidden");
     }
     hideAllAlerts() {
-        document.querySelectorAll(".alert").forEach((alert) => {
-            alert.classList.add("hidden");
-        });
+        const alertIds = [
+            "signin-alert", "signin-success",
+            "signup-alert", "signup-success",
+            "verify2fa-alert", "verify2fa-success"
+        ];
+        alertIds.forEach(id => this.hideAlert(id));
     }
     resetButton(btn, originalText) {
         btn.textContent = originalText;

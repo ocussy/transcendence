@@ -39,7 +39,6 @@ const signUpGoogleOptions = {
         type: 'object',
         properties: {
           login: { type: 'string' },
-          email : { type: 'string' },
         },
       },
       400: {
@@ -95,10 +94,9 @@ const verify2FAOptions = {
   schema: {
     body: {
       type: 'object',
-      required: ['otp', 'token'],
+      required: ['otp'],
       properties: {
         otp: { type: 'string' },
-        token: { type: 'string' },
       },
     },
     response: {
