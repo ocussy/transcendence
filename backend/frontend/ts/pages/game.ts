@@ -380,24 +380,30 @@ export class GamePage {
 
   }
 
+  // ...existing code...
   private startGame(mode: "local" | "ai" | "tournament"): void {
     console.log(`Starting ${mode} game...`);
-
-    const canvas = document.getElementById("game-canvas")!;
-    canvas.innerHTML = `
-            <div class="w-full h-full bg-black rounded flex items-center justify-center">
-                <div class="text-center text-white">
-                    <div class="font-mono text-2xl mb-4">[${mode.toUpperCase()}_MODE.EXE]</div>
-                    <div class="font-mono text-gray-400 mb-4">a faire</div>
-                    <div class="font-mono text-sm text-gray-500">// adem</div>
-                    <button onclick="this.parentElement.parentElement.innerHTML='<div class=&quot;text-center text-gray-500&quot;><div class=&quot;text-6xl mb-4 font-mono&quot;>[PONG]</div><p class=&quot;font-mono&quot;>pong.exe ready</p><p class=&quot;font-mono text-sm text-gray-600 mt-2&quot;>select mode to initialize</p></div>'"
-                            class="mt-6 px-4 py-2 bg-red-500 text-white rounded font-mono text-sm hover:bg-red-600 transition-colors">
-                        $ terminate
-                    </button>
-                </div>
-            </div>
-        `;
+  
+    const canvasDiv = document.getElementById("game-canvas")!;
+    canvasDiv.innerHTML = `<canvas id="renderCanvas" class="w-full h-full" tabindex="0"></canvas>`;
+  
+    // Supprimer un éventuel script déjà chargé
+    const oldScript = document.getElementById("pong-script");
+    if (oldScript) oldScript.remove();
+  
+    // Choisir le script selon le mode
+    let scriptSrc = "../../pong/pong.js"; // par défaut
+    if (mode === "ai") scriptSrc = "../../pong/pov.js";
+    if (mode === "tournament") scriptSrc = "../../pong/newPov.js";
+  
+    // Charger le script choisi
+    const script = document.createElement("script");
+    script.id = "pong-script";
+    script.src = scriptSrc;
+    script.async = true;
+    canvasDiv.appendChild(script);
   }
+  // ...existing code...
 
   private async handleLogout(): Promise<void> {
     if (confirm("$ logout: Are you sure you want to exit?")) {

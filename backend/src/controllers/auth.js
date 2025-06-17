@@ -4,7 +4,6 @@ import { auth, OAuth2Client } from 'google-auth-library';
 import nodemailer from 'nodemailer';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
-import jwt from '@fastify/jwt';
 
 dotenv.config();
 
@@ -137,7 +136,7 @@ export async function signUpGoogle(req, reply) {
         maxAge: 60 * 60, // 1 hour
       })
       .code(201)
-      .send({ login: user.login});
+      .send({ login});
 
   } catch (err) {
     console.error("Google sign-up error:", err);

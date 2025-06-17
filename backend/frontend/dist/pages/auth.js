@@ -412,7 +412,6 @@ export class AuthPage {
             if (response.ok) {
                 btn.textContent = "$ account created";
                 btn.style.background = "#10b981";
-                checkAuthAndRedirect();
                 this.showAlert("signup-success", `$ account created for ${login}! switching to sign-in...`, "success");
                 console.log("Account created successfully ✅", data);
                 setTimeout(() => {
