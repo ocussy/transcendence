@@ -119,8 +119,8 @@ async function verifData(req, reply) {
 
   if (friend) {
     const stmt = db.prepare(`SELECT login FROM users WHERE login = ?`);
-    const friend = stmt.get(friend);
-    if (!friend) {
+    const friend = stmt.get(friendUser); //jai changer friend en friendUser sinon tu confond l objet et la string ducoup lobjet est ecraser
+    if (!friendUser) {
       return reply.status(400).send({
         error: "Friend does not exist",
       });
@@ -132,23 +132,23 @@ async function verifData(req, reply) {
 
 function addFriends(userId, friendLogin) {
   const getId = db.prepare(`SELECT id FROM users WHERE login = ?`);
-  const friend = getId.get(friendLogin);
-  if (!friend) return null;
+  const friendUser = getId.get(friendLogin);
+  if (!friendUser) return null; //pareil frienduser pas friend
 
   const stmtCheck = db.prepare(
     `SELECT 1 FROM friends WHERE user_id = ? AND friend_id = ?`,
   );
-  const already = stmtCheck.get(userId, friend);
+  const already = stmtCheck.get(userId, friendUser.id); //pareil
   if (!already) {
     const stmtAdd = db.prepare(
       `INSERT INTO friends (user_id, friend_id) VALUES (?, ?)`,
     );
-    stmtAdd.run(userId, friend);
+    stmtAdd.run(userId, friendUser.id); //pareil
   } else {
     const stmtDelete = db.prepare(
       `DELETE FROM friends WHERE user_id = ? AND friend_id = ?`,
     );
-    stmtDelete.run(userId, friend);
+    stmtDelete.run(userId, friendUser.id); //pareil
   }
   return friend;
 }
@@ -191,8 +191,8 @@ export async function updateUser(req, reply) {
     values.push(secure_auth ? 1 : 0);
   }
   if (friend) {
-    friend = addFriends(user.id, friend);
-    if (!friend) {
+    friendReslut = addFriends(user.id, friend); //pareil faut pas redefinir firend donc firendresult au lieu de friend
+    if (!friendReslut) {
       return reply.status(400).send({ error: "Friend does not exist" });
     }
   }

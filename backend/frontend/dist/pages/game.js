@@ -2,22 +2,20 @@ export class GamePage {
     constructor() {
         this.currentSection = "tournament";
         this.currentUser = null;
+        this.friendsList = [];
         this.render();
         this.attachEvents();
         this.handleBrowserNavigation();
+        window.gamePageInstance = this;
         const currentPath = window.location.pathname;
+        let targetSection = "tournament";
         if (currentPath.startsWith("/game/")) {
             const section = currentPath.replace("/game/", "");
             if (["tournament", "dashboard", "profile"].includes(section)) {
-                this.showSection(section);
-            }
-            else {
-                this.showSection("tournament");
+                targetSection = section;
             }
         }
-        else {
-            this.showSection("tournament");
-        }
+        this.showSectionWithoutPush(targetSection);
     }
     async loadUserProfile() {
         try {
@@ -50,6 +48,7 @@ export class GamePage {
             this.update2FAStatus(user.secure_auth || false);
             this.updateProfileDisplay();
             this.updateAuthBadge(user.auth_provider || "local");
+            this.loadFriends();
         }
         catch (err) {
             console.error("Erreur chargement profil:", err);
@@ -109,6 +108,128 @@ export class GamePage {
             displayName.textContent = this.currentUser.login;
         if (displayEmail)
             displayEmail.textContent = this.currentUser.email;
+    }
+    async loadFriends() {
+        try {
+            const response = await fetch("/friends", {
+                credentials: "include",
+            });
+            if (response.ok) {
+                const data = await response.json();
+                this.friendsList = data.friend || [];
+                this.renderFriendsSection();
+            }
+            else {
+                console.error("Failed to load friends");
+                this.friendsList = [];
+                this.renderFriendsSection();
+            }
+        }
+        catch (error) {
+            console.error("Error loading friends:", error);
+            this.friendsList = [];
+            this.renderFriendsSection();
+        }
+    }
+    async addFriend(username) {
+        if (!username.trim()) {
+            this.showProfileAlert("profile-alert", "Username is required");
+            return;
+        }
+        try {
+            const response = await fetch("/user", {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify({ friend: username.trim() }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                this.showProfileAlert("profile-success", `Friend ${username} added successfully!`, "success");
+                await this.loadFriends();
+                const input = document.getElementById("add-friend-input");
+                if (input)
+                    input.value = "";
+            }
+            else {
+                this.showProfileAlert("profile-alert", data.error || "Failed to add friend");
+            }
+        }
+        catch (error) {
+            this.showProfileAlert("profile-alert", "Network error");
+            console.error("Add friend error:", error);
+        }
+    }
+    async removeFriend(username) {
+        if (!confirm(`Remove ${username} from your friends?`)) {
+            return;
+        }
+        try {
+            const response = await fetch("/user", {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify({ friend: username }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                this.showProfileAlert("profile-success", `Friend ${username} removed`, "success");
+                await this.loadFriends();
+            }
+            else {
+                this.showProfileAlert("profile-alert", data.error || "Failed to remove friend");
+            }
+        }
+        catch (error) {
+            this.showProfileAlert("profile-alert", "Network error");
+            console.error("Remove friend error:", error);
+        }
+    }
+    renderFriendsSection() {
+        const container = document.getElementById("friends-list-container");
+        if (!container)
+            return;
+        if (this.friendsList.length === 0) {
+            container.innerHTML = `
+        <div class="text-center py-4 text-gray-500 font-mono">
+          <div class="text-lg mb-1">[EMPTY]</div>
+          <p class="text-xs">No friends yet</p>
+        </div>
+      `;
+            return;
+        }
+        container.innerHTML = this.friendsList
+            .map((friend) => `
+      <div class="bg-gray-800 border border-gray-700 rounded-lg p-3 mb-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <img
+              src="${friend.avatarUrl}"
+              alt="${friend.login}"
+              class="w-8 h-8 rounded-full border border-gray-600"
+              onerror="this.src='https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${friend.login}'"
+            >
+            <div>
+              <div class="font-mono font-bold text-white text-xs">${friend.login}</div>
+              <div class="font-mono text-xs text-gray-400">
+                ${friend.totalMatches === 0 ? "No matches" : `${friend.winrate}% • ${friend.totalMatches}m`}
+              </div>
+            </div>
+          </div>
+          <button
+            class="text-red-400 hover:text-red-300 p-1 hover:bg-gray-700 rounded text-xs"
+            onclick="if(window.gamePageInstance) window.gamePageInstance.removeFriend('${friend.login}')"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+    `)
+            .join("");
     }
     render() {
         const app = document.getElementById("app");
@@ -263,37 +384,74 @@ export class GamePage {
 
                       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                        <!-- Left Column - Avatar & Info -->
-                        <div class="bg-gray-900 border border-gray-800 rounded-xl p-8 relative overflow-hidden backdrop-blur-sm">
-                          <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+                        <!-- Left Column - Avatar, Info & Friends -->
+                        <div class="lg:col-span-1 space-y-6">
 
-                          <div class="text-center">
-                            <div class="relative inline-block mb-6">
-                              <div class="w-32 h-32 bg-gray-800 border-2 border-gray-700 rounded-full mx-auto flex items-center justify-center overflow-hidden">
-                                <img id="user-avatar"
-                                     alt="User Avatar"
-                                     class="w-full h-full object-cover"
-                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                <span class="text-4xl font-mono text-gray-500 hidden">[USER]</span>
+                          <!-- User Info Card -->
+                          <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                            <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+
+                            <div class="text-center">
+                              <div class="relative inline-block mb-4">
+                                <div class="w-24 h-24 bg-gray-800 border-2 border-gray-700 rounded-full mx-auto flex items-center justify-center overflow-hidden">
+                                  <img id="user-avatar"
+                                       alt="User Avatar"
+                                       class="w-full h-full object-cover"
+                                       onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                  <span class="text-4xl font-mono text-gray-500 hidden">[USER]</span>
+                                </div>
+                                <div class="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-600 transition-colors" id="avatar-edit-btn">
+                                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                                  </svg>
+                                </div>
                               </div>
-                              <div class="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-600 transition-colors" id="avatar-edit-btn">
-                                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-                                </svg>
+
+                              <h3 id="profile-display-name" class="font-mono text-xl font-bold text-white mb-1">Loading...</h3>
+                              <p id="profile-display-email" class="font-mono text-sm text-gray-400 mb-4">Loading...</p>
+
+                              <!-- Status Badges -->
+                              <div class="flex justify-center gap-2">
+                                <span id="auth-provider-badge" class="px-3 py-1 bg-green-500/10 border border-green-500/30 text-green-400 text-xs font-mono rounded-full">
+                                  local auth
+                                </span>
+                                <span class="px-3 py-1 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-mono rounded-full">
+                                  2FA <span id="2fa-status">loading...</span>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- Friends Management Card -->
+                          <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                            <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #8b5cf6, transparent);"></div>
+
+                            <h3 class="font-mono font-bold text-lg text-purple-400 mb-4">$ friends --manage</h3>
+
+                            <!-- Add Friend -->
+                            <div class="mb-4">
+                              <div class="flex gap-2">
+                                <input
+                                  type="text"
+                                  id="add-friend-input"
+                                  placeholder="username"
+                                  class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded font-mono text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                >
+                                <button
+                                  id="add-friend-btn"
+                                  class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-mono text-sm rounded transition-colors"
+                                >
+                                  add
+                                </button>
                               </div>
                             </div>
 
-                            <h3 id="profile-display-name" class="font-mono text-xl font-bold text-white mb-1">Loading...</h3>
-                            <p id="profile-display-email" class="font-mono text-sm text-gray-400 mb-4">Loading...</p>
-
-                            <!-- Status Badges -->
-                            <div class="flex justify-center gap-2 mb-6">
-                            <span id="auth-provider-badge" class="px-3 py-1 bg-green-500/10 border border-green-500/30 text-green-400 text-xs font-mono rounded-full">
-                              local auth
-                            </span>
-                              <span class="px-3 py-1 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-mono rounded-full">
-                                2FA <span id="2fa-status">loading...</span>
-                              </span>
+                            <!-- Friends List -->
+                            <div>
+                              <h4 class="font-mono text-white font-medium mb-3 text-sm">Your Friends</h4>
+                              <div id="friends-list-container" class="max-h-60 overflow-y-auto">
+                                <!-- Friends will be rendered here -->
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -399,12 +557,10 @@ export class GamePage {
                               $ apply security settings
                             </button>
                           </div>
+
                         </div>
                       </div>
                     </div>
-
-                </div>
-            </div>
         `;
         this.loadUserProfile();
     }
@@ -466,6 +622,20 @@ export class GamePage {
             .getElementById("save-security-btn")
             ?.addEventListener("click", () => {
             this.saveSecurity();
+        });
+        document.getElementById("add-friend-btn")?.addEventListener("click", () => {
+            const input = document.getElementById("add-friend-input");
+            if (input) {
+                this.addFriend(input.value);
+            }
+        });
+        document
+            .getElementById("add-friend-input")
+            ?.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                const input = e.target;
+                this.addFriend(input.value);
+            }
         });
     }
     async saveBasicInfo() {
@@ -669,13 +839,18 @@ export class GamePage {
                 window.router.navigate("/");
                 return;
             }
-            if (path.startsWith("/game/")) {
-                const section = path.replace("/game/", "");
-                if (["tournament", "dashboard", "profile"].includes(section)) {
-                    this.showSectionWithoutPush(section);
-                }
-                else {
+            if (path.startsWith("/game")) {
+                if (path === "/game") {
                     this.showSectionWithoutPush("tournament");
+                }
+                else if (path.startsWith("/game/")) {
+                    const section = path.replace("/game/", "");
+                    if (["tournament", "dashboard", "profile"].includes(section)) {
+                        this.showSectionWithoutPush(section);
+                    }
+                    else {
+                        this.showSectionWithoutPush("tournament");
+                    }
                 }
             }
         });
@@ -685,6 +860,9 @@ export class GamePage {
             if (["tournament", "dashboard", "profile"].includes(section)) {
                 this.currentSection = section;
             }
+        }
+        else if (currentPath === "/game") {
+            this.currentSection = "tournament";
         }
     }
     showSectionWithoutPush(sectionName) {
