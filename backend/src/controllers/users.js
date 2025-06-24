@@ -1,5 +1,6 @@
 import db from '../db.js'
 import { loginExist, isStrongPassword, emailExist } from './auth.js';
+import { getMatchesByUser } from './matches.js';
 
 export async function verifyUser(req, reply) {
   try {
@@ -35,20 +36,17 @@ export async function buildUpdateQuery(table, updates, whereClause, whereArgs) {
 export async function getUser(req, reply) {
   try {
     const login = req.user.login;
-    const user = db.prepare('SELECT login, email, avatarUrl, language, password, secure_auth FROM users WHERE login = ?').get(login);
+    const user = db.prepare('SELECT login, email, avatarUrl, alias, language, password, secure_auth FROM users WHERE login = ?').get(login);
     if (!user) {
       return reply.status(404).send({ error: 'User not found' });
     }
-    const stats = db.prepare(`
-      SELECT * FROM matches
-      WHERE player1 = ? OR player2 = ?
-    `).all(login, login);
+    const stats = getMatchesByUser(req, reply);
     const friends= db.prepare(`
       SELECT u.login FROM friends f
       JOIN users u ON f.friend_id = u.id
       WHERE f.user_id = (SELECT id FROM users WHERE login = ?)
     `).all(login);
-    reply.send(user, friends, stats);
+    reply.send({user, friends, stats});
   }
   catch (err) {
     reply.status(500).send({ error: err.message });

@@ -1,4 +1,4 @@
-import { getMatches, postMatch, updateMatch, getMatchById } from '../controllers/matches.js';
+import { getMatches, postMatch, updateMatch, getMatchById, getMatchesByUser } from '../controllers/matches.js';
 
 const Match = {
     type: 'object',
@@ -8,6 +8,7 @@ const Match = {
         player2: { type: 'string' },
         score1: { type: 'integer', nullable: true },
         score2: { type: 'integer', nullable: true },
+        winner: { type: 'string', nullable: true },
     }
 }
 
@@ -20,6 +21,19 @@ const getMatchByIdOptions = {
     },
     handler: getMatchById,
 };
+
+const getMatchByUserOptions = {
+    schema : {
+        response: {
+            200: {
+                type: 'array',
+                items: Match,
+            },
+            500 : { type: 'object', properties: { error: { type: 'string' } } },
+        },
+    },
+    handler: getMatchesByUser,
+}
 
 const getMatchesOptions = {
     schema: {
@@ -71,6 +85,7 @@ const updateMatchOptions = {
             properties: {
                 score1: { type: 'integer' },
                 score2: { type: 'integer' },
+                winner: { type: 'string', nullable: true },
             },
         },
         response: {
@@ -86,4 +101,5 @@ export default async function matchRoutes(fastify, options) {
     fastify.get('/match/:id', getMatchByIdOptions);
     fastify.post('/match', postMatchOptions);
     fastify.put('/match/:id', updateMatchOptions);
+    fastify.get('/matches/user/:login', getMatchByUserOptions);
 }

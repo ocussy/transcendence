@@ -15,6 +15,7 @@ db.exec(`
         login TEXT UNIQUE NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password TEXT,
+        alias TEXT,
         language TEXT DEFAULT 'fr',
         avatarUrl TEXT DEFAULT 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=coco',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

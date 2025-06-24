@@ -18,14 +18,14 @@ export function updateMatch(req, reply) {
   const { score1, score2 } = req.body;
 
   try {
-    const stmt = db.prepare('UPDATE matches SET score1 = ?, score2 = ? WHERE id = ?');
-    const info = stmt.run(score1, score2, id);
+    const stmt = db.prepare('UPDATE matches SET score1 = ?, score2 = ?, winner = ? WHERE id = ?');
+    const info = stmt.run(score1, score2, winner, id);
     
     if (info.changes === 0) {
       return reply.status(404).send({ error: 'Match not found' });
     }
     
-    reply.send({ id, score1, score2 });
+    reply.send({ id, score1, score2, winner});
   } catch (err) {
     reply.status(500).send({ error: err.message });
   }
@@ -34,6 +34,19 @@ export function updateMatch(req, reply) {
 export function getMatches(req, reply) {
   try {
     const rows = db.prepare('SELECT * FROM matches').all();
+    reply.send(rows);
+  } catch (err) {
+    reply.status(500).send({ error: err.message });
+  }
+}
+
+export function getMatchesByUser(req, reply) {
+  try {
+    const { login } = req.params;
+    const rows = db.prepare('SELECT * FROM matches WHERE player1 = ? OR player2 = ?').all(login, login);
+    if (rows.length === 0) {
+      return reply.status(404).send({ error: 'No matches found for this user' });
+    }
     reply.send(rows);
   } catch (err) {
     reply.status(500).send({ error: err.message });

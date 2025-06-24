@@ -1,6 +1,5 @@
 
 import { signUp, signUpGoogle, signIn, signOut, verify2FA} from '../controllers/auth.js'
-import { verifyUser } from '../controllers/users.js'
 
 const signUpOptions = {
   schema: {

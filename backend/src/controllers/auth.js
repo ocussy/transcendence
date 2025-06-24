@@ -144,23 +144,6 @@ export async function signUpGoogle(req, reply) {
   }
 }
 
-async function send2FACode(email, code) {
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    }
-  });
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: 'Your 2FA Code',
-    text: `Your 2FA code is: ${code}. It is valid for 5 minutes.`,
-  });
-}
-
-
 export async function signIn(req, reply) {
   let { auth_provider } = req.body;
 
@@ -220,7 +203,11 @@ export async function signIn(req, reply) {
       if (!user) {
         return reply.status(401).send({ error: "User not found" });
       }
-      // user.secure_auth = true;
+      // 🛡️ À FAIRE : remplacer par bcrypt.compare(password, user.password)
+      if (password !== user.password) {
+        return reply.status(401).send({ error: "Invalid password" });
+      }
+      user.secure_auth = true;
       if (user.secure_auth == true) {
         const result = await sendOtpVerificationEmail(user, reply);
         if (result) {
@@ -231,10 +218,6 @@ export async function signIn(req, reply) {
         } else {
           return reply.code(500).send({ error: 'Failed to send OTP verification email' });
         }
-      }
-      // 🛡️ À FAIRE : remplacer par bcrypt.compare(password, user.password)
-      if (password !== user.password) {
-        return reply.status(401).send({ error: "Invalid password" });
       }
       const token = await reply.jwtSign({
         login: user.login,

@@ -20,6 +20,7 @@ const getUserOptions = {
           login: { type: 'string' },
           email: { type: 'string' },
           avatarUrl: { type: 'string' },
+          alias : { type: 'string' },
           language: { type: 'string' },
           password: { type: 'string' },
           secure_auth: { type: 'boolean' },
