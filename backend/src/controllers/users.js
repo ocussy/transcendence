@@ -83,12 +83,13 @@ async function verifData(req, reply) {
 
   if (friend) {
     const stmt = db.prepare(`SELECT login FROM users WHERE login = ?`);
-    const friend = stmt.get(friend);
-    if (!friend) {
+    const friendExist = stmt.get(friend);
+    if (!friendExist) {
       return reply.status(400).send({
         error: 'Friend does not exist',
       });
     }
+    addFriends(req.user.id, friend);
   }
 
   return null;
@@ -179,7 +180,7 @@ export async function getStatUser(req, reply) {
       SELECT login, email, avatarUrl, language FROM users
       WHERE login = ?
     `).get(login);
-    reply.send(stats, user)
+    reply.send({stats, user})
   }
   catch (err) {
     reply.status(500).send({ error: err.message });
