@@ -40,13 +40,13 @@ export function getMatches(req, reply) {
   }
 }
 
-export function getMatchesByUser(req, reply) {
+export async function getMatchesByUser(req, reply) {
   try {
     const { login } = req.params;
     const rows = db.prepare('SELECT * FROM matches WHERE player1 = ? OR player2 = ?').all(login, login);
-    if (rows.length === 0) {
-      return reply.status(404).send({ error: 'No matches found for this user' });
-    }
+    // if (rows.length === 0) {
+    //   return reply.status(404).send({ error: 'No matches found for this user' });
+    // }
     reply.send(rows);
   } catch (err) {
     reply.status(500).send({ error: err.message });

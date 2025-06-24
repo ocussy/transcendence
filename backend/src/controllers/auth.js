@@ -1,23 +1,21 @@
-import db from '../db.js'
-import validator from 'validator';
-import { auth, OAuth2Client } from 'google-auth-library';
-import nodemailer from 'nodemailer';
-import bcrypt from 'bcrypt';
-import dotenv from 'dotenv';
+import db from "../db.js";
+import validator from "validator";
+import { auth, OAuth2Client } from "google-auth-library";
+import nodemailer from "nodemailer";
+import bcrypt from "bcrypt";
+import dotenv from "dotenv";
 
 dotenv.config();
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-
 let transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: "gmail",
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
-  }
+  },
 });
-
 
 export async function loginExist(login) {
   const stmt = db.prepare(`
@@ -87,8 +85,9 @@ export async function signUp(req, reply) {
     const stmt = db.prepare(
       "INSERT INTO users (login, password, email, avatarUrl) VALUES (?, ?, ?, ?)",
     );
-    stmt.run(login, password, email, avatarUrl);
-    reply.status(201).send({ message: "User created successfully" })
+    const hashedPassword = await bcrypt.hash(password, 10); //c moi jai rajouter pour hash
+    stmt.run(login, hashedPassword, email, avatarUrl);
+    reply.status(201).send({ message: "User created successfully" });
   } catch (err) {
     reply.status(500).send({ error: err.message });
   }
@@ -126,18 +125,22 @@ export async function signUpGoogle(req, reply) {
     );
     stmt.run(login, email, avatarUrl, "google");
 
-    const tokenJWT = await reply.jwtSign({ login, email, avatarUrl, auth_provider: 'google' });
+    const tokenJWT = await reply.jwtSign({
+      login,
+      email,
+      avatarUrl,
+      auth_provider: "google",
+    });
     reply
-      .setCookie('token', tokenJWT, {
+      .setCookie("token", tokenJWT, {
         httpOnly: true,
         secure: true,
-        sameSite: 'Strict',
-        path: '/',
+        sameSite: "Strict",
+        path: "/",
         maxAge: 60 * 60, // 1 hour
       })
       .code(201)
-      .send({ login});
-
+      .send({ login });
   } catch (err) {
     console.error("Google sign-up error:", err);
     reply.status(401).send({ error: "Invalid Google token" });
@@ -148,12 +151,12 @@ export async function signIn(req, reply) {
   let { auth_provider } = req.body;
 
   try {
-    if (auth_provider && auth_provider === 'google') {
+    if (auth_provider && auth_provider === "google") {
       const token = req.body.token || req.body.idtoken;
-        const ticket = await client.verifyIdToken({
-          idToken: token,
-          audience: process.env.GOOGLE_CLIENT_ID,
-        });
+      const ticket = await client.verifyIdToken({
+        idToken: token,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
 
       const payload = ticket.getPayload();
       const { email, name } = payload;
@@ -172,30 +175,32 @@ export async function signIn(req, reply) {
       if (!user) {
         return reply.status(401).send({ error: "User not found" });
       }
-      const tokenJWT = await reply.jwtSign({ login : user.login, email, avatarUrl : user.avatarUrl, auth_provider: 'google' });
+      const tokenJWT = await reply.jwtSign({
+        login: user.login,
+        email,
+        avatarUrl: user.avatarUrl,
+        auth_provider: "google",
+      });
       reply
-        .setCookie('token', tokenJWT, {
+        .setCookie("token", tokenJWT, {
           httpOnly: true,
           secure: true,
-          sameSite: 'Strict',
-          path: '/',
+          sameSite: "Strict",
+          path: "/",
           maxAge: 60 * 60, // 1 hour
         })
         .code(201)
-        .send({ login : user.login });
-    }
-    else {
+        .send({ login: user.login });
+    } else {
       let { givenLogin, password } = req.body;
       if (!givenLogin) {
-        return reply
-          .status(400)
-          .send({ error: "Login is required" });
+        return reply.status(400).send({ error: "Login is required" });
       }
 
       givenLogin = givenLogin.trim();
       const stmt = db.prepare(`
         SELECT * FROM users
-        WHERE login = ? 
+        WHERE login = ?
         LIMIT 1
       `);
       const user = stmt.get(givenLogin);
@@ -203,74 +208,73 @@ export async function signIn(req, reply) {
       if (!user) {
         return reply.status(401).send({ error: "User not found" });
       }
-      // 🛡️ À FAIRE : remplacer par bcrypt.compare(password, user.password)
-      if (password !== user.password) {
+
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
         return reply.status(401).send({ error: "Invalid password" });
-      }
-      user.secure_auth = true;
+      } // compare les version hash
+      // user.secure_auth = true;
       if (user.secure_auth == true) {
         const result = await sendOtpVerificationEmail(user, reply);
         if (result) {
           const token = await reply.jwtSign({
-          login: user.login,
+            login: user.login,
           });
-          return reply.code(400).send({ message: 'OTP sent to email', token });
+          return reply.code(400).send({ message: "OTP sent to email", token });
         } else {
-          return reply.code(500).send({ error: 'Failed to send OTP verification email' });
+          return reply
+            .code(500)
+            .send({ error: "Failed to send OTP verification email" });
         }
       }
       const token = await reply.jwtSign({
         login: user.login,
         email: user.email,
         avatarUrl: user.avatarUrl,
-        auth_provider: user.auth_provider
-        });
+        auth_provider: user.auth_provider,
+      });
 
       reply
-        .setCookie('token', token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'Strict',
-        path: '/',
-        maxAge: 60 * 60, // 1 hour
+        .setCookie("token", token, {
+          httpOnly: true,
+          secure: true,
+          sameSite: "Strict",
+          path: "/",
+          maxAge: 60 * 60, // 1 hour
         })
         .code(200)
         .send({ login: user.login });
     }
-  }
-  catch (err) {
-    console.error('Sign-in error:', err);
-    return reply.status(500).send({ error: 'Internal server error' });
+  } catch (err) {
+    console.error("Sign-in error:", err);
+    return reply.status(500).send({ error: "Internal server error" });
   }
 }
 
 export async function signOut(req, reply) {
   try {
-
     reply
-      .clearCookie('token', {
-        path: '/',
+      .clearCookie("token", {
+        path: "/",
         httpOnly: true,
         secure: true,
-        sameSite: 'Strict',
+        sameSite: "Strict",
       })
       .code(200)
-      .send({ message: 'Successfully signed out' });
-  }
-
-  catch (err) {
-    console.error('Sign-out error:', err);
-    return reply.status(500).send({ error: 'Internal server error' });
+      .send({ message: "Successfully signed out" });
+  } catch (err) {
+    console.error("Sign-out error:", err);
+    return reply.status(500).send({ error: "Internal server error" });
   }
 }
 
 export async function sendOtpVerificationEmail(user, reply) {
-  try { 
+  try {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     const mailOptions = {
       from: `"Mon App" <test@openjavascript.info>`,
       to: user.email,
-      subject: 'Your 2FA Code',
+      subject: "Your 2FA Code",
       text: `Your 2FA code is: ${code}. It is valid for 5 minutes.`,
       html: `<p>Your 2FA code is: <strong>${code}</strong>. It is valid for 5 minutes.</p>`,
     };
@@ -288,13 +292,11 @@ export async function sendOtpVerificationEmail(user, reply) {
     // Envoi de l'email après avoir stocké le code
     await transporter.sendMail(mailOptions);
     return true;
-  }
-  catch (err) {
-    console.error('Error sending OTP verification email:', err);
+  } catch (err) {
+    console.error("Error sending OTP verification email:", err);
     return false;
   }
 }
-
 
 export async function verify2FA(req, reply) {
   const { otp } = req.body;
@@ -302,48 +304,59 @@ export async function verify2FA(req, reply) {
   try {
     const decoded = await req.jwtVerify();
     login = decoded.login;
-		const stmt = db.prepare(`
+    const stmt = db.prepare(`
 			SELECT otp_code, otp_expires_at, login, nb_trys
 			FROM users
 			WHERE login = ?
 			LIMIT 1
 		`);
-		const user = stmt.get(login);
-		if (!user || !user.otp_code || !user.otp_expires_at || user.nb_trys > 2 ||  Date.now() > user.otp_expires_at) {
-      db.prepare(`UPDATE users SET otp_code = NULL, otp_expires_at = NULL, nb_trys = 0 WHERE login = ?`)
-      .run(login);
+    const user = stmt.get(login);
+    if (
+      !user ||
+      !user.otp_code ||
+      !user.otp_expires_at ||
+      user.nb_trys > 2 ||
+      Date.now() > user.otp_expires_at
+    ) {
+      db.prepare(
+        `UPDATE users SET otp_code = NULL, otp_expires_at = NULL, nb_trys = 0 WHERE login = ?`,
+      ).run(login);
       if (user && user.nb_trys > 2) {
-        return reply.status(429).send({ error: 'Too many attempts, please try again' });
+        return reply
+          .status(429)
+          .send({ error: "Too many attempts, please try again" });
       }
-			return reply.status(400).send({ error: 'OTP not found or expired' });
-		}
-    
-  	const isValid = await bcrypt.compare(otp, user.otp_code);
-		if (!isValid) {
-      db.prepare(`UPDATE users SET nb_trys = nb_trys + 1 WHERE login = ?`).run(login);
-  		return reply.status(400).send({ error: 'Invalid OTP' });
-		}
+      return reply.status(400).send({ error: "OTP not found or expired" });
+    }
 
-    db.prepare(`UPDATE users SET otp_code = NULL, otp_expires_at = NULL, nb_trys = 0 WHERE login = ?`)
-      .run(login);
+    const isValid = await bcrypt.compare(otp, user.otp_code);
+    if (!isValid) {
+      db.prepare(`UPDATE users SET nb_trys = nb_trys + 1 WHERE login = ?`).run(
+        login,
+      );
+      return reply.status(400).send({ error: "Invalid OTP" });
+    }
+
+    db.prepare(
+      `UPDATE users SET otp_code = NULL, otp_expires_at = NULL, nb_trys = 0 WHERE login = ?`,
+    ).run(login);
     const jwtToken = await reply.jwtSign({
       login: user.login,
       email: user.email,
       avatarUrl: user.avatarUrl,
     });
     reply
-      .setCookie('token', jwtToken, {
+      .setCookie("token", jwtToken, {
         httpOnly: true,
         secure: true,
-        sameSite: 'Strict',
-        path: '/',
+        sameSite: "Strict",
+        path: "/",
         maxAge: 60 * 60, // 1 hour
       })
       .code(200)
-      .send({ jwtToken, message: '2FA verification successful' });
-  }
-  catch (err) {
-    console.error('2FA verification error:', err);
-    return reply.status(500).send({ error: 'Internal server error' });
+      .send({ jwtToken, message: "2FA verification successful" });
+  } catch (err) {
+    console.error("2FA verification error:", err);
+    return reply.status(500).send({ error: "Internal server error" });
   }
 }

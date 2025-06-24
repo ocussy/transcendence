@@ -1,16 +1,17 @@
-import db from '../db.js'
-import { loginExist, isStrongPassword, emailExist } from './auth.js';
-import { getMatchesByUser } from './matches.js';
+import db from "../db.js";
+import { loginExist, isStrongPassword, emailExist } from "./auth.js";
+import bcrypt from "bcrypt";
+import { getMatchesByUser } from "./matches.js";
 
 export async function verifyUser(req, reply) {
   try {
     await req.jwtVerify();
   } catch (err) {
-    reply.status(401).send({ error: 'Unauthorized' });
+    reply.status(401).send({ error: "Unauthorized" });
     return;
   }
 }
-  
+
 export async function buildUpdateQuery(table, updates, whereClause, whereArgs) {
   const fields = [];
   const values = [];
@@ -23,30 +24,34 @@ export async function buildUpdateQuery(table, updates, whereClause, whereArgs) {
   }
 
   if (fields.length === 0) {
-    throw new Error('No fields to update');
+    throw new Error("No fields to update");
   }
 
-  const sql = `UPDATE ? SET ${fields.map(() => '? = ?').join(', ')} WHERE ${whereClause}`;
-  values.unshift(table, ...Object.keys(updates).filter(key => updates[key] !== undefined));
+  const sql = `UPDATE ? SET ${fields.map(() => "? = ?").join(", ")} WHERE ${whereClause}`;
+  values.unshift(
+    table,
+    ...Object.keys(updates).filter((key) => updates[key] !== undefined),
+  );
   return { sql, values: [...values, ...whereArgs] };
 }
-
 
 // Handler pour GET /user
 export async function getUser(req, reply) {
   try {
     const login = req.user.login;
-    const user = db.prepare('SELECT login, email, avatarUrl, alias, language, password, secure_auth FROM users WHERE login = ?').get(login);
+    const user = db.prepare('SELECT login, email, avatarUrl, alias, auth_provider, language, password, secure_auth FROM users WHERE login = ?').get(login);
     if (!user) {
-      return reply.status(404).send({ error: 'User not found' });
+      return reply.status(404).send({ error: "User not found" });
     }
-    const stats = getMatchesByUser(req, reply);
-    const friends= db.prepare(`
-      SELECT u.login FROM friends f
-      JOIN users u ON f.friend_id = u.id
-      WHERE f.user_id = (SELECT id FROM users WHERE login = ?)
-    `).all(login);
-    reply.send({user, friends, stats});
+    // const stats = await getMatchesByUser(req, reply);
+    // const friends= db.prepare(`
+    //   SELECT u.login FROM friends f
+    //   JOIN users u ON f.friend_id = u.id
+    //   WHERE f.user_id = (SELECT id FROM users WHERE login = ?)
+    // `).all(login);
+    //debug
+    // console.log("User:", user);
+    reply.send(user);
   }
   catch (err) {
     reply.status(500).send({ error: err.message });
@@ -56,28 +61,28 @@ export async function getUser(req, reply) {
 async function verifData(req, reply) {
   const { login, email, avatarUrl, language, password, secure_auth, friend } = req.body;
 
+  // verifier si j'ai besoin de cette verif
   if (!email && !avatarUrl && !language && !password && !secure_auth && !login && !friend) {
     return reply.status(400).send({
-      error: 'No fields to update',
+      error: "No fields to update",
+    });
+  }
+  if (login && (await loginExist(login))) {
+    return reply.status(400).send({
+      error: "Login already exists",
     });
   }
 
-  if (login && await loginExist(login)) {
+  if (email && (await emailExist(email))) {
     return reply.status(400).send({
-      error: 'Login already exists',
-    });
-  }
-
-  if (email && await emailExist(email)) {
-    return reply.status(400).send({
-      error: 'Email already exists',
+      error: "Email already exists",
     });
   }
 
   if (password && !isStrongPassword(password)) {
     return reply.status(400).send({
       error:
-        'Password must be at least 8 characters long, contain uppercase, lowercase, numbers, and special characters',
+        "Password must be at least 8 characters long, contain uppercase, lowercase, numbers, and special characters",
     });
   }
 
@@ -86,10 +91,9 @@ async function verifData(req, reply) {
     const friendExist = stmt.get(friend);
     if (!friendExist) {
       return reply.status(400).send({
-        error: 'Friend does not exist',
+        error: "Friend does not exist",
       });
     }
-    addFriends(req.user.id, friend);
   }
 
   return null;
@@ -97,28 +101,33 @@ async function verifData(req, reply) {
 
 function addFriends(userId, friendLogin) {
   const getId = db.prepare(`SELECT id FROM users WHERE login = ?`);
-  const friend = getId.get(friendLogin);
-  if (!friend)
-    return null;
+  const friendId = getId.get(friendLogin);
+  if (!friendId) return null;
 
-  const stmtCheck = db.prepare(`SELECT 1 FROM friends WHERE user_id = ? AND friend_id = ?`);
-  const already = stmtCheck.get(userId, friend);
+  const stmtCheck = db.prepare(
+    `SELECT 1 FROM friends WHERE user_id = ? AND friend_id = ?`,
+  );
+  const already = stmtCheck.get(userId, friendId);
   if (!already) {
-    const stmtAdd = db.prepare(`INSERT INTO friends (user_id, friend_id) VALUES (?, ?)`);
-    stmtAdd.run(userId, friend);
+    const stmtAdd = db.prepare(
+      `INSERT INTO friends (user_id, friend_id) VALUES (?, ?)`,
+    );
+    stmtAdd.run(userId, friendId); //pareil
+  } else {
+    const stmtDelete = db.prepare(
+      `DELETE FROM friends WHERE user_id = ? AND friend_id = ?`,
+    );
+    stmtDelete.run(userId, friendId); //pareil
   }
-  else {
-    const stmtDelete = db.prepare(`DELETE FROM friends WHERE user_id = ? AND friend_id = ?`);
-    stmtDelete.run(userId, friend);
-  }
-  return friend;
+  return friendId;
 }
 
 export async function updateUser(req, reply) {
   const error = await verifData(req, reply);
   if (error) return error;
 
-  const { login, email, avatarUrl, language, password, secure_auth, friend } = req.body;
+  const { login, email, avatarUrl, language, password, secure_auth, friend } =
+    req.body;
   const currentLogin = req.user.login;
 
   const updates = [];
@@ -150,8 +159,8 @@ export async function updateUser(req, reply) {
     values.push(secure_auth);
   }
   if (friend) {
-    friend = addFriends(user.id, friend)
-    if (!friend) {
+    const friendAdd = addFriends(user.id, friend);
+    if (!friendAdd) {
       return reply.status(400).send({ error: "Friend does not exist" });
     }
   }
@@ -164,10 +173,8 @@ export async function updateUser(req, reply) {
     WHERE login = ?
   `);
   stmt.run(...values);
-
   return reply.status(200).send({ message: "User updated successfully" });
 }
-
 
 export async function getStatUser(req, reply) {
   try {
@@ -180,20 +187,18 @@ export async function getStatUser(req, reply) {
       SELECT login, email, avatarUrl, language FROM users
       WHERE login = ?
     `).get(login);
-    reply.send({stats, user})
+    reply.send(stats, user)
   }
   catch (err) {
     reply.status(500).send({ error: err.message });
   }
 }
 
-
 export function debugDb(req, reply) {
   try {
-    const rows = db.prepare('SELECT * FROM users').all();
+    const rows = db.prepare("SELECT * FROM users").all();
     reply.send(rows);
-  }
-  catch (err) {
+  } catch (err) {
     reply.status(500).send({ error: err.message });
   }
 }
