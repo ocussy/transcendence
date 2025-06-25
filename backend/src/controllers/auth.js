@@ -141,10 +141,9 @@ export async function signUpGoogle(req, reply) {
 }
 
 export async function signIn(req, reply) {
-  const auth_provider = db.prepare(` SELECT auth_provider FROM users WHERE id = ?`)
-    .get(req.user.id).auth_provider;
   try {
-    if (auth_provider && auth_provider === "google") {
+    // Check if this is a Google login attempt
+    if (req.body.token || req.body.idtoken) {
       const token = req.body.token || req.body.idtoken;
       const ticket = await client.verifyIdToken({
         idToken: token,
@@ -154,10 +153,11 @@ export async function signIn(req, reply) {
       const payload = ticket.getPayload();
       const { email, name } = payload;
 
-      const login = name.replace(/\s+/g, "").toLowerCase();
       if (!email || !name) {
         return reply.status(400).send({ error: "Invalid Google token" });
       }
+
+      const login = name.replace(/\s+/g, "").toLowerCase();
 
       const stmt = db.prepare(`
         SELECT * FROM users
@@ -168,8 +168,11 @@ export async function signIn(req, reply) {
       if (!user) {
         return reply.status(401).send({ error: "User not found" });
       }
+      if (user.auth_provider !== "google") {
+        return reply.status(401).send({ error: "Please login with your password" });
+      }
       const tokenJWT = await reply.jwtSign({
-        id : user.id,
+        id: user.id,
       });
       reply
         .setCookie("token", tokenJWT, {
@@ -223,7 +226,7 @@ export async function signIn(req, reply) {
         }
       }
       const token = await reply.jwtSign({
-        id : user.id,
+        id: user.id,
       });
       reply
         .setCookie("token", token, {

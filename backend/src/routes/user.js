@@ -135,4 +135,5 @@ export default async function userRoutes(fastify, options) {
   fastify.put("/user", updateUserOptions);
   fastify.get("/debug/users", debugOptions);
   fastify.get("/stat", getStatUserOptions);
+  // fastify.get("/stat/:friendId", getStatFriendOptions); // pour voir les stats d'un ami
 }

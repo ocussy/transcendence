@@ -164,7 +164,7 @@ export async function updateUser(req, reply) {
     values.push(secure_auth ? 1 : 0);
   }
   if (friend) {
-    const friendAdd = await addFriends(user.id, friend);
+    const friendAdd = await addFriends(id, friend);
     if (!friendAdd) {
       return reply.status(400).send({ error: "Friend does not exist" });
     }
