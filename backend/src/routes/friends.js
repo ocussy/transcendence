@@ -27,8 +27,3 @@ const getFriendsOptions = {
   },
   handler: getFriendsWithStats,
 };
-
-export default async function friendsRoutes(fastify, options) {
-  // Une seule route pour récupérer les amis avec stats
-  fastify.get("/friends", getFriendsOptions);
-}

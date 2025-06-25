@@ -19,11 +19,12 @@ export class GamePage {
     }
     async loadUserProfile() {
         try {
-            const res = await fetch("/user", { credentials: "include" });
+            const res = await fetch("/user", { method: "GET", credentials: "include" });
             if (!res.ok)
                 throw new Error("Not authenticated");
-            const user = await res.json();
-            this.currentUser = user;
+            const data = await res.json();
+            this.currentUser = data.user || data;
+            const user = this.currentUser;
             const usernameInput = document.getElementById("profile-username");
             const emailInput = document.getElementById("profile-email");
             const languageSelect = document.getElementById("profile-language");
@@ -41,13 +42,13 @@ export class GamePage {
             if (avatarUrlInput)
                 avatarUrlInput.value = user.avatarUrl || "";
             if (twoFAToggle)
-                twoFAToggle.checked = user.secure_auth || false;
-            if (user.auth_provider === "google") {
+                twoFAToggle.checked = !!user.secure_auth;
+            if (data.auth_provider === "google") {
                 this.disableGoogleOnlyFields();
             }
-            this.update2FAStatus(user.secure_auth || false);
+            this.update2FAStatus(data.secure_auth || false);
             this.updateProfileDisplay();
-            this.updateAuthBadge(user.auth_provider || "local");
+            this.updateAuthBadge(data.auth_provider || "local");
             this.loadFriends();
         }
         catch (err) {
@@ -116,7 +117,8 @@ export class GamePage {
             });
             if (response.ok) {
                 const data = await response.json();
-                this.friendsList = data.friend || [];
+                this.friendsList = data || [];
+                console.log("Friends loaded:", this.friendsList);
                 this.renderFriendsSection();
             }
             else {
@@ -202,6 +204,7 @@ export class GamePage {
       `;
             return;
         }
+        console.log("Rendering friends list:", this.friendsList);
         container.innerHTML = this.friendsList
             .map((friend) => `
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-3 mb-2">
@@ -348,7 +351,7 @@ export class GamePage {
                     <div id="section-dashboard" class="section hidden">
                         <div class="text-center mb-8">
                             <h2 class="font-mono text-4xl font-bold mb-2 tracking-tight bg-gradient-to-br from-white to-gray-400 bg-clip-text text-transparent">
-                                user.statistics
+                                data.statistics
                             </h2>
                             <p class="font-mono text-gray-500 opacity-80">
                                 <span class="text-blue-500">></span> performance data
@@ -371,7 +374,7 @@ export class GamePage {
                     <div id="section-profile" class="section hidden">
                       <div class="text-center mb-8">
                         <h2 class="font-mono text-4xl font-bold mb-2 tracking-tight bg-gradient-to-br from-white to-gray-400 bg-clip-text text-transparent">
-                          user.config
+                          data.config
                         </h2>
                         <p class="font-mono text-gray-500 opacity-80">
                           <span class="text-blue-500">></span> account settings
@@ -883,6 +886,9 @@ export class GamePage {
         console.log(`Section active (browser nav): ${sectionName}`);
     }
     showSection(sectionName) {
+        if (this.currentSection === sectionName) {
+            return;
+        }
         document.querySelectorAll(".section").forEach((section) => {
             section.classList.add("hidden");
         });

@@ -38,22 +38,28 @@ export async function buildUpdateQuery(table, updates, whereClause, whereArgs) {
 // Handler pour GET /user
 export async function getUser(req, reply) {
   try {
-    const login = req.user.login;
-    const user = db.prepare('SELECT login, email, avatarUrl, alias, auth_provider, language, password, secure_auth FROM users WHERE login = ?').get(login);
+    const id = req.user.id;
+    const user = db.prepare('SELECT login, email, avatarUrl, alias, auth_provider, language, password, secure_auth FROM users WHERE id = ?').get(id);
     if (!user) {
       return reply.status(404).send({ error: "User not found" });
     }
-    // const stats = await getMatchesByUser(req, reply);
-    // const friends= db.prepare(`
-    //   SELECT u.login FROM friends f
-    //   JOIN users u ON f.friend_id = u.id
-    //   WHERE f.user_id = (SELECT id FROM users WHERE login = ?)
-    // `).all(login);
-    //debug
-    // console.log("User:", user);
     reply.send(user);
   }
   catch (err) {
+    reply.status(500).send({ error: err.message });
+  }
+}
+
+export async function getFriendsUser(req, reply) {
+  try {
+    const id = req.user.id;
+    const friends = db.prepare(`
+      SELECT u.login, u.avatarUrl FROM friends f
+      JOIN users u ON f.friend_id = u.id
+      WHERE f.user_id = (SELECT id FROM users WHERE id = ?)
+    `).all(id);
+    return reply.status(200).send(friends);
+  } catch (err) {
     reply.status(500).send({ error: err.message });
   }
 }
@@ -62,7 +68,7 @@ async function verifData(req, reply) {
   const { login, email, avatarUrl, language, password, secure_auth, friend } = req.body;
 
   // verifier si j'ai besoin de cette verif
-  if (!email && !avatarUrl && !language && !password && !secure_auth && !login && !friend) {
+  if (!email && !avatarUrl && !language && !password && secure_auth === undefined && !login && !friend) {
     return reply.status(400).send({
       error: "No fields to update",
     });
@@ -99,36 +105,35 @@ async function verifData(req, reply) {
   return null;
 }
 
-function addFriends(userId, friendLogin) {
+async function addFriends(userId, friendLogin) {
   const getId = db.prepare(`SELECT id FROM users WHERE login = ?`);
-  const friendId = getId.get(friendLogin);
-  if (!friendId) return null;
-
+  const friend = getId.get(friendLogin);
+  if (!friend.id) return null;
   const stmtCheck = db.prepare(
     `SELECT 1 FROM friends WHERE user_id = ? AND friend_id = ?`,
   );
-  const already = stmtCheck.get(userId, friendId);
-  if (!already) {
+  const already = stmtCheck.get(userId, friend.id);
+  if (already === undefined) {
     const stmtAdd = db.prepare(
       `INSERT INTO friends (user_id, friend_id) VALUES (?, ?)`,
     );
-    stmtAdd.run(userId, friendId); //pareil
+    stmtAdd.run(userId, friend.id); //pareil
   } else {
     const stmtDelete = db.prepare(
       `DELETE FROM friends WHERE user_id = ? AND friend_id = ?`,
     );
-    stmtDelete.run(userId, friendId); //pareil
+    stmtDelete.run(userId, friend.id); //pareil
   }
-  return friendId;
+  return friend.id;
 }
 
 export async function updateUser(req, reply) {
   const error = await verifData(req, reply);
+  const id = req.user.id;
   if (error) return error;
 
   const { login, email, avatarUrl, language, password, secure_auth, friend } =
     req.body;
-  const currentLogin = req.user.login;
 
   const updates = [];
   const values = [];
@@ -156,21 +161,22 @@ export async function updateUser(req, reply) {
   }
   if (typeof secure_auth === "boolean") {
     updates.push("secure_auth = ?");
-    values.push(secure_auth);
+    values.push(secure_auth ? 1 : 0);
   }
   if (friend) {
-    const friendAdd = addFriends(user.id, friend);
+    const friendAdd = await addFriends(user.id, friend);
     if (!friendAdd) {
       return reply.status(400).send({ error: "Friend does not exist" });
     }
+    return reply.status(200).send({ message: "User updated successfully" });
   }
 
-  values.push(currentLogin);
+  values.push(id);
 
   const stmt = db.prepare(`
     UPDATE users
     SET ${updates.join(", ")}
-    WHERE login = ?
+    WHERE id = ?
   `);
   stmt.run(...values);
   return reply.status(200).send({ message: "User updated successfully" });
@@ -178,18 +184,13 @@ export async function updateUser(req, reply) {
 
 export async function getStatUser(req, reply) {
   try {
-    login = req.user.login;
-    const stats = db.prepare(`
-      SELECT * FROM matches
-      WHERE player1 = ? OR player2 = ?
-    `).all(login, login);
-    const user = db.prepare(`
-      SELECT login, email, avatarUrl, language FROM users
-      WHERE login = ?
-    `).get(login);
-    reply.send(stats, user)
-  }
-  catch (err) {
+    userId = req.user.id;
+    if (!userId) {
+      return reply.status(404).send({ error: "User not found" });
+    }
+    const matches = getMatchesByUser(req, reply, userId);
+    return reply.status(200).send(matches);
+  } catch (err) {
     reply.status(500).send({ error: err.message });
   }
 }

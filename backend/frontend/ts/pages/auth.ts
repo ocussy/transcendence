@@ -5,6 +5,7 @@ async function checkAuthAndRedirect() {
       window.router.navigate("/game");
     }
   } catch (err) {
+    
   }
 }
 

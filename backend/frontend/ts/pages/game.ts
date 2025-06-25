@@ -27,48 +27,38 @@ export class GamePage {
 
   private async loadUserProfile(): Promise<void> {
     try {
-      const res = await fetch("/user", { credentials: "include" });
+      const res = await fetch("/user", { method: "GET", credentials: "include" });
       if (!res.ok) throw new Error("Not authenticated");
-      const user = await res.json();
+      const data = await res.json();
 
       // Stocker les données utilisateur
-      this.currentUser = user;
+      this.currentUser = data.user || data;
 
-      // Remplir tous les champs du profil
-      const usernameInput = document.getElementById(
-        "profile-username",
-      ) as HTMLInputElement;
-      const emailInput = document.getElementById(
-        "profile-email",
-      ) as HTMLInputElement;
-      const languageSelect = document.getElementById(
-        "profile-language",
-      ) as HTMLSelectElement;
-      const avatarImg = document.getElementById(
-        "user-avatar",
-      ) as HTMLImageElement;
-      const avatarUrlInput = document.getElementById(
-        "profile-avatar-url",
-      ) as HTMLInputElement;
-      const twoFAToggle = document.getElementById(
-        "profile-2fa",
-      ) as HTMLInputElement;
+      // Remplir tous les champs du profil avec les bonnes propriétés
+      const user = this.currentUser;
+
+      const usernameInput = document.getElementById("profile-username") as HTMLInputElement;
+      const emailInput = document.getElementById("profile-email") as HTMLInputElement;
+      const languageSelect = document.getElementById("profile-language") as HTMLSelectElement;
+      const avatarImg = document.getElementById("user-avatar") as HTMLImageElement;
+      const avatarUrlInput = document.getElementById("profile-avatar-url") as HTMLInputElement;
+      const twoFAToggle = document.getElementById("profile-2fa") as HTMLInputElement;
 
       if (usernameInput) usernameInput.value = user.login || "";
       if (emailInput) emailInput.value = user.email || "";
       if (languageSelect) languageSelect.value = user.language || "fr";
       if (avatarImg && user.avatarUrl) avatarImg.src = user.avatarUrl;
       if (avatarUrlInput) avatarUrlInput.value = user.avatarUrl || "";
-      if (twoFAToggle) twoFAToggle.checked = user.secure_auth || false;
+      if (twoFAToggle) twoFAToggle.checked = !!user.secure_auth;
 
       // Gestion des comptes Google
-      if (user.auth_provider === "google") {
+      if (data.auth_provider === "google") {
         this.disableGoogleOnlyFields();
       }
       // Mettre à jour le statut 2FA et l'affichage
-      this.update2FAStatus(user.secure_auth || false);
+      this.update2FAStatus(data.secure_auth || false);
       this.updateProfileDisplay();
-      this.updateAuthBadge(user.auth_provider || "local");
+      this.updateAuthBadge(data.auth_provider || "local");
       this.loadFriends();
     } catch (err) {
       console.error("Erreur chargement profil:", err);
@@ -159,10 +149,10 @@ export class GamePage {
       const response = await fetch("/friends", {
         credentials: "include",
       });
-
       if (response.ok) {
         const data = await response.json();
-        this.friendsList = data.friend || [];
+        this.friendsList = data || [];
+        console.log("Friends loaded:", this.friendsList);
         this.renderFriendsSection();
       } else {
         console.error("Failed to load friends");
@@ -268,7 +258,8 @@ export class GamePage {
       `;
       return;
     }
-
+    //debug
+    console.log("Rendering friends list:", this.friendsList);
     container.innerHTML = this.friendsList
       .map(
         (friend) => `
@@ -419,7 +410,7 @@ export class GamePage {
                     <div id="section-dashboard" class="section hidden">
                         <div class="text-center mb-8">
                             <h2 class="font-mono text-4xl font-bold mb-2 tracking-tight bg-gradient-to-br from-white to-gray-400 bg-clip-text text-transparent">
-                                user.statistics
+                                data.statistics
                             </h2>
                             <p class="font-mono text-gray-500 opacity-80">
                                 <span class="text-blue-500">></span> performance data
@@ -442,7 +433,7 @@ export class GamePage {
                     <div id="section-profile" class="section hidden">
                       <div class="text-center mb-8">
                         <h2 class="font-mono text-4xl font-bold mb-2 tracking-tight bg-gradient-to-br from-white to-gray-400 bg-clip-text text-transparent">
-                          user.config
+                          data.config
                         </h2>
                         <p class="font-mono text-gray-500 opacity-80">
                           <span class="text-blue-500">></span> account settings
@@ -1087,6 +1078,7 @@ export class GamePage {
 
   // Supprimer l'ancienne fonction handleAvatarUpload car maintenant l'avatar se gère via URL
   private showSection(sectionName: string): void {
+    if (this.currentSection === sectionName) { return; }
     document.querySelectorAll(".section").forEach((section) => {
       section.classList.add("hidden");
     });

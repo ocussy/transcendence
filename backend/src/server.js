@@ -11,7 +11,6 @@ import authRoutes from "./routes/auth.js";
 import jwt from "@fastify/jwt";
 import dotenv from "dotenv";
 import cookie from "@fastify/cookie";
-import friendsRoutes from "./routes/friends.js"; // pour les amis
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,7 +43,6 @@ app.register(formbody);
 app.register(userRoutes);
 app.register(matchRoutes);
 app.register(authRoutes);
-app.register(friendsRoutes); // pour les amis
 
 // pour SPA sinon les routes pas trouve
 const spaRoutes = [
@@ -61,7 +59,7 @@ spaRoutes.forEach((route) => {
     return reply.sendFile("index.html");
   });
 });
-// fin de ce que jai rajoute + pour linstant refresh = deco pcq pas de jwt
+
 const start = async () => {
   try {
     await app.listen({ port: 8000, host: "0.0.0.0" });

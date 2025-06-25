@@ -78,14 +78,12 @@ export async function signUp(req, reply) {
     });
   }
 
-  // 🛡️ À FAIRE : hacher le mot de passe avec bcrypt
-
   const avatarUrl = `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${encodeURIComponent(login)}`;
   try {
     const stmt = db.prepare(
       "INSERT INTO users (login, password, email, avatarUrl) VALUES (?, ?, ?, ?)",
     );
-    const hashedPassword = await bcrypt.hash(password, 10); //c moi jai rajouter pour hash
+    const hashedPassword = await bcrypt.hash(password, 10);
     stmt.run(login, hashedPassword, email, avatarUrl);
     reply.status(201).send({ message: "User created successfully" });
   } catch (err) {
@@ -124,13 +122,8 @@ export async function signUpGoogle(req, reply) {
       "INSERT INTO users (login, email, avatarUrl, auth_provider) VALUES (?, ?, ?, ?)",
     );
     stmt.run(login, email, avatarUrl, "google");
-
-    const tokenJWT = await reply.jwtSign({
-      login,
-      email,
-      avatarUrl,
-      auth_provider: "google",
-    });
+    const id = db.prepare("SELECT last_insert_rowid()").get().last_insert_rowid;
+    const tokenJWT = await reply.jwtSign({ id });
     reply
       .setCookie("token", tokenJWT, {
         httpOnly: true,
@@ -148,8 +141,8 @@ export async function signUpGoogle(req, reply) {
 }
 
 export async function signIn(req, reply) {
-  let { auth_provider } = req.body;
-
+  const auth_provider = db.prepare(` SELECT auth_provider FROM users WHERE id = ?`)
+    .get(req.user.id).auth_provider;
   try {
     if (auth_provider && auth_provider === "google") {
       const token = req.body.token || req.body.idtoken;
@@ -176,10 +169,7 @@ export async function signIn(req, reply) {
         return reply.status(401).send({ error: "User not found" });
       }
       const tokenJWT = await reply.jwtSign({
-        login: user.login,
-        email,
-        avatarUrl: user.avatarUrl,
-        auth_provider: "google",
+        id : user.id,
       });
       reply
         .setCookie("token", tokenJWT, {
@@ -208,12 +198,17 @@ export async function signIn(req, reply) {
       if (!user) {
         return reply.status(401).send({ error: "User not found" });
       }
-
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      if (!isValidPassword) {
-        return reply.status(401).send({ error: "Invalid password" });
-      } // compare les version hash
-      // user.secure_auth = true;
+      if (user.password) {
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+          return reply.status(401).send({ error: "Invalid password" });
+        } // compare les version hash
+      }
+      else if (user.auth_provider == "google") {
+        return reply.status(401).send({ error: "Google account identified, please login with Google" });
+      }
+      else
+        return reply.status(500).send({ error: "Internal server error" });
       if (user.secure_auth == true) {
         const result = await sendOtpVerificationEmail(user, reply);
         if (result) {
@@ -228,12 +223,8 @@ export async function signIn(req, reply) {
         }
       }
       const token = await reply.jwtSign({
-        login: user.login,
-        email: user.email,
-        avatarUrl: user.avatarUrl,
-        auth_provider: user.auth_provider,
+        id : user.id,
       });
-
       reply
         .setCookie("token", token, {
           httpOnly: true,
@@ -311,13 +302,7 @@ export async function verify2FA(req, reply) {
 			LIMIT 1
 		`);
     const user = stmt.get(login);
-    if (
-      !user ||
-      !user.otp_code ||
-      !user.otp_expires_at ||
-      user.nb_trys > 2 ||
-      Date.now() > user.otp_expires_at
-    ) {
+    if (!user || !user.otp_code || !user.otp_expires_at || user.nb_trys > 2 || Date.now() > user.otp_expires_at) {
       db.prepare(
         `UPDATE users SET otp_code = NULL, otp_expires_at = NULL, nb_trys = 0 WHERE login = ?`,
       ).run(login);
@@ -341,9 +326,7 @@ export async function verify2FA(req, reply) {
       `UPDATE users SET otp_code = NULL, otp_expires_at = NULL, nb_trys = 0 WHERE login = ?`,
     ).run(login);
     const jwtToken = await reply.jwtSign({
-      login: user.login,
-      email: user.email,
-      avatarUrl: user.avatarUrl,
+      id : user.id,
     });
     reply
       .setCookie("token", jwtToken, {

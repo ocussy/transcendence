@@ -1,4 +1,4 @@
-import { getUser, debugDb, verifyUser, updateUser,getStatUser } from '../controllers/users.js';
+import { getUser, debugDb, verifyUser, updateUser,getStatUser, getFriendsUser } from '../controllers/users.js';
 import { type} from 'os'
 
 // const User = {
@@ -25,21 +25,57 @@ const getUserOptions = {
           language: { type: 'string' },
           password: { type: 'string' },
           secure_auth: { type: 'boolean' },
-          // friends: { type: 'array', items: { type: 'string' } },
-          // stats : { type: 'array', items: { type: 'object', properties: {
-          //   player1: { type: 'string' },
-          //   player2: { type: 'string' },
-          //   score: { type: 'number' },
-          //   winner: { type: 'number' },
-          //   duration: { type: 'number' },
-          //   created_at: { type: 'string', format: 'date-time' },
-          // } } }
         },
       },
     },
   },
   handler: getUser,
 };
+const getFriendsOptions = {
+  preHandler: verifyUser,
+  schema: {
+    response: {
+      200: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            login: { type: "string" },
+            avatarUrl: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+  handler: getFriendsUser,
+};
+
+const getStatUserOptions = {
+  preHandler: verifyUser,
+  schema: {
+    response: {
+      200: {
+        type: "object",
+        properties: {
+          matches: { type: "array",
+            properties: {
+              player1 : { type: "string" },
+              player2 : { type: "string" },
+              winner : { type: "string" },
+              score1 : { type: "number" },
+              score2 : { type: "number" },
+              created_at : { type: "string" },
+              duration: { type: "number" },
+              mode: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+  },
+  handler: getStatUser,
+};
+
 
 const updateUserOptions = {
   preHandler: verifyUser,
@@ -76,30 +112,6 @@ const updateUserOptions = {
   handler: updateUser,
 };
 
-const getStatUserOptions = {
-  preHandler: verifyUser,
-  schema: {
-    params: {
-      type: "object",
-      properties: {
-        login: { type: "string" },
-      },
-      required: ["login"],
-    },
-    response: {
-      200: {
-        type: "object",
-        properties: {
-          login: { type: "string" },
-          email: { type: "string" },
-          avatarUrl: { type: "string" },
-          match: { type: "array" },
-        },
-      },
-    },
-  },
-  handler: getStatUser,
-};
 
 // const debugOptions = {
 //   schema: {
@@ -119,7 +131,8 @@ const debugOptions = {
 };
 export default async function userRoutes(fastify, options) {
   fastify.get("/user", getUserOptions);
-  fastify.get("/user:login", getStatUserOptions);
+  fastify.get("/friends", getFriendsOptions);
   fastify.put("/user", updateUserOptions);
   fastify.get("/debug/users", debugOptions);
+  fastify.get("/stat", getStatUserOptions);
 }
