@@ -275,7 +275,7 @@ export class GamePage {
             <div>
               <div class="font-mono font-bold text-white text-xs">${friend.login}</div>
               <div class="font-mono text-xs text-gray-400">
-                ${friend.totalMatches === 0 ? "No matches" : `${friend.winrate}% • ${friend.totalMatches}m`}
+                ${friend.games_played === 0 ? "No matches" : `${friend.games_won}% • ${friend.games_played}m`}
               </div>
             </div>
           </div>

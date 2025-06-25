@@ -23,7 +23,9 @@ db.exec(`
         secure_auth BOOLEAN DEFAULT FALSE,
         otp_code INTEGER DEFAULT NULL,
         otp_expires_at TIMESTAMP DEFAULT NULL,
-        nb_trys INTEGER DEFAULT 0
+        nb_trys INTEGER DEFAULT 0,
+        games_played INTEGER DEFAULT 0,
+        games_won INTEGER DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS matches (

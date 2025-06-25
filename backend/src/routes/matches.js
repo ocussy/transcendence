@@ -81,8 +81,10 @@ const updateMatchOptions = {
         },
         body: {
             type: 'object',
-            required: ['score1', 'score2'],
+            required: ['player1', 'player2', 'score1', 'score2'],
             properties: {
+                player1: { type: 'string' },
+                player2: { type: 'string' },
                 score1: { type: 'integer' },
                 score2: { type: 'integer' },
                 winner: { type: 'string', nullable: true },

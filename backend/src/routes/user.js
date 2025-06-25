@@ -42,6 +42,8 @@ const getFriendsOptions = {
           properties: {
             login: { type: "string" },
             avatarUrl: { type: "string" },
+            games_played: { type: "number" },
+            games_won: { type: "number" },
           },
         },
       },
@@ -135,5 +137,4 @@ export default async function userRoutes(fastify, options) {
   fastify.put("/user", updateUserOptions);
   fastify.get("/debug/users", debugOptions);
   fastify.get("/stat", getStatUserOptions);
-  // fastify.get("/stat/:friendId", getStatFriendOptions); // pour voir les stats d'un ami
 }

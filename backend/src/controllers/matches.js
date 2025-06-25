@@ -6,6 +6,8 @@ export function postMatch(req, reply) {
 
   try {
     const stmt = db.prepare('INSERT INTO matches (player1, player2) VALUES (?, ?)');
+    db.prepare('UPDATE users SET games_played = games_played + 1 WHERE login = ?').run(player1);
+    db.prepare('UPDATE users SET games_played = games_played + 1 WHERE login = ?').run(player2);
     const info = stmt.run(player1, player2);
     reply.code(201).send({ id: info.lastInsertRowid, player1, player2 });
   } catch (err) {
@@ -15,17 +17,22 @@ export function postMatch(req, reply) {
 
 export function updateMatch(req, reply) {
   const { id } = req.params;
-  const { score1, score2 } = req.body;
+  const { player1, player2, score1, score2 } = req.body;
 
   try {
-    const stmt = db.prepare('UPDATE matches SET score1 = ?, score2 = ?, winner = ? WHERE id = ?');
-    const info = stmt.run(score1, score2, winner, id);
-    
-    if (info.changes === 0) {
-      return reply.status(404).send({ error: 'Match not found' });
+    let winner = null;
+    if (score1 > score2) {
+      winner = player1;
+      db.prepare('UPDATE users SET games_won = games_won + 1 WHERE login = ?').run(player1);
+    } 
+    else {
+      winner = player2;
+      db.prepare('UPDATE users SET games_won = games_won + 1 WHERE login = ?').run(player2);
     }
-    
-    reply.send({ id, score1, score2, winner});
+    const games_wons = db.prepare('SELECT games_won FROM users WHERE login = ?').get(winner);
+    console.log(`Games won by ${winner}: ${games_wons ? games_wons.games_won : 0}`);
+    db.prepare('UPDATE matches SET score1 = ?, score2 = ?, winner = ? WHERE id = ?').run(score1, score2, winner, id);
+    reply.send({ id, score1, score2, winner });
   } catch (err) {
     reply.status(500).send({ error: err.message });
   }

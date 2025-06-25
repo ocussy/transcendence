@@ -54,9 +54,10 @@ export async function getFriendsUser(req, reply) {
   try {
     const id = req.user.id;
     const friends = db.prepare(`
-      SELECT u.login, u.avatarUrl FROM friends f
+      SELECT u.login, u.avatarUrl, u.games_played, u.games_won
+      FROM friends f
       JOIN users u ON f.friend_id = u.id
-      WHERE f.user_id = (SELECT id FROM users WHERE id = ?)
+      WHERE f.user_id = ?
     `).all(id);
     return reply.status(200).send(friends);
   } catch (err) {

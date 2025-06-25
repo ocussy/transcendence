@@ -122,7 +122,7 @@ export async function signUpGoogle(req, reply) {
       "INSERT INTO users (login, email, avatarUrl, auth_provider) VALUES (?, ?, ?, ?)",
     );
     stmt.run(login, email, avatarUrl, "google");
-    const id = db.prepare("SELECT last_insert_rowid()").get().last_insert_rowid;
+    const id = db.prepare("SELECT id FROM users WHERE login = ?").get(login);
     const tokenJWT = await reply.jwtSign({ id });
     reply
       .setCookie("token", tokenJWT, {
