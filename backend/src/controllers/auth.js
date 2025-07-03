@@ -4,6 +4,7 @@ import { auth, OAuth2Client } from "google-auth-library";
 import nodemailer from "nodemailer";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
+import { connected } from "process";
 
 dotenv.config();
 
@@ -247,6 +248,7 @@ export async function signIn(req, reply) {
 
 export async function signOut(req, reply) {
   try {
+    connectedUsers.delete(req.user.id);
     reply
       .clearCookie("token", {
         path: "/",

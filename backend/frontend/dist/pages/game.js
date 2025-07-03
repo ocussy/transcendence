@@ -1,8 +1,10 @@
+import { verifyToken } from "./auth.js";
 export class GamePage {
     constructor() {
         this.currentSection = "tournament";
         this.currentUser = null;
         this.friendsList = [];
+        verifyToken();
         this.render();
         this.attachEvents();
         this.handleBrowserNavigation();

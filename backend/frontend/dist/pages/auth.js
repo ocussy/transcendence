@@ -8,6 +8,27 @@ async function checkAuthAndRedirect() {
     catch (err) {
     }
 }
+export async function verifyToken() {
+    console.log("🔍 Vérification du token JWT...");
+    const token = localStorage.getItem("token");
+    if (!token)
+        return;
+    try {
+        console.log("🔍 Token trouvé, vérification en cours...");
+        const res = await fetch("/me", {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        if (!res.ok)
+            throw new Error("Token invalide");
+        const data = await res.json();
+        console.log("✅ Utilisateur connecté :", data.user);
+    }
+    catch (err) {
+        console.error("❌ Erreur vérification token :", err);
+    }
+}
 export class AuthPage {
     constructor() {
         this.pendingToken = null;

@@ -2,13 +2,13 @@ import db from '../db.js'
 // Handler pour match creation
 
 export function postMatch(req, reply) {
-  const { player1, player2 } = req.body;
+  const { player1, player2, mode } = req.body;
 
   try {
-    const stmt = db.prepare('INSERT INTO matches (player1, player2) VALUES (?, ?)');
+    const stmt = db.prepare('INSERT INTO matches (player1, player2, mode) VALUES (?, ?, ?)');
+    const info = stmt.run(player1, player2, mode);
     db.prepare('UPDATE users SET games_played = games_played + 1 WHERE login = ?').run(player1);
     db.prepare('UPDATE users SET games_played = games_played + 1 WHERE login = ?').run(player2);
-    const info = stmt.run(player1, player2);
     reply.code(201).send({ id: info.lastInsertRowid, player1, player2 });
   } catch (err) {
     reply.status(500).send({ error: err.message });

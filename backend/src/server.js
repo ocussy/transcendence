@@ -11,12 +11,15 @@ import authRoutes from "./routes/auth.js";
 import jwt from "@fastify/jwt";
 import dotenv from "dotenv";
 import cookie from "@fastify/cookie";
+// import websocket from "@fastify/websocket";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config();
 
 const app = fastify();
+
+// await app.register(websocket);
 
 await app.register(cors, {
   origin: true,
@@ -59,6 +62,33 @@ spaRoutes.forEach((route) => {
     return reply.sendFile("index.html");
   });
 });
+
+const connectedUsers = new Map();
+
+app.decorate("authenticate", async (request, reply) => {
+  try {
+    await request.jwtVerify();
+  } catch (err) {
+    reply.send(err);
+  }
+});
+
+app.get('/me', { preHandler: [app.authenticate] }, async (request, reply) => {
+  const token = request.user; // => contenu du JWT
+
+  // Mettre à jour la liste des utilisateurs connectés
+  const user = db.prepare('SELECT login FROM users WHERE id = ?').get(token.id);
+  connectedUsers.set(user.id, {
+    login : user.login,
+  });
+
+  return { message: 'User verified', user };
+});
+
+app.get('/connected-users', async (req, reply) => {
+  return Array.from(connectedUsers.values());
+});
+
 
 const start = async () => {
   try {

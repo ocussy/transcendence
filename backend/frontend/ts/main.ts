@@ -8,7 +8,9 @@ class App {
 
   constructor() {
     this.router = new Router();
+    this.verifyToken();
     this.initializeApp();
+    // this.initializeWebSocket();
   }
 
   private initializeApp(): void {
@@ -36,6 +38,7 @@ class App {
     this.router.addRoute("/game/profile", () => {
       new GamePage();
     });
+
     // retour et avance a revoir
     window.addEventListener("popstate", () => {
       this.router.navigate(window.location.pathname);
@@ -45,7 +48,10 @@ class App {
     const currentPath = window.location.pathname;
     this.router.navigate(currentPath === "/" ? "/auth" : currentPath);
   }
+
+  // 🔒 Vérifie le token JWT stocké dans localStorage
 }
+
 // google auth
 declare global {
   interface Window {
@@ -54,7 +60,7 @@ declare global {
   }
 }
 
-// DOM a revoir
+// DOM à revoir
 document.addEventListener("DOMContentLoaded", () => {
   const app = new App();
   window.router = app["router"];

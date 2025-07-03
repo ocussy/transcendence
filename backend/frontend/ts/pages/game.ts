@@ -1,9 +1,12 @@
+import {verifyToken} from "./auth.js";
+
 export class GamePage {
   private currentSection: string = "tournament";
   private currentUser: any = null; // Ajouté pour stocker les données utilisateur
   private friendsList: any[] = [];
 
   constructor() {
+    verifyToken(); // Vérifie le token JWT à l'initialisation
     this.render();
     this.attachEvents();
     this.handleBrowserNavigation();

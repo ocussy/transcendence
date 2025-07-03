@@ -9,16 +9,43 @@ async function checkAuthAndRedirect() {
   }
 }
 
+export async function verifyToken() {
+    console.log("🔍 Vérification du token JWT...");
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      console.log("🔍 Token trouvé, vérification en cours...");
+      const res = await fetch("/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Token invalide");
+
+      const data = await res.json();
+      console.log("✅ Utilisateur connecté :", data.user);
+      // Ici, tu peux éventuellement stocker les infos du user globalement (window.user ou autre)
+    } catch (err) {
+      console.error("❌ Erreur vérification token :", err);
+      // localStorage.removeItem("token"); // Optionnel
+      // this.router.navigate("/auth"); // Redirection forcée si tu veux
+    }
+  }
+
 export class AuthPage {
   private pendingToken: string | null = null;
 
   constructor() {
     checkAuthAndRedirect();
+    // verifyToken();
     this.render();
     this.attachEvents();
     this.initializeGoogleAuth();
   }
 
+
+  
   private render(): void {
     const app = document.getElementById("app")!;
 

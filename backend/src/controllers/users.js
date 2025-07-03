@@ -39,7 +39,7 @@ export async function buildUpdateQuery(table, updates, whereClause, whereArgs) {
 export async function getUser(req, reply) {
   try {
     const id = req.user.id;
-    const user = db.prepare('SELECT login, email, avatarUrl, alias, auth_provider, language, password, secure_auth FROM users WHERE id = ?').get(id);
+    const user = db.prepare('SELECT login, email, avatarUrl, alias, auth_provider, language, secure_auth, games_played, games_won FROM users WHERE id = ?').get(id);
     if (!user) {
       return reply.status(404).send({ error: "User not found" });
     }
