@@ -38,7 +38,10 @@ export async function buildUpdateQuery(table, updates, whereClause, whereArgs) {
 // Handler pour GET /user
 export async function getUser(req, reply) {
   try {
+        console.log("Token:", req.headers.authorization);
+    console.log("req.user:", req.user);
     const id = req.user.id;
+    console.log("Id user:", id);
     const user = db.prepare('SELECT login, email, avatarUrl, alias, auth_provider, language, secure_auth, games_played, games_won FROM users WHERE id = ?').get(id);
     if (!user) {
       return reply.status(404).send({ error: "User not found" });

@@ -1,10 +1,10 @@
 import { Router } from "./router.js";
 import { AuthPage } from "./pages/auth.js";
 import { GamePage } from "./pages/game.js";
+export const API_URL = "http://10.12.9.9:8000";
 class App {
     constructor() {
         this.router = new Router();
-        this.verifyToken();
         this.initializeApp();
     }
     initializeApp() {
@@ -31,26 +31,6 @@ class App {
         });
         const currentPath = window.location.pathname;
         this.router.navigate(currentPath === "/" ? "/auth" : currentPath);
-    }
-    async verifyToken() {
-        const token = localStorage.getItem("token");
-        if (!token)
-            return;
-        console.log("🔍 Vérification du token JWT...");
-        try {
-            const res = await fetch("/me", {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-            if (!res.ok)
-                throw new Error("Token invalide");
-            const data = await res.json();
-            console.log("✅ Utilisateur connecté :", data.user);
-        }
-        catch (err) {
-            console.error("❌ Erreur vérification token :", err);
-        }
     }
 }
 document.addEventListener("DOMContentLoaded", () => {

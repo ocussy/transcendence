@@ -3,6 +3,8 @@ import { Router } from "./router.js";
 import { AuthPage } from "./pages/auth.js";
 import { GamePage } from "./pages/game.js";
 
+
+export const API_URL = "http://10.12.9.9:8000";
 class App {
   private router: Router;
 
@@ -10,7 +12,6 @@ class App {
     this.router = new Router();
     // this.verifyToken();
     this.initializeApp();
-    // this.initializeWebSocket();
   }
 
   private initializeApp(): void {
@@ -57,6 +58,7 @@ declare global {
   interface Window {
     handleCredentialResponse: (response: any) => void;
     router: Router;
+    socket: WebSocket;
   }
 }
 

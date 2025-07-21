@@ -2,6 +2,7 @@
   "dependencies": {
     "@fastify/cookie": "^7.4.0",
     "@fastify/jwt": "^6.4.0",
+    "@fastify/websocket": "^11.2.0",
     "fastify": "^4.29.1",
     "fastify-websocket": "^4.2.2"
   },

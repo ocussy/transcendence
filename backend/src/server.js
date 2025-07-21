@@ -11,7 +11,7 @@ import authRoutes from "./routes/auth.js";
 import jwt from "@fastify/jwt";
 import dotenv from "dotenv";
 import cookie from "@fastify/cookie";
-// import websocket from "@fastify/websocket";
+import websocket from "@fastify/websocket";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,22 +19,24 @@ dotenv.config();
 
 const app = fastify();
 
-// await app.register(websocket);
+await app.register(websocket);
 
 await app.register(cors, {
   origin: true,
+  credentials: true,
 });
+
 
 app.register(jwt, {
   secret: process.env.JWT_SECRET,
   cookie: {
     cookieName: "token",
-    signed: false, // Set to true if you want to sign the cookie
+    signed: false,
   },
 });
 
 await app.register(cookie, {
-  hook: "onRequest", // This will run on every request
+  hook: "onRequest",
 });
 
 app.register(fastifyStatic, {
@@ -65,6 +67,29 @@ spaRoutes.forEach((route) => {
 
 export const connectedUsers = new Map();
 
+app.get("/ws", { websocket: true}, async (connection, req) => {
+  const cookies = req.headers.cookie;
+  console.log("Cookies reçues:", cookies);
+  const token = cookies ?.split("token=")[1]?.split(";")[0];
+
+  try {
+    console.log("Connexion WebSocket établie");
+    const decoded = app.jwt.verify(token);
+    const userId = decoded.id;
+
+    connectedUsers.set(userId, {
+      socket: connection.socket,
+      username: decoded.login,
+    });
+
+    console.log("Utilisateur connecté :", userId);
+
+  } catch (err) {
+    console.error("Token invalide:", err);
+    connection.socket.close(); // Ferme la socket si le token est mauvais
+  }
+});
+
 app.decorate("authenticate", async (request, reply) => {
   try {
     await request.jwtVerify();
@@ -73,21 +98,6 @@ app.decorate("authenticate", async (request, reply) => {
   }
 });
 
-app.get('/me', { preHandler: [app.authenticate] }, async (request, reply) => {
-  const token = request.user; // => contenu du JWT
-
-  // Mettre à jour la liste des utilisateurs connectés
-  const user = db.prepare('SELECT login FROM users WHERE id = ?').get(token.id);
-  connectedUsers.set(user.id, {
-    login : user.login,
-  });
-
-  return { message: 'User verified', user };
-});
-
-app.get('/connected-users', async (req, reply) => {
-  return Array.from(connectedUsers.values());
-});
 
 
 const start = async () => {

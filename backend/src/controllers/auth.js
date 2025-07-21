@@ -4,7 +4,6 @@ import { auth, OAuth2Client } from "google-auth-library";
 import nodemailer from "nodemailer";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
-import { connectedUsers } from "../server.js";
 
 dotenv.config();
 
@@ -128,8 +127,8 @@ export async function signUpGoogle(req, reply) {
     reply
       .setCookie("token", tokenJWT, {
         httpOnly: true,
-        secure: true,
-        sameSite: "Strict",
+        secure: false,
+        sameSite: "None",
         path: "/",
         maxAge: 60 * 60, // 1 hour
       })
@@ -143,7 +142,6 @@ export async function signUpGoogle(req, reply) {
 
 export async function signIn(req, reply) {
   try {
-    // Check if this is a Google login attempt
     if (req.body.token || req.body.idtoken) {
       const token = req.body.token || req.body.idtoken;
       const ticket = await client.verifyIdToken({
@@ -178,8 +176,8 @@ export async function signIn(req, reply) {
       reply
         .setCookie("token", tokenJWT, {
           httpOnly: true,
-          secure: true,
-          sameSite: "Strict",
+          secure: false,
+          sameSite: "None",
           path: "/",
           maxAge: 60 * 60, // 1 hour
         })
@@ -232,8 +230,8 @@ export async function signIn(req, reply) {
       reply
         .setCookie("token", token, {
           httpOnly: true,
-          secure: true,
-          sameSite: "Strict",
+          secure: false, // false for local dev, true for production
+          sameSite: "None",
           path: "/",
           maxAge: 60 * 60, // 1 hour
         })
@@ -248,13 +246,12 @@ export async function signIn(req, reply) {
 
 export async function signOut(req, reply) {
   try {
-    connectedUsers.delete(req.user.id);
     reply
       .clearCookie("token", {
         path: "/",
         httpOnly: true,
-        secure: true,
-        sameSite: "Strict",
+        secure: false,
+        sameSite: "None",
       })
       .code(200)
       .send({ message: "Successfully signed out" });
@@ -336,8 +333,8 @@ export async function verify2FA(req, reply) {
     reply
       .setCookie("token", jwtToken, {
         httpOnly: true,
-        secure: true,
-        sameSite: "Strict",
+        secure: false,
+        sameSite: "None",
         path: "/",
         maxAge: 60 * 60, // 1 hour
       })

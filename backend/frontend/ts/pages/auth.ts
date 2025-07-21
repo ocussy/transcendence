@@ -1,3 +1,5 @@
+import { API_URL } from "../main";
+
 async function checkAuthAndRedirect() {
   try {
     const res = await fetch("/user", { credentials: "include" });
@@ -389,6 +391,21 @@ export class AuthPage {
 
         console.log("Authentication successful ✅", data);
 
+        const socket = new WebSocket("ws://10.12.9.9:8000/ws");
+
+        socket.onopen = () => {
+          console.log("WebSocket ouverte !");
+          socket.send(JSON.stringify({ type: "auth" }));
+        };
+
+        socket.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          console.log("Message du serveur:", data);
+        };
+
+        socket.onclose = () => {
+          console.log("WebSocket fermée");
+        };
         setTimeout(() => {
           window.router.navigate("/game");
         }, 1000);
