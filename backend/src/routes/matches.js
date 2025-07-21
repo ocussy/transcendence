@@ -1,4 +1,4 @@
-import { getMatches, postMatch, updateMatch, getMatchById, getMatchesByUser } from '../controllers/matches.js';
+import { getMatches, postMatch, updateMatch, getMatchById, getMatchesByUser} from '../controllers/matches.js';
 
 const Match = {
     type: 'object',
@@ -9,8 +9,15 @@ const Match = {
         score1: { type: 'integer', nullable: true },
         score2: { type: 'integer', nullable: true },
         winner: { type: 'string', nullable: true },
+        //JAI BESOIN DE CA AUSSI
+        mode: { type: 'string' },
+        duration: { type: 'integer' },
+        created_at: { type: 'string' },
+        tournamentId: { type: 'integer', nullable: true }
     }
 }
+
+
 
 const getMatchByIdOptions = {
     schema: {
