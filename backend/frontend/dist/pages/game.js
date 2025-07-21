@@ -21,7 +21,10 @@ export class GamePage {
     }
     async loadUserProfile() {
         try {
-            const res = await fetch("/user", { method: "GET", credentials: "include" });
+            const res = await fetch("/user", {
+                method: "GET",
+                credentials: "include",
+            });
             if (!res.ok)
                 throw new Error("Not authenticated");
             const data = await res.json();
@@ -348,7 +351,6 @@ export class GamePage {
                                                     </div>
                                                 </div>
                     </div>
-
                     <!-- Section Dashboard -->
                     <div id="section-dashboard" class="section hidden">
                         <div class="text-center mb-8">
@@ -356,21 +358,238 @@ export class GamePage {
                                 data.statistics
                             </h2>
                             <p class="font-mono text-gray-500 opacity-80">
-                                <span class="text-blue-500">></span> performance data
+                                <span class="text-blue-500">></span> performance analytics
                             </p>
                         </div>
 
-                        <!-- Empty State -->
-                        <div class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center relative overflow-hidden backdrop-blur-sm">
-                            <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+                        <!-- Stats Cards Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                            <!-- Total Games -->
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+                                <div class="text-center">
+                                    <div class="text-3xl font-mono font-bold text-blue-400 mb-2">24</div>
+                                    <div class="text-sm font-mono text-gray-400">TOTAL GAMES</div>
+                                    <div class="text-xs font-mono text-gray-600 mt-1">matches.exe</div>
+                                </div>
+                            </div>
 
-                            <div class="text-gray-500">
-                                <div class="text-6xl mb-4 font-mono">[STATS]</div>
-                                <div class="font-mono text-lg mb-2">No statistics available</div>
-                                <div class="font-mono text-sm text-gray-600">// a faire</div>
+                            <!-- Wins -->
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #10b981, transparent);"></div>
+                                <div class="text-center">
+                                    <div class="text-3xl font-mono font-bold text-green-400 mb-2">18</div>
+                                    <div class="text-sm font-mono text-gray-400">VICTORIES</div>
+                                    <div class="text-xs font-mono text-gray-600 mt-1">win.count</div>
+                                </div>
+                            </div>
+
+                            <!-- Win Rate -->
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
+                                <div class="text-center">
+                                    <div class="text-3xl font-mono font-bold text-amber-400 mb-2">75%</div>
+                                    <div class="text-sm font-mono text-gray-400">WIN RATE</div>
+                                    <div class="text-xs font-mono text-gray-600 mt-1">efficiency</div>
+                                </div>
+                            </div>
+
+                            <!-- Ranking -->
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #8b5cf6, transparent);"></div>
+                                <div class="text-center">
+                                    <div class="text-3xl font-mono font-bold text-purple-400 mb-2">#42</div>
+                                    <div class="text-sm font-mono text-gray-400">RANKING</div>
+                                    <div class="text-xs font-mono text-gray-600 mt-1">leaderboard</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Performance Overview -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                            <!-- Performance Trend -->
+                            <div class="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+                                <h3 class="font-mono font-bold text-lg text-blue-400 mb-4">$ performance --trend</h3>
+
+                                <!-- Mock Chart Area -->
+                                <div class="h-48 bg-black border border-gray-700 rounded-lg p-4 relative">
+                                    <!-- Grid Lines -->
+                                    <div class="absolute inset-0 p-4">
+                                        <div class="w-full h-full relative">
+                                            <!-- Horizontal grid lines -->
+                                            <div class="absolute w-full border-t border-gray-700 opacity-30" style="top: 20%;"></div>
+                                            <div class="absolute w-full border-t border-gray-700 opacity-30" style="top: 40%;"></div>
+                                            <div class="absolute w-full border-t border-gray-700 opacity-30" style="top: 60%;"></div>
+                                            <div class="absolute w-full border-t border-gray-700 opacity-30" style="top: 80%;"></div>
+
+                                            <!-- Vertical grid lines -->
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 14%;"></div>
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 28%;"></div>
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 42%;"></div>
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 56%;"></div>
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 70%;"></div>
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 84%;"></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Performance Line -->
+                                    <svg class="w-full h-full absolute inset-0 p-4" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                        <polyline
+                                            fill="none"
+                                            stroke="#3b82f6"
+                                            stroke-width="0.8"
+                                            points="5,65 20,45 35,35 50,55 65,25 80,40 95,30"
+                                        />
+                                        <!-- Data points -->
+                                        <circle cx="5" cy="65" r="1" fill="#3b82f6"/>
+                                        <circle cx="20" cy="45" r="1" fill="#3b82f6"/>
+                                        <circle cx="35" cy="35" r="1" fill="#3b82f6"/>
+                                        <circle cx="50" cy="55" r="1" fill="#3b82f6"/>
+                                        <circle cx="65" cy="25" r="1" fill="#3b82f6"/>
+                                        <circle cx="80" cy="40" r="1" fill="#3b82f6"/>
+                                        <circle cx="95" cy="30" r="1" fill="#3b82f6"/>
+                                    </svg>
+
+                                    <!-- Labels -->
+                                    <div class="absolute bottom-2 left-4 font-mono text-xs text-gray-500">7d ago</div>
+                                    <div class="absolute bottom-2 right-4 font-mono text-xs text-gray-500">today</div>
+                                    <div class="absolute top-2 right-4 font-mono text-xs text-blue-400">performance %</div>
+                                </div>
+                            </div>
+
+                            <!-- Quick Stats -->
+                            <div class="space-y-4">
+                                <!-- Win Streak -->
+                                <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                    <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #10b981, transparent);"></div>
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="font-mono text-sm text-gray-400">CURRENT STREAK</div>
+                                            <div class="font-mono text-3xl font-bold text-green-400">5</div>
+                                        </div>
+                                        <div class="text-green-400 opacity-60">
+                                            <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="font-mono text-xs text-gray-600 mt-2">wins.consecutive</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Matches -->
+                        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                            <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #8b5cf6, transparent);"></div>
+                            <h3 class="font-mono font-bold text-lg text-purple-400 mb-6">$ match-history --recent</h3>
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full font-mono text-sm">
+                                    <thead>
+                                        <tr class="border-b border-gray-700">
+                                            <th class="text-left py-3 px-4 text-gray-400">OPPONENT</th>
+                                            <th class="text-left py-3 px-4 text-gray-400">RESULT</th>
+                                            <th class="text-left py-3 px-4 text-gray-400">SCORE</th>
+                                            <th class="text-left py-3 px-4 text-gray-400">MODE</th>
+                                            <th class="text-left py-3 px-4 text-gray-400">DATE</th>
+                                            <th class="text-left py-3 px-4 text-gray-400">DURATION</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
+                                            <td class="py-3 px-4 text-white">AI_Bot_Expert</td>
+                                            <td class="py-3 px-4">
+                                                <span class="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400 border border-green-500/30">
+                                                    WIN
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-4 text-gray-300">5 - 3</td>
+                                            <td class="py-3 px-4">
+                                                <span class="px-2 py-1 rounded text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                                                    AI
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-4 text-gray-400">Today</td>
+                                            <td class="py-3 px-4 text-gray-500">3m 42s</td>
+                                        </tr>
+                                        <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
+                                            <td class="py-3 px-4 text-white">player_42</td>
+                                            <td class="py-3 px-4">
+                                                <span class="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400 border border-green-500/30">
+                                                    WIN
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-4 text-gray-300">5 - 2</td>
+                                            <td class="py-3 px-4">
+                                                <span class="px-2 py-1 rounded text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                                                    TOURNAMENT
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-4 text-gray-400">Yesterday</td>
+                                            <td class="py-3 px-4 text-gray-500">5m 18s</td>
+                                        </tr>
+                                        <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
+                                            <td class="py-3 px-4 text-white">pong_master</td>
+                                            <td class="py-3 px-4">
+                                                <span class="px-2 py-1 rounded text-xs bg-red-500/20 text-red-400 border border-red-500/30">
+                                                    LOSS
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-4 text-gray-300">2 - 5</td>
+                                            <td class="py-3 px-4">
+                                                <span class="px-2 py-1 rounded text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                                    LOCAL
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-4 text-gray-400">2 days ago</td>
+                                            <td class="py-3 px-4 text-gray-500">4m 33s</td>
+                                        </tr>
+                                        <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
+                                            <td class="py-3 px-4 text-white">speed_demon</td>
+                                            <td class="py-3 px-4">
+                                                <span class="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400 border border-green-500/30">
+                                                    WIN
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-4 text-gray-300">5 - 1</td>
+                                            <td class="py-3 px-4">
+                                                <span class="px-2 py-1 rounded text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                                                    TOURNAMENT
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-4 text-gray-400">3 days ago</td>
+                                            <td class="py-3 px-4 text-gray-500">2m 57s</td>
+                                        </tr>
+                                        <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
+                                            <td class="py-3 px-4 text-white">AI_Bot_Hard</td>
+                                            <td class="py-3 px-4">
+                                                <span class="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400 border border-green-500/30">
+                                                    WIN
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-4 text-gray-300">5 - 0</td>
+                                            <td class="py-3 px-4">
+                                                <span class="px-2 py-1 rounded text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                                                    AI
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-4 text-gray-400">4 days ago</td>
+                                            <td class="py-3 px-4 text-gray-500">3m 15s</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- View More Button -->
+                            <div class="mt-4 text-center">
+                                <button class="font-mono text-sm text-gray-400 hover:text-blue-400 transition-colors duration-200 border border-gray-700 px-4 py-2 rounded-lg hover:border-blue-500">
+                                    $ load-more --matches
+                                </button>
                             </div>
                         </div>
                     </div>
+
 
                     <!-- Section Profile AMÉLIORÉE -->
                     <div id="section-profile" class="section hidden">
