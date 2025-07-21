@@ -8,7 +8,7 @@ class App {
 
   constructor() {
     this.router = new Router();
-    this.verifyToken();
+    // this.verifyToken();
     this.initializeApp();
     // this.initializeWebSocket();
   }

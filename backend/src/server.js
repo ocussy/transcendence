@@ -63,7 +63,7 @@ spaRoutes.forEach((route) => {
   });
 });
 
-const connectedUsers = new Map();
+export const connectedUsers = new Map();
 
 app.decorate("authenticate", async (request, reply) => {
   try {

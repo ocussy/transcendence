@@ -4,7 +4,7 @@ import { auth, OAuth2Client } from "google-auth-library";
 import nodemailer from "nodemailer";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
-import { connected } from "process";
+import { connectedUsers } from "../server.js";
 
 dotenv.config();
 
@@ -123,8 +123,8 @@ export async function signUpGoogle(req, reply) {
       "INSERT INTO users (login, email, avatarUrl, auth_provider) VALUES (?, ?, ?, ?)",
     );
     stmt.run(login, email, avatarUrl, "google");
-    const id = db.prepare("SELECT id FROM users WHERE login = ?").get(login);
-    const tokenJWT = await reply.jwtSign({ id });
+    const user = db.prepare("SELECT * FROM users WHERE login = ?").get(login);
+    const tokenJWT = await reply.jwtSign({ id : user.id });
     reply
       .setCookie("token", tokenJWT, {
         httpOnly: true,
