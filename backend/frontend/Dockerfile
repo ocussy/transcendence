@@ -2,14 +2,22 @@ FROM node:20
 
 WORKDIR /app
 
-# Install dependencies
+# Installe les dépendances du projet
 COPY package.json package-lock.json* ./
 RUN npm install
 
-# Copy all frontend sources
+# Installe live-server globalement
+RUN npm install -g live-server
+
+# Copie le code source
 COPY . .
 
-# Build Tailwind and TypeScript
+# Build si nécessaire (TypeScript, Tailwind, etc.)
 RUN npm run build
 
-CMD ["npm", "run", "dev"]
+# Expose le port 8000 (au lieu de 8080)
+EXPOSE 8000
+
+# Sert le dossier compilé via live-server
+CMD ["live-server", "dist", "--host=0.0.0.0", "--port=8000", "--watch=."]
+

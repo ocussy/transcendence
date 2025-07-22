@@ -3,14 +3,11 @@ import { Router } from "./router.js";
 import { AuthPage } from "./pages/auth.js";
 import { GamePage } from "./pages/game.js";
 
-
-export const API_URL = "http://10.12.9.9:8000";
 class App {
   private router: Router;
 
   constructor() {
     this.router = new Router();
-    // this.verifyToken();
     this.initializeApp();
   }
 
@@ -39,7 +36,6 @@ class App {
     this.router.addRoute("/game/profile", () => {
       new GamePage();
     });
-
     // retour et avance a revoir
     window.addEventListener("popstate", () => {
       this.router.navigate(window.location.pathname);
@@ -49,20 +45,17 @@ class App {
     const currentPath = window.location.pathname;
     this.router.navigate(currentPath === "/" ? "/auth" : currentPath);
   }
-
-  // 🔒 Vérifie le token JWT stocké dans localStorage
 }
-
 // google auth
 declare global {
   interface Window {
     handleCredentialResponse: (response: any) => void;
     router: Router;
-    socket: WebSocket;
+    socket?: WebSocket;
   }
 }
 
-// DOM à revoir
+// DOM a revoir
 document.addEventListener("DOMContentLoaded", () => {
   const app = new App();
   window.router = app["router"];

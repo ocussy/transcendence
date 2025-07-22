@@ -1,15 +1,57 @@
-import { API_URL } from "../main";
+
+export let socket: WebSocket;
+
+export function tryConnectWebSocketIfAuthenticated() {
+  // Si une socket existe déjà et est ouverte, ne rien faire
+  if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+    console.log("WebSocket déjà connectée");
+    return;
+  }
+
+  fetch("/user", { credentials: "include" })
+    .then((res) => {
+      if (res.ok) {
+        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+        const host = window.location.host;
+        const socket = new WebSocket(`${protocol}://${host}/ws`);
+
+        socket.onopen = () => {
+          console.log("✅ WebSocket connectée");
+        };
+
+        socket.onclose = () => {
+          console.log("❌ WebSocket fermée");
+          window.socket = undefined;
+        };
+
+        socket.onerror = (e) => {
+          console.error("⚠️ Erreur WebSocket :", e);
+        };
+
+        window.socket = socket;
+      } else {
+        console.log("Pas authentifié, socket non créée");
+      }
+    })
+    .catch((err) => {
+      console.error("Erreur lors de la vérification de l'auth :", err);
+    });
+}
+
+
 
 async function checkAuthAndRedirect() {
   try {
     const res = await fetch("/user", { credentials: "include" });
     if (res.ok) {
+      tryConnectWebSocketIfAuthenticated();
       window.router.navigate("/game");
     }
   } catch (err) {
     
   }
 }
+
 
 export async function verifyToken() {
     console.log("🔍 Vérification du token JWT...");
@@ -390,22 +432,6 @@ export class AuthPage {
         );
 
         console.log("Authentication successful ✅", data);
-
-        const socket = new WebSocket("ws://10.12.9.9:8000/ws");
-
-        socket.onopen = () => {
-          console.log("WebSocket ouverte !");
-          socket.send(JSON.stringify({ type: "auth" }));
-        };
-
-        socket.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          console.log("Message du serveur:", data);
-        };
-
-        socket.onclose = () => {
-          console.log("WebSocket fermée");
-        };
         setTimeout(() => {
           window.router.navigate("/game");
         }, 1000);

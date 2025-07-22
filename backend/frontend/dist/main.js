@@ -1,7 +1,6 @@
 import { Router } from "./router.js";
 import { AuthPage } from "./pages/auth.js";
 import { GamePage } from "./pages/game.js";
-export const API_URL = "http://10.12.9.9:8000";
 class App {
     constructor() {
         this.router = new Router();

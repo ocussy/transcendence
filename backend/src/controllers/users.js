@@ -2,8 +2,11 @@ import db from "../db.js";
 import { loginExist, isStrongPassword, emailExist } from "./auth.js";
 import bcrypt from "bcrypt";
 import { getMatchesByUser } from "./matches.js";
+import { logConnectedUsers} from "../server.js";
+import {app} from "../server.js";
 
 export async function verifyUser(req, reply) {
+  logConnectedUsers(app);
   try {
     await req.jwtVerify();
   } catch (err) {
@@ -38,10 +41,7 @@ export async function buildUpdateQuery(table, updates, whereClause, whereArgs) {
 // Handler pour GET /user
 export async function getUser(req, reply) {
   try {
-        console.log("Token:", req.headers.authorization);
-    console.log("req.user:", req.user);
     const id = req.user.id;
-    console.log("Id user:", id);
     const user = db.prepare('SELECT login, email, avatarUrl, alias, auth_provider, language, secure_auth, games_played, games_won FROM users WHERE id = ?').get(id);
     if (!user) {
       return reply.status(404).send({ error: "User not found" });
@@ -168,6 +168,10 @@ export async function updateUser(req, reply) {
     values.push(secure_auth ? 1 : 0);
   }
   if (friend) {
+    const user = db.prepare("SELECT login FROM users WHERE id = ?").get(id);
+    console.log("Login :", user.login);
+    if (user.login == friend)
+        return reply.status(400).send({error : "You can't add yourself as a friend ..."});
     const friendAdd = await addFriends(id, friend);
     if (!friendAdd) {
       return reply.status(400).send({ error: "Friend does not exist" });

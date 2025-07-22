@@ -1,23 +1,29 @@
+
 services:
   backend:
     build: ./backend
     ports:
       - "8000:8000"
     depends_on:
-      - frontend
+      - redis
     volumes:
       - ./backend:/app
       - /app/node_modules
       - sqlite-data:/app/src/db_volume
     environment:
       - NODE_ENV=development
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     command: npm run dev
 
-  frontend:
-    build: ./backend/frontend
+  redis:
+    image: redis:6
+    ports:
+      - "6380:6379"
     volumes:
-      - ./backend/frontend/dist:/app/dist
+      - redis-data:/data
 
 volumes:
   sqlite-data:
     driver: local
+  redis-data:

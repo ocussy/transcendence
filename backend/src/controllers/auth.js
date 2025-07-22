@@ -4,6 +4,7 @@ import { auth, OAuth2Client } from "google-auth-library";
 import nodemailer from "nodemailer";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
+import {app } from "../server.js"
 
 dotenv.config();
 
@@ -16,6 +17,12 @@ let transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
 });
+
+export async function getConnectedUsers(app)
+{
+  const userIds = await app.redis.hkeys('connectedUsers');
+  return userIds;
+}
 
 export async function loginExist(login) {
   const stmt = db.prepare(`
@@ -128,7 +135,7 @@ export async function signUpGoogle(req, reply) {
       .setCookie("token", tokenJWT, {
         httpOnly: true,
         secure: false,
-        sameSite: "None",
+        sameSite: "Lax",
         path: "/",
         maxAge: 60 * 60, // 1 hour
       })
@@ -170,6 +177,10 @@ export async function signIn(req, reply) {
       if (user.auth_provider !== "google") {
         return reply.status(401).send({ error: "Please login with your password" });
       }
+      const connectedUsersIds = await getConnectedUsers(app);
+      if (connectedUsersIds.includes(user.id.toString())) {
+        return reply.status(400).send({error : "User already connected somewhere else"});
+      }
       const tokenJWT = await reply.jwtSign({
         id: user.id,
       });
@@ -177,7 +188,7 @@ export async function signIn(req, reply) {
         .setCookie("token", tokenJWT, {
           httpOnly: true,
           secure: false,
-          sameSite: "None",
+          sameSite: "Lax",
           path: "/",
           maxAge: 60 * 60, // 1 hour
         })
@@ -211,6 +222,12 @@ export async function signIn(req, reply) {
       }
       else
         return reply.status(500).send({ error: "Internal server error" });
+
+        const connectedUsersIds = await getConnectedUsers(app);
+        if (connectedUsersIds.includes(user.id.toString())) {
+          return reply.status(400).send({error : "User already connected somewhere else"});
+        }
+        
       if (user.secure_auth == true) {
         const result = await sendOtpVerificationEmail(user, reply);
         if (result) {
@@ -231,7 +248,7 @@ export async function signIn(req, reply) {
         .setCookie("token", token, {
           httpOnly: true,
           secure: false, // false for local dev, true for production
-          sameSite: "None",
+          sameSite: "Lax",
           path: "/",
           maxAge: 60 * 60, // 1 hour
         })
@@ -251,7 +268,7 @@ export async function signOut(req, reply) {
         path: "/",
         httpOnly: true,
         secure: false,
-        sameSite: "None",
+        sameSite: "Lax",
       })
       .code(200)
       .send({ message: "Successfully signed out" });
@@ -334,7 +351,7 @@ export async function verify2FA(req, reply) {
       .setCookie("token", jwtToken, {
         httpOnly: true,
         secure: false,
-        sameSite: "None",
+        sameSite: "Lax",
         path: "/",
         maxAge: 60 * 60, // 1 hour
       })

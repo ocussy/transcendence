@@ -1,4 +1,5 @@
 import { verifyToken } from "./auth.js";
+import { tryConnectWebSocketIfAuthenticated } from "./auth.js";
 export class GamePage {
     constructor() {
         this.currentSection = "tournament";
@@ -24,6 +25,7 @@ export class GamePage {
             const res = await fetch("/user", { method: "GET", credentials: "include" });
             if (!res.ok)
                 throw new Error("Not authenticated");
+            tryConnectWebSocketIfAuthenticated();
             const data = await res.json();
             this.currentUser = data.user || data;
             const user = this.currentUser;
@@ -943,6 +945,13 @@ export class GamePage {
             }
             catch (err) {
                 console.error("Logout failed:", err);
+            }
+            if (window.socket) {
+                window.socket.close();
+                console.log("Socket closed, redirecting to home...");
+            }
+            else {
+                console.log("No active socket to close.");
             }
             setTimeout(() => {
                 window.router.navigate("/");
