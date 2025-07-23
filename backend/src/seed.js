@@ -4,25 +4,25 @@ import bcrypt from 'bcrypt';
 export async function seedDatabase(db) {
   // Utilisateurs fictifs
   const users = [
-    { login: 'adem', email: 'adem@example.com' },
-    { login: 'geoffrey', email: 'geoffrey@example.com' },
-    { login: 'oceane', email: 'oceane@example.com' },
-    { login: 'lucie', email: 'lucie@example.com' },
-    { login: 'coco', email: 'coco@example.com' },
-    { login: 'rydom', email: 'rydom@example.com' },
+    { login: 'adem', email: 'adem@example.com', games_won: 3, games_played: 5 },
+    { login: 'geoffrey', email: 'geoffrey@example.com', games_won: 2, games_played: 4 },
+    { login: 'oceane', email: 'oceane@example.com', games_won: 1, games_played: 3 },
+    { login: 'lucie', email: 'lucie@example.com', games_won: 4, games_played: 6 },
+    { login: 'coco', email: 'coco@example.com', games_won: 5, games_played: 7 },
+    { login: 'rydom', email: 'rydom@example.com', games_won: 0, games_played: 2 },
   ];
 
 
   const insertUser = db.prepare(`
-    INSERT INTO users (login, email, password, alias)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO users (login, email, password, alias, games_played, games_won)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
 
   const password = 'Coco1234!';
   const saltRounds = 10;
   const hash = await bcrypt.hash(password, saltRounds);
   for (const u of users) {
-    insertUser.run(u.login, u.email, hash, u.login);
+    insertUser.run(u.login, u.email, hash, u.login, u.games_played, u.games_won);
   }
 
   // Récupérer les IDs

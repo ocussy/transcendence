@@ -1,108 +1,119 @@
-import { getMatches, postMatch, updateMatch, getMatchById, getMatchesByUser } from '../controllers/matches.js';
+import {
+  getMatches,
+  postMatch,
+  updateMatch,
+  getMatchById,
+  getMatchesByUser,
+} from "../controllers/matches.js";
 
 const Match = {
-    type: 'object',
-    properties: {
-        id: { type: 'integer' },
-        player1: { type: 'string' },
-        player2: { type: 'string' },
-        score1: { type: 'integer', nullable: true },
-        score2: { type: 'integer', nullable: true },
-        winner: { type: 'string', nullable: true },
-    }
-}
+  type: "object",
+  properties: {
+    id: { type: "integer" },
+    player1: { type: "string" },
+    player2: { type: "string" },
+    score1: { type: "integer", nullable: true },
+    score2: { type: "integer", nullable: true },
+    winner: { type: "string", nullable: true },
+    //JAI BESOIN DE CA AUSSI
+    // mode: { type: 'string' },
+    // duration: { type: 'integer' },
+    // created_at: { type: 'string' },
+    // tournamentId: { type: 'integer', nullable: true }
+  },
+};
 
 const getMatchByIdOptions = {
-    schema: {
-        response: {
-            200: Match,
-            404: { type: 'object', properties: { error: { type: 'string' } } },
-        },
+  schema: {
+    response: {
+      200: Match,
+      404: { type: "object", properties: { error: { type: "string" } } },
     },
-    handler: getMatchById,
+  },
+  handler: getMatchById,
 };
 
 const getMatchByUserOptions = {
-    schema : {
-        response: {
-            200: {
-                type: 'array',
-                items: Match,
-            },
-            500 : { type: 'object', properties: { error: { type: 'string' } } },
-        },
+  schema: {
+    response: {
+      200: {
+        type: "array",
+        items: Match,
+      },
+      500: { type: "object", properties: { error: { type: "string" } } },
     },
-    handler: getMatchesByUser,
-}
+  },
+  handler: getMatchesByUser,
+};
 
 const getMatchesOptions = {
-    schema: {
-        response: {
-            200: {
-                type: 'array',
-                items: Match,
-            },
-        },
+  schema: {
+    response: {
+      200: {
+        type: "array",
+        items: Match,
+      },
     },
-    handler: getMatches,
+  },
+  handler: getMatches,
 };
 
 const postMatchOptions = {
-    schema: {
-        body: {
-            type: 'object',
-            required: ['player1', 'player2', 'mode'],
-            properties: {
-                player1: { type: 'string' },
-                player2: { type: 'string' },
-                mode: {type: 'string'},
-            },
-        },
-        response: {
-            201: {
-                type: 'object',
-                properties: {
-                    id: { type: 'integer' },
-                    player1: { type: 'string' },
-                    player2: { type: 'string' },
-                },
-            }
-        },
+  schema: {
+    body: {
+      type: "object",
+      required: ["player1", "player2", "mode"],
+      properties: {
+        player1: { type: "string" },
+        player2: { type: "string" },
+        mode: { type: "string" },
+      },
     },
-    handler: postMatch,
+    response: {
+      201: {
+        type: "object",
+        properties: {
+          id: { type: "integer" },
+          player1: { type: "string" },
+          player2: { type: "string" },
+        },
+      },
+    },
+  },
+  handler: postMatch,
 };
 
 const updateMatchOptions = {
-    schema: {
-        params: {
-            type: 'object',
-            properties: {
-                id: { type: 'integer' },
-            },
-        },
-        body: {
-            type: 'object',
-            required: ['player1', 'player2', 'score1', 'score2'],
-            properties: {
-                player1: { type: 'string' },
-                player2: { type: 'string' },
-                score1: { type: 'integer' },
-                score2: { type: 'integer' },
-                winner: { type: 'string', nullable: true },
-            },
-        },
-        response: {
-            200: Match,
-            404: { type: 'object', properties: { error: { type: 'string' } } },
-        },
+  schema: {
+    params: {
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+      },
     },
-    handler: updateMatch,
+    body: {
+      type: "object",
+      required: ["player1", "player2", "score1", "score2"],
+      properties: {
+        player1: { type: "string" },
+        player2: { type: "string" },
+        score1: { type: "integer" },
+        score2: { type: "integer" },
+        winner: { type: "string", nullable: true },
+      },
+    },
+    response: {
+      200: Match,
+      404: { type: "object", properties: { error: { type: "string" } } },
+    },
+  },
+  handler: updateMatch,
 };
 
 export default async function matchRoutes(fastify, options) {
-    fastify.get('/matches', getMatchesOptions);
-    fastify.get('/match/:id', getMatchByIdOptions);
-    fastify.post('/match', postMatchOptions);
-    fastify.put('/match/:id', updateMatchOptions);
-    fastify.get('/matches/user/:login', getMatchByUserOptions);
+  fastify.get("/matches", getMatchesOptions);
+  fastify.get("/match/:id", getMatchByIdOptions);
+  fastify.post("/match", postMatchOptions);
+  fastify.put("/match/:id", updateMatchOptions);
+  fastify.get("/matches/user/:login", getMatchByUserOptions);
 }

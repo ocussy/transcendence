@@ -15,13 +15,15 @@ import FastifyRedis from "@fastify/redis";
 import db from "./db.js"
 import { seedDatabase } from './seed.js';
 import { setupConnexionSocket, setupRemoteSocket } from "./remote.js";
+import statsRoutes from "./routes/stats.js";
+
+// import websocket from "@fastify/websocket";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config();
 
 export const app = fastify();
-
 
 // seedDatabase(db);
 
@@ -60,6 +62,7 @@ app.register(formbody);
 app.register(userRoutes);
 app.register(matchRoutes);
 app.register(authRoutes);
+app.register(statsRoutes);
 
 // pour SPA sinon les routes pas trouve
 const spaRoutes = [

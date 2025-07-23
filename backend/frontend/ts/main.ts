@@ -8,6 +8,7 @@ class App {
 
   constructor() {
     this.router = new Router();
+    //this.verifyToken();
     this.initializeApp();
   }
 

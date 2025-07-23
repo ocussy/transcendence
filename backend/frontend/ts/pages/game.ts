@@ -1,6 +1,28 @@
-import {verifyToken} from "./auth.js";
 import { socket } from "./auth.js";
 import { tryConnectWebSocketIfAuthenticated} from "./auth.js";
+import { verifyToken } from "./auth.js";
+
+//interface pour le dashboard
+interface MatchStats {
+  totalGames: number;
+  totalWins: number;
+  winRate: number;
+  currentStreak: number;
+  ranking: number | null;
+}
+
+interface MatchHistory {
+  id: number;
+  player1: string;
+  player2: string;
+  opponent: string;
+  result: "WIN" | "LOSS" | "DRAW";
+  score1: number;
+  score2: number;
+  mode: string;
+  duration: number;
+  formatted_date: string;
+}
 
 export class GamePage {
   private currentSection: string = "tournament";
@@ -30,25 +52,293 @@ export class GamePage {
     this.showSectionWithoutPush(targetSection);
   }
 
+  ////////////////////////////////////////////////DASHBOARD////////////////////////////////////////////
+  private async loadDashboardData(): Promise<void> {
+    try {
+      await this.loadUserStats();
+      await this.loadMatchHistory();
+      await this.loadPerformanceData();
+    } catch (error) {
+      console.error("Error loading dashboard data:", error);
+    }
+  }
+
+  private async loadUserStats(): Promise<void> {
+    try {
+      const response = await fetch("/stats", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch stats");
+
+      const stats: MatchStats = await response.json();
+
+      this.updateStatsCards(stats);
+    } catch (error) {
+      console.error("Error loading user stats:", error);
+    }
+  }
+
+  private updateStatsCards(stats: MatchStats): void {
+    const totalGamesCard = document.querySelector(
+      ".grid .bg-gray-900:nth-child(1) .text-3xl.font-mono.font-bold.text-blue-400",
+    );
+    if (totalGamesCard) {
+      totalGamesCard.textContent = stats.totalGames.toString();
+    }
+
+    const victoriesCard = document.querySelector(
+      ".grid .bg-gray-900:nth-child(2) .text-3xl.font-mono.font-bold.text-green-400",
+    );
+    if (victoriesCard) {
+      victoriesCard.textContent = stats.totalWins.toString();
+    }
+
+    const winRateCard = document.querySelector(
+      ".grid .bg-gray-900:nth-child(3) .text-3xl.font-mono.font-bold.text-amber-400",
+    );
+    if (winRateCard) {
+      winRateCard.textContent = `${stats.winRate}%`;
+    }
+
+    const rankingCard = document.querySelector(
+      ".grid .bg-gray-900:nth-child(4) .text-3xl.font-mono.font-bold.text-purple-400",
+    );
+    if (rankingCard) {
+      rankingCard.textContent = stats.ranking ? `#${stats.ranking}` : "#--";
+    }
+
+    const streakCard = document.querySelector(
+      ".space-y-4 .text-3xl.font-bold.text-green-400",
+    );
+    if (streakCard) {
+      streakCard.textContent = stats.currentStreak.toString();
+    }
+  }
+
+  private async loadMatchHistory(): Promise<void> {
+    try {
+      const response = await fetch("/match-history?limit=5", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch match history");
+
+      const matches: MatchHistory[] = await response.json();
+
+      const tbody = document.querySelector("#section-dashboard tbody");
+      if (!tbody) return;
+
+      if (matches.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-8 text-center text-gray-500 font-mono">
+              No matches played yet
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = matches
+        .map(
+          (match: MatchHistory) => `
+        <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
+          <td class="py-3 px-4 text-white">${this.escapeHtml(match.opponent)}</td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-1 rounded text-xs ${this.getResultClass(match.result)}">
+              ${match.result}
+            </span>
+          </td>
+          <td class="py-3 px-4 text-gray-300">${match.score1 || 0} - ${match.score2 || 0}</td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-1 rounded text-xs ${this.getModeClass(match.mode)}">
+              ${(match.mode || "normal").toUpperCase()}
+            </span>
+          </td>
+          <td class="py-3 px-4 text-gray-400">${this.formatDate(match.formatted_date)}</td>
+          <td class="py-3 px-4 text-gray-500">${this.formatDuration(match.duration)}</td>
+        </tr>
+      `,
+        )
+        .join("");
+    } catch (error) {
+      console.error("Error loading match history:", error);
+      this.showMatchHistoryError();
+    }
+  }
+
+  private getResultClass(result: string): string {
+    switch (result) {
+      case "WIN":
+        return "bg-green-500/20 text-green-400 border border-green-500/30";
+      case "LOSS":
+        return "bg-red-500/20 text-red-400 border border-red-500/30";
+      case "DRAW":
+        return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
+      default:
+        return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
+    }
+  }
+
+  private getModeClass(mode: string): string {
+    switch (mode?.toLowerCase()) {
+      case "tournament":
+        return "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30";
+      case "ai":
+        return "bg-purple-500/20 text-purple-400 border border-purple-500/30";
+      case "local":
+        return "bg-blue-500/20 text-blue-400 border border-blue-500/30";
+      default:
+        return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
+    }
+  }
+
+  private formatDate(dateString: string): string {
+    if (!dateString) return "--";
+
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 1) return "Today";
+    if (diffDays === 2) return "Yesterday";
+    if (diffDays <= 7) return `${diffDays - 1} days ago`;
+
+    return date.toLocaleDateString();
+  }
+
+  private formatDuration(seconds: number): string {
+    if (!seconds) return "--";
+
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+
+    return `${minutes}m ${secs}s`;
+  }
+
+  private escapeHtml(text: string): string {
+    if (!text) return "";
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  private showMatchHistoryError(): void {
+    const tbody = document.querySelector("#section-dashboard tbody");
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="py-8 text-center text-red-400 font-mono">
+            $ error: failed to load match history
+          </td>
+        </tr>
+      `;
+    }
+  }
+
+  private async loadPerformanceData(): Promise<void> {
+    try {
+      const response = await fetch("/stats/performance", {
+        credentials: "include",
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch performance data");
+
+      const performanceData = await response.json();
+      if (performanceData.length > 0) {
+        this.updatePerformanceChart(performanceData);
+      } else {
+        this.showNoPerformanceData();
+      }
+    } catch (error) {
+      console.error("Error loading performance data:", error);
+      this.showNoPerformanceData();
+    }
+  }
+
+  private updatePerformanceChart(data: any[]): void {
+    const svg = document.getElementById(
+      "performance-chart",
+    ) as SVGElement | null;
+    const placeholder = document.getElementById("chart-placeholder");
+
+    if (!svg) return;
+
+    if (placeholder) {
+      placeholder.style.display = "none";
+    }
+
+    const maxWinRate = Math.max(...data.map((d) => d.winRate), 100);
+    const points = data
+      .map((d, index) => {
+        const x = 5 + (index * 90) / Math.max(data.length - 1, 1);
+        const y = 95 - (d.winRate / maxWinRate) * 90;
+        return `${x},${y}`;
+      })
+      .join(" ");
+
+    svg.innerHTML = `
+      <polyline
+        fill="none"
+        stroke="#3b82f6"
+        stroke-width="0.8"
+        points="${points}"
+      />
+      ${data
+        .map((d, index) => {
+          const x = 5 + (index * 90) / Math.max(data.length - 1, 1);
+          const y = 95 - (d.winRate / maxWinRate) * 90;
+          return `<circle cx="${x}" cy="${y}" r="1" fill="#3b82f6"/>`;
+        })
+        .join("")}
+    `;
+  }
+
+  private showNoPerformanceData(): void {
+    const placeholder = document.getElementById("chart-placeholder");
+    if (placeholder) {
+      placeholder.style.display = "flex";
+      placeholder.innerHTML = `
+        <div class="text-center text-gray-600">
+          <div class="font-mono text-sm">--No recent data--</div>
+          <p class="font-mono text-xs mt-1 opacity-70">Play matches to see performance trends</p>
+        </div>
+      `;
+    }
+  }
+
+  ////////////////////////////////////////////////FIN DASH////////////////////////////////////////////
+
   private async loadUserProfile(): Promise<void> {
     try {
-      const res = await fetch("/user", { method: "GET", credentials: "include" });
+      const res = await fetch("/user", {
+        method: "GET",
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("Not authenticated");
       tryConnectWebSocketIfAuthenticated();
       const data = await res.json();
 
-      // Stocker les données utilisateur
       this.currentUser = data.user || data;
 
-      // Remplir tous les champs du profil avec les bonnes propriétés
       const user = this.currentUser;
 
-      const usernameInput = document.getElementById("profile-username") as HTMLInputElement;
-      const emailInput = document.getElementById("profile-email") as HTMLInputElement;
-      const languageSelect = document.getElementById("profile-language") as HTMLSelectElement;
-      const avatarImg = document.getElementById("user-avatar") as HTMLImageElement;
-      const avatarUrlInput = document.getElementById("profile-avatar-url") as HTMLInputElement;
-      const twoFAToggle = document.getElementById("profile-2fa") as HTMLInputElement;
+      const usernameInput = document.getElementById(
+        "profile-username",
+      ) as HTMLInputElement;
+      const emailInput = document.getElementById(
+        "profile-email",
+      ) as HTMLInputElement;
+      const languageSelect = document.getElementById(
+        "profile-language",
+      ) as HTMLSelectElement;
+      const avatarImg = document.getElementById(
+        "user-avatar",
+      ) as HTMLImageElement;
+      const avatarUrlInput = document.getElementById(
+        "profile-avatar-url",
+      ) as HTMLInputElement;
+      const twoFAToggle = document.getElementById(
+        "profile-2fa",
+      ) as HTMLInputElement;
 
       if (usernameInput) usernameInput.value = user.login || "";
       if (emailInput) emailInput.value = user.email || "";
@@ -57,11 +347,9 @@ export class GamePage {
       if (avatarUrlInput) avatarUrlInput.value = user.avatarUrl || "";
       if (twoFAToggle) twoFAToggle.checked = !!user.secure_auth;
 
-      // Gestion des comptes Google
       if (data.auth_provider === "google") {
         this.disableGoogleOnlyFields();
       }
-      // Mettre à jour le statut 2FA et l'affichage
       this.update2FAStatus(data.secure_auth || false);
       this.updateProfileDisplay();
       this.updateAuthBadge(data.auth_provider || "local");
@@ -73,7 +361,6 @@ export class GamePage {
   }
 
   private disableGoogleOnlyFields(): void {
-    // Désactiver username et email
     const usernameInput = document.getElementById(
       "profile-username",
     ) as HTMLInputElement;
@@ -93,7 +380,6 @@ export class GamePage {
       emailInput.title = "Email cannot be changed for Google accounts";
     }
 
-    // Désactiver le bouton "save basic"
     const saveBasicBtn = document.getElementById(
       "save-basic-btn",
     ) as HTMLButtonElement;
@@ -101,7 +387,6 @@ export class GamePage {
       saveBasicBtn.textContent = "save";
     }
 
-    //  Masquer complètement la section mot de passe
     const passwordSection = document.querySelector(
       ".bg-gray-900:has(#profile-new-password)",
     );
@@ -109,7 +394,6 @@ export class GamePage {
       passwordSection.classList.add("hidden");
     }
 
-    //  Masquer complètement la section 2FA
     const securitySection = document.querySelector(
       ".bg-gray-900:has(#profile-2fa)",
     );
@@ -117,7 +401,6 @@ export class GamePage {
       securitySection.classList.add("hidden");
     }
   }
-  //  Nouvelle méthode à ajouter dans votre classe
   private updateAuthBadge(authProvider: string): void {
     const authBadge = document.getElementById("auth-provider-badge");
     if (authBadge) {
@@ -158,7 +441,6 @@ export class GamePage {
       if (response.ok) {
         const data = await response.json();
         this.friendsList = data || [];
-        console.log("Friends loaded:", this.friendsList);
         this.renderFriendsSection();
       } else {
         console.error("Failed to load friends");
@@ -196,9 +478,7 @@ export class GamePage {
           `Friend ${username} added successfully!`,
           "success",
         );
-        // Recharger la liste
         await this.loadFriends();
-        // Clear input
         const input = document.getElementById(
           "add-friend-input",
         ) as HTMLInputElement;
@@ -264,8 +544,6 @@ export class GamePage {
       `;
       return;
     }
-    //debug
-    console.log("Rendering friends list:", this.friendsList);
     container.innerHTML = this.friendsList
       .map(
         (friend) => `
@@ -391,7 +669,7 @@ export class GamePage {
                             </div>
                         </div>
 
-                        <!-- Tournament Management - VERSION SIMPLIFIÉE -->
+                        <!-- Tournament Management -->
                                                 <div class="grid grid-cols-1 gap-6">
                                                     <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
                                                         <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
@@ -411,7 +689,6 @@ export class GamePage {
                                                     </div>
                                                 </div>
                     </div>
-
                     <!-- Section Dashboard -->
                     <div id="section-dashboard" class="section hidden">
                         <div class="text-center mb-8">
@@ -419,18 +696,155 @@ export class GamePage {
                                 data.statistics
                             </h2>
                             <p class="font-mono text-gray-500 opacity-80">
-                                <span class="text-blue-500">></span> performance data
+                                <span class="text-blue-500">></span> performance analytics
                             </p>
                         </div>
 
-                        <!-- Empty State -->
-                        <div class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center relative overflow-hidden backdrop-blur-sm">
-                            <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+                        <!-- Stats Cards Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                            <!-- Total Games -->
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+                                <div class="text-center">
+                                    <div class="text-3xl font-mono font-bold text-blue-400 mb-2">--</div>
+                                    <div class="text-sm font-mono text-gray-400">TOTAL GAMES</div>
+                                    <div class="text-xs font-mono text-gray-600 mt-1">matches.exe</div>
+                                </div>
+                            </div>
 
-                            <div class="text-gray-500">
-                                <div class="text-6xl mb-4 font-mono">[STATS]</div>
-                                <div class="font-mono text-lg mb-2">No statistics available</div>
-                                <div class="font-mono text-sm text-gray-600">// a faire</div>
+                            <!-- Wins -->
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #10b981, transparent);"></div>
+                                <div class="text-center">
+                                    <div class="text-3xl font-mono font-bold text-green-400 mb-2">--</div>
+                                    <div class="text-sm font-mono text-gray-400">VICTORIES</div>
+                                    <div class="text-xs font-mono text-gray-600 mt-1">win.count</div>
+                                </div>
+                            </div>
+
+                            <!-- Win Rate -->
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
+                                <div class="text-center">
+                                    <div class="text-3xl font-mono font-bold text-amber-400 mb-2">--%</div>
+                                    <div class="text-sm font-mono text-gray-400">WIN RATE</div>
+                                    <div class="text-xs font-mono text-gray-600 mt-1">efficiency</div>
+                                </div>
+                            </div>
+
+                            <!-- Ranking -->
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #8b5cf6, transparent);"></div>
+                                <div class="text-center">
+                                    <div class="text-3xl font-mono font-bold text-purple-400 mb-2">#--</div>
+                                    <div class="text-sm font-mono text-gray-400">RANKING</div>
+                                    <div class="text-xs font-mono text-gray-600 mt-1">leaderboard</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Performance Overview -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                            <!-- Performance Trend -->
+                            <div class="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+                                <h3 class="font-mono font-bold text-lg text-blue-400 mb-4">$ performance --trend</h3>
+
+                                <!-- Chart Area -->
+                                <div class="h-48 bg-black border border-gray-700 rounded-lg p-4 relative">
+                                    <!-- Grid Lines -->
+                                    <div class="absolute inset-0 p-4">
+                                        <div class="w-full h-full relative">
+                                            <!-- Horizontal grid lines -->
+                                            <div class="absolute w-full border-t border-gray-700 opacity-30" style="top: 20%;"></div>
+                                            <div class="absolute w-full border-t border-gray-700 opacity-30" style="top: 40%;"></div>
+                                            <div class="absolute w-full border-t border-gray-700 opacity-30" style="top: 60%;"></div>
+                                            <div class="absolute w-full border-t border-gray-700 opacity-30" style="top: 80%;"></div>
+
+                                            <!-- Vertical grid lines -->
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 14%;"></div>
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 28%;"></div>
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 42%;"></div>
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 56%;"></div>
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 70%;"></div>
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 84%;"></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- SVG vide pour être rempli plus tard -->
+                                    <svg id="performance-chart" class="w-full h-full absolute inset-0 p-4" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                        <!-- Sera rempli par JavaScript -->
+                                    </svg>
+
+                                    <!-- Message d'attente -->
+                                    <div id="chart-placeholder" class="absolute inset-0 flex items-center justify-center">
+                                        <div class="text-center text-gray-600">
+                                            <div class="font-mono text-sm">--No data yet--</div>
+                                            <p class="font-mono text-xs mt-1 opacity-70">Play matches to see trends</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Labels -->
+                                    <div class="absolute bottom-2 left-4 font-mono text-xs text-gray-500">7d ago</div>
+                                    <div class="absolute bottom-2 right-4 font-mono text-xs text-gray-500">today</div>
+                                    <div class="absolute top-2 right-4 font-mono text-xs text-blue-400">performance %</div>
+                                </div>
+                            </div>
+
+                            <!-- Quick Stats -->
+                            <div class="space-y-4">
+                                <!-- Win Streak -->
+                                <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                    <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #10b981, transparent);"></div>
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="font-mono text-sm text-gray-400">CURRENT STREAK</div>
+                                            <div class="font-mono text-3xl font-bold text-green-400">--</div>
+                                        </div>
+                                        <div class="text-green-400 opacity-60">
+                                            <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="font-mono text-xs text-gray-600 mt-2">wins.consecutive</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Matches -->
+                        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                            <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #8b5cf6, transparent);"></div>
+                            <h3 class="font-mono font-bold text-lg text-purple-400 mb-6">$ match-history --recent</h3>
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full font-mono text-sm">
+                                    <thead>
+                                        <tr class="border-b border-gray-700">
+                                            <th class="text-left py-3 px-4 text-gray-400">OPPONENT</th>
+                                            <th class="text-left py-3 px-4 text-gray-400">RESULT</th>
+                                            <th class="text-left py-3 px-4 text-gray-400">SCORE</th>
+                                            <th class="text-left py-3 px-4 text-gray-400">MODE</th>
+                                            <th class="text-left py-3 px-4 text-gray-400">DATE</th>
+                                            <th class="text-left py-3 px-4 text-gray-400">DURATION</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="6" class="py-8 text-center text-gray-500 font-mono">
+                                                <div class="text-lg">[LOADING...]</div>
+                                                <p class="text-xs mt-1">Fetching match history...</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- View More Button -->
+                            <div class="mt-4 text-center">
+                                <button class="font-mono text-sm text-gray-400 hover:text-blue-400 transition-colors duration-200 border border-gray-700 px-4 py-2 rounded-lg hover:border-blue-500">
+                                    $ load-more --matches
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -634,7 +1048,6 @@ export class GamePage {
   }
 
   private attachEvents(): void {
-    // passer dune section a lautre
     document.querySelectorAll(".nav-btn").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         const section = (e.target as HTMLElement).dataset.section!;
@@ -642,12 +1055,10 @@ export class GamePage {
       });
     });
 
-    // logout
     document.getElementById("logout-btn")!.addEventListener("click", () => {
       this.handleLogout();
     });
 
-    // les gamemode
     document.getElementById("local-game-btn")!.addEventListener("click", () => {
       this.startGame("local");
     });
@@ -662,12 +1073,10 @@ export class GamePage {
         this.startGame("tournament");
       });
 
-    // Ajouter les événements du profil
     this.attachProfileEvents();
   }
 
   private attachProfileEvents(): void {
-    // Avatar URL preview
     document
       .getElementById("profile-avatar-url")
       ?.addEventListener("input", (e) => {
@@ -680,14 +1089,12 @@ export class GamePage {
         }
       });
 
-    // Avatar edit button
     document
       .getElementById("avatar-edit-btn")
       ?.addEventListener("click", () => {
         document.getElementById("profile-avatar-url")?.focus();
       });
 
-    // 2FA toggle visual update
     document.getElementById("profile-2fa")?.addEventListener("change", (e) => {
       const isEnabled = (e.target as HTMLInputElement).checked;
       const statusElement = document.getElementById("2fa-toggle-status");
@@ -697,7 +1104,6 @@ export class GamePage {
       }
     });
 
-    // Save buttons
     document.getElementById("save-basic-btn")?.addEventListener("click", () => {
       this.saveBasicInfo();
     });
@@ -796,10 +1202,8 @@ export class GamePage {
           "$ basic information updated successfully",
           "success",
         );
-        // Update current user data and display
         Object.assign(this.currentUser, updateData);
         this.updateProfileDisplay();
-        
 
         btn.textContent = "saved ✓";
         btn.style.backgroundColor = "#10b981";
@@ -850,7 +1254,6 @@ export class GamePage {
       return;
     }
 
-    // Basic password validation
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
     if (!passwordRegex.test(newPassword)) {
       this.showProfileAlert(
@@ -881,7 +1284,6 @@ export class GamePage {
           "$ password updated successfully",
           "success",
         );
-        // Clear password fields
         (
           document.getElementById("profile-new-password") as HTMLInputElement
         ).value = "";
@@ -962,7 +1364,6 @@ export class GamePage {
           "profile-alert",
           `$ ${data.error || "2FA update failed"}`,
         );
-        // Revert toggle
         if (this.currentUser) {
           (document.getElementById("profile-2fa") as HTMLInputElement).checked =
             this.currentUser.secure_auth;
@@ -1014,24 +1415,19 @@ export class GamePage {
     this.hideProfileAlert("profile-success");
   }
 
-  //bouton retour avant a revoir
   private handleBrowserNavigation(): void {
     window.addEventListener("popstate", (event) => {
       const path = window.location.pathname;
 
       if (path === "/") {
-        // retour auth
         window.router.navigate("/");
         return;
       }
 
-      // ✅ Gestion de /game ET /game/section
       if (path.startsWith("/game")) {
         if (path === "/game") {
-          // /game seul = retour au tournament par défaut
           this.showSectionWithoutPush("tournament");
         } else if (path.startsWith("/game/")) {
-          // /game/section = afficher la section
           const section = path.replace("/game/", "");
           if (["tournament", "dashboard", "profile"].includes(section)) {
             this.showSectionWithoutPush(section);
@@ -1042,7 +1438,6 @@ export class GamePage {
       }
     });
 
-    // detection depuis url
     const currentPath = window.location.pathname;
     if (currentPath.startsWith("/game/")) {
       const section = currentPath.replace("/game/", "");
@@ -1050,18 +1445,15 @@ export class GamePage {
         this.currentSection = section;
       }
     } else if (currentPath === "/game") {
-      // ✅ Ajouter cette condition pour /game seul
       this.currentSection = "tournament";
     }
   }
 
-  // afficher section sans push dans historique
   private showSectionWithoutPush(sectionName: string): void {
     document.querySelectorAll(".section").forEach((section) => {
       section.classList.add("hidden");
     });
 
-    // desactive les boutons nav
     document.querySelectorAll(".nav-btn").forEach((btn) => {
       btn.classList.remove("bg-blue-500", "text-white");
       btn.classList.add("text-gray-400");
@@ -1071,7 +1463,6 @@ export class GamePage {
       .getElementById(`section-${sectionName}`)!
       .classList.remove("hidden");
 
-    // active bouton nav
     const activeBtn = document.querySelector(
       `[data-section="${sectionName}"]`,
     )!;
@@ -1080,16 +1471,21 @@ export class GamePage {
 
     this.currentSection = sectionName;
     console.log(`Section active (browser nav): ${sectionName}`);
+    if (sectionName === "dashboard") {
+      this.loadDashboardData();
+    } else if (sectionName === "profile") {
+      this.loadUserProfile();
+    }
   }
 
-  // Supprimer l'ancienne fonction handleAvatarUpload car maintenant l'avatar se gère via URL
   private showSection(sectionName: string): void {
-    if (this.currentSection === sectionName) { return; }
+    if (this.currentSection === sectionName) {
+      return;
+    }
     document.querySelectorAll(".section").forEach((section) => {
       section.classList.add("hidden");
     });
 
-    // desactive boutons nav
     document.querySelectorAll(".nav-btn").forEach((btn) => {
       btn.classList.remove("bg-blue-500", "text-white");
       btn.classList.add("text-gray-400");
@@ -1099,43 +1495,37 @@ export class GamePage {
       .getElementById(`section-${sectionName}`)!
       .classList.remove("hidden");
 
-    // active bouton nav
     const activeBtn = document.querySelector(
       `[data-section="${sectionName}"]`,
     )!;
     activeBtn.classList.remove("text-gray-400");
     activeBtn.classList.add("bg-blue-500", "text-white");
 
-    //maj url
     const newUrl = `/game/${sectionName}`;
     if (window.location.pathname !== newUrl) {
       window.history.pushState({ section: sectionName }, "", newUrl);
     }
 
     this.currentSection = sectionName;
-    console.log(`Section active: ${sectionName}`);
-
     if (sectionName === "profile") {
       this.loadUserProfile();
+    }
+    if (sectionName === "dashboard") {
+      this.loadDashboardData();
     }
   }
 
   private startGame(mode: "local" | "ai" | "tournament"): void {
-    console.log(`Starting ${mode} game...`);
-
     const canvasDiv = document.getElementById("game-canvas")!;
     canvasDiv.innerHTML = `<canvas id="renderCanvas" class="w-full h-full" tabindex="0"></canvas>`;
 
-    // Supprimer un éventuel script déjà chargé
     const oldScript = document.getElementById("pong-script");
     if (oldScript) oldScript.remove();
 
-    // Choisir le script selon le mode
-    let scriptSrc = "../../pong/pong.js"; // par défaut
+    let scriptSrc = "../../pong/pong.js";
     if (mode === "ai") scriptSrc = "../../pong/pov.js";
     if (mode === "tournament") scriptSrc = "../../pong/newPov.js";
 
-    // Charger le script choisi
     const script = document.createElement("script");
     script.id = "pong-script";
     script.src = scriptSrc;

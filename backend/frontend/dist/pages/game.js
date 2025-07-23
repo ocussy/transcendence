@@ -1,5 +1,5 @@
-import { verifyToken } from "./auth.js";
 import { tryConnectWebSocketIfAuthenticated } from "./auth.js";
+import { verifyToken } from "./auth.js";
 export class GamePage {
     constructor() {
         this.currentSection = "tournament";
@@ -20,9 +20,232 @@ export class GamePage {
         }
         this.showSectionWithoutPush(targetSection);
     }
+    async loadDashboardData() {
+        try {
+            await this.loadUserStats();
+            await this.loadMatchHistory();
+            await this.loadPerformanceData();
+        }
+        catch (error) {
+            console.error("Error loading dashboard data:", error);
+        }
+    }
+    async loadUserStats() {
+        try {
+            const response = await fetch("/stats", { credentials: "include" });
+            if (!response.ok)
+                throw new Error("Failed to fetch stats");
+            const stats = await response.json();
+            this.updateStatsCards(stats);
+        }
+        catch (error) {
+            console.error("Error loading user stats:", error);
+        }
+    }
+    updateStatsCards(stats) {
+        const totalGamesCard = document.querySelector(".grid .bg-gray-900:nth-child(1) .text-3xl.font-mono.font-bold.text-blue-400");
+        if (totalGamesCard) {
+            totalGamesCard.textContent = stats.totalGames.toString();
+        }
+        const victoriesCard = document.querySelector(".grid .bg-gray-900:nth-child(2) .text-3xl.font-mono.font-bold.text-green-400");
+        if (victoriesCard) {
+            victoriesCard.textContent = stats.totalWins.toString();
+        }
+        const winRateCard = document.querySelector(".grid .bg-gray-900:nth-child(3) .text-3xl.font-mono.font-bold.text-amber-400");
+        if (winRateCard) {
+            winRateCard.textContent = `${stats.winRate}%`;
+        }
+        const rankingCard = document.querySelector(".grid .bg-gray-900:nth-child(4) .text-3xl.font-mono.font-bold.text-purple-400");
+        if (rankingCard) {
+            rankingCard.textContent = stats.ranking ? `#${stats.ranking}` : "#--";
+        }
+        const streakCard = document.querySelector(".space-y-4 .text-3xl.font-bold.text-green-400");
+        if (streakCard) {
+            streakCard.textContent = stats.currentStreak.toString();
+        }
+    }
+    async loadMatchHistory() {
+        try {
+            const response = await fetch("/match-history?limit=5", {
+                credentials: "include",
+            });
+            if (!response.ok)
+                throw new Error("Failed to fetch match history");
+            const matches = await response.json();
+            const tbody = document.querySelector("#section-dashboard tbody");
+            if (!tbody)
+                return;
+            if (matches.length === 0) {
+                tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-8 text-center text-gray-500 font-mono">
+              No matches played yet
+            </td>
+          </tr>
+        `;
+                return;
+            }
+            tbody.innerHTML = matches
+                .map((match) => `
+        <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
+          <td class="py-3 px-4 text-white">${this.escapeHtml(match.opponent)}</td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-1 rounded text-xs ${this.getResultClass(match.result)}">
+              ${match.result}
+            </span>
+          </td>
+          <td class="py-3 px-4 text-gray-300">${match.score1 || 0} - ${match.score2 || 0}</td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-1 rounded text-xs ${this.getModeClass(match.mode)}">
+              ${(match.mode || "normal").toUpperCase()}
+            </span>
+          </td>
+          <td class="py-3 px-4 text-gray-400">${this.formatDate(match.formatted_date)}</td>
+          <td class="py-3 px-4 text-gray-500">${this.formatDuration(match.duration)}</td>
+        </tr>
+      `)
+                .join("");
+        }
+        catch (error) {
+            console.error("Error loading match history:", error);
+            this.showMatchHistoryError();
+        }
+    }
+    getResultClass(result) {
+        switch (result) {
+            case "WIN":
+                return "bg-green-500/20 text-green-400 border border-green-500/30";
+            case "LOSS":
+                return "bg-red-500/20 text-red-400 border border-red-500/30";
+            case "DRAW":
+                return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
+            default:
+                return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
+        }
+    }
+    getModeClass(mode) {
+        switch (mode?.toLowerCase()) {
+            case "tournament":
+                return "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30";
+            case "ai":
+                return "bg-purple-500/20 text-purple-400 border border-purple-500/30";
+            case "local":
+                return "bg-blue-500/20 text-blue-400 border border-blue-500/30";
+            default:
+                return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
+        }
+    }
+    formatDate(dateString) {
+        if (!dateString)
+            return "--";
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffTime = Math.abs(now.getTime() - date.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays === 1)
+            return "Today";
+        if (diffDays === 2)
+            return "Yesterday";
+        if (diffDays <= 7)
+            return `${diffDays - 1} days ago`;
+        return date.toLocaleDateString();
+    }
+    formatDuration(seconds) {
+        if (!seconds)
+            return "--";
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${minutes}m ${secs}s`;
+    }
+    escapeHtml(text) {
+        if (!text)
+            return "";
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    showMatchHistoryError() {
+        const tbody = document.querySelector("#section-dashboard tbody");
+        if (tbody) {
+            tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="py-8 text-center text-red-400 font-mono">
+            $ error: failed to load match history
+          </td>
+        </tr>
+      `;
+        }
+    }
+    async loadPerformanceData() {
+        try {
+            const response = await fetch("/stats/performance", {
+                credentials: "include",
+            });
+            if (!response.ok)
+                throw new Error("Failed to fetch performance data");
+            const performanceData = await response.json();
+            if (performanceData.length > 0) {
+                this.updatePerformanceChart(performanceData);
+            }
+            else {
+                this.showNoPerformanceData();
+            }
+        }
+        catch (error) {
+            console.error("Error loading performance data:", error);
+            this.showNoPerformanceData();
+        }
+    }
+    updatePerformanceChart(data) {
+        const svg = document.getElementById("performance-chart");
+        const placeholder = document.getElementById("chart-placeholder");
+        if (!svg)
+            return;
+        if (placeholder) {
+            placeholder.style.display = "none";
+        }
+        const maxWinRate = Math.max(...data.map((d) => d.winRate), 100);
+        const points = data
+            .map((d, index) => {
+            const x = 5 + (index * 90) / Math.max(data.length - 1, 1);
+            const y = 95 - (d.winRate / maxWinRate) * 90;
+            return `${x},${y}`;
+        })
+            .join(" ");
+        svg.innerHTML = `
+      <polyline
+        fill="none"
+        stroke="#3b82f6"
+        stroke-width="0.8"
+        points="${points}"
+      />
+      ${data
+            .map((d, index) => {
+            const x = 5 + (index * 90) / Math.max(data.length - 1, 1);
+            const y = 95 - (d.winRate / maxWinRate) * 90;
+            return `<circle cx="${x}" cy="${y}" r="1" fill="#3b82f6"/>`;
+        })
+            .join("")}
+    `;
+    }
+    showNoPerformanceData() {
+        const placeholder = document.getElementById("chart-placeholder");
+        if (placeholder) {
+            placeholder.style.display = "flex";
+            placeholder.innerHTML = `
+        <div class="text-center text-gray-600">
+          <div class="font-mono text-sm">--No recent data--</div>
+          <p class="font-mono text-xs mt-1 opacity-70">Play matches to see performance trends</p>
+        </div>
+      `;
+        }
+    }
     async loadUserProfile() {
         try {
-            const res = await fetch("/user", { method: "GET", credentials: "include" });
+            const res = await fetch("/user", {
+                method: "GET",
+                credentials: "include",
+            });
             if (!res.ok)
                 throw new Error("Not authenticated");
             tryConnectWebSocketIfAuthenticated();
@@ -122,7 +345,6 @@ export class GamePage {
             if (response.ok) {
                 const data = await response.json();
                 this.friendsList = data || [];
-                console.log("Friends loaded:", this.friendsList);
                 this.renderFriendsSection();
             }
             else {
@@ -208,7 +430,6 @@ export class GamePage {
       `;
             return;
         }
-        console.log("Rendering friends list:", this.friendsList);
         container.innerHTML = this.friendsList
             .map((friend) => `
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-3 mb-2">
@@ -330,7 +551,7 @@ export class GamePage {
                             </div>
                         </div>
 
-                        <!-- Tournament Management - VERSION SIMPLIFIÉE -->
+                        <!-- Tournament Management -->
                                                 <div class="grid grid-cols-1 gap-6">
                                                     <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
                                                         <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
@@ -350,7 +571,6 @@ export class GamePage {
                                                     </div>
                                                 </div>
                     </div>
-
                     <!-- Section Dashboard -->
                     <div id="section-dashboard" class="section hidden">
                         <div class="text-center mb-8">
@@ -358,18 +578,155 @@ export class GamePage {
                                 data.statistics
                             </h2>
                             <p class="font-mono text-gray-500 opacity-80">
-                                <span class="text-blue-500">></span> performance data
+                                <span class="text-blue-500">></span> performance analytics
                             </p>
                         </div>
 
-                        <!-- Empty State -->
-                        <div class="bg-gray-900 border border-gray-800 rounded-xl p-12 text-center relative overflow-hidden backdrop-blur-sm">
-                            <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+                        <!-- Stats Cards Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                            <!-- Total Games -->
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+                                <div class="text-center">
+                                    <div class="text-3xl font-mono font-bold text-blue-400 mb-2">--</div>
+                                    <div class="text-sm font-mono text-gray-400">TOTAL GAMES</div>
+                                    <div class="text-xs font-mono text-gray-600 mt-1">matches.exe</div>
+                                </div>
+                            </div>
 
-                            <div class="text-gray-500">
-                                <div class="text-6xl mb-4 font-mono">[STATS]</div>
-                                <div class="font-mono text-lg mb-2">No statistics available</div>
-                                <div class="font-mono text-sm text-gray-600">// a faire</div>
+                            <!-- Wins -->
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #10b981, transparent);"></div>
+                                <div class="text-center">
+                                    <div class="text-3xl font-mono font-bold text-green-400 mb-2">--</div>
+                                    <div class="text-sm font-mono text-gray-400">VICTORIES</div>
+                                    <div class="text-xs font-mono text-gray-600 mt-1">win.count</div>
+                                </div>
+                            </div>
+
+                            <!-- Win Rate -->
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
+                                <div class="text-center">
+                                    <div class="text-3xl font-mono font-bold text-amber-400 mb-2">--%</div>
+                                    <div class="text-sm font-mono text-gray-400">WIN RATE</div>
+                                    <div class="text-xs font-mono text-gray-600 mt-1">efficiency</div>
+                                </div>
+                            </div>
+
+                            <!-- Ranking -->
+                            <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #8b5cf6, transparent);"></div>
+                                <div class="text-center">
+                                    <div class="text-3xl font-mono font-bold text-purple-400 mb-2">#--</div>
+                                    <div class="text-sm font-mono text-gray-400">RANKING</div>
+                                    <div class="text-xs font-mono text-gray-600 mt-1">leaderboard</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Performance Overview -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                            <!-- Performance Trend -->
+                            <div class="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+                                <h3 class="font-mono font-bold text-lg text-blue-400 mb-4">$ performance --trend</h3>
+
+                                <!-- Chart Area -->
+                                <div class="h-48 bg-black border border-gray-700 rounded-lg p-4 relative">
+                                    <!-- Grid Lines -->
+                                    <div class="absolute inset-0 p-4">
+                                        <div class="w-full h-full relative">
+                                            <!-- Horizontal grid lines -->
+                                            <div class="absolute w-full border-t border-gray-700 opacity-30" style="top: 20%;"></div>
+                                            <div class="absolute w-full border-t border-gray-700 opacity-30" style="top: 40%;"></div>
+                                            <div class="absolute w-full border-t border-gray-700 opacity-30" style="top: 60%;"></div>
+                                            <div class="absolute w-full border-t border-gray-700 opacity-30" style="top: 80%;"></div>
+
+                                            <!-- Vertical grid lines -->
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 14%;"></div>
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 28%;"></div>
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 42%;"></div>
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 56%;"></div>
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 70%;"></div>
+                                            <div class="absolute h-full border-l border-gray-700 opacity-30" style="left: 84%;"></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- SVG vide pour être rempli plus tard -->
+                                    <svg id="performance-chart" class="w-full h-full absolute inset-0 p-4" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                        <!-- Sera rempli par JavaScript -->
+                                    </svg>
+
+                                    <!-- Message d'attente -->
+                                    <div id="chart-placeholder" class="absolute inset-0 flex items-center justify-center">
+                                        <div class="text-center text-gray-600">
+                                            <div class="font-mono text-sm">--No data yet--</div>
+                                            <p class="font-mono text-xs mt-1 opacity-70">Play matches to see trends</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Labels -->
+                                    <div class="absolute bottom-2 left-4 font-mono text-xs text-gray-500">7d ago</div>
+                                    <div class="absolute bottom-2 right-4 font-mono text-xs text-gray-500">today</div>
+                                    <div class="absolute top-2 right-4 font-mono text-xs text-blue-400">performance %</div>
+                                </div>
+                            </div>
+
+                            <!-- Quick Stats -->
+                            <div class="space-y-4">
+                                <!-- Win Streak -->
+                                <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                                    <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #10b981, transparent);"></div>
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="font-mono text-sm text-gray-400">CURRENT STREAK</div>
+                                            <div class="font-mono text-3xl font-bold text-green-400">--</div>
+                                        </div>
+                                        <div class="text-green-400 opacity-60">
+                                            <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <div class="font-mono text-xs text-gray-600 mt-2">wins.consecutive</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Matches -->
+                        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                            <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #8b5cf6, transparent);"></div>
+                            <h3 class="font-mono font-bold text-lg text-purple-400 mb-6">$ match-history --recent</h3>
+
+                            <div class="overflow-x-auto">
+                                <table class="w-full font-mono text-sm">
+                                    <thead>
+                                        <tr class="border-b border-gray-700">
+                                            <th class="text-left py-3 px-4 text-gray-400">OPPONENT</th>
+                                            <th class="text-left py-3 px-4 text-gray-400">RESULT</th>
+                                            <th class="text-left py-3 px-4 text-gray-400">SCORE</th>
+                                            <th class="text-left py-3 px-4 text-gray-400">MODE</th>
+                                            <th class="text-left py-3 px-4 text-gray-400">DATE</th>
+                                            <th class="text-left py-3 px-4 text-gray-400">DURATION</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="6" class="py-8 text-center text-gray-500 font-mono">
+                                                <div class="text-lg">[LOADING...]</div>
+                                                <p class="text-xs mt-1">Fetching match history...</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- View More Button -->
+                            <div class="mt-4 text-center">
+                                <button class="font-mono text-sm text-gray-400 hover:text-blue-400 transition-colors duration-200 border border-gray-700 px-4 py-2 rounded-lg hover:border-blue-500">
+                                    $ load-more --matches
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -888,6 +1245,12 @@ export class GamePage {
         activeBtn.classList.add("bg-blue-500", "text-white");
         this.currentSection = sectionName;
         console.log(`Section active (browser nav): ${sectionName}`);
+        if (sectionName === "dashboard") {
+            this.loadDashboardData();
+        }
+        else if (sectionName === "profile") {
+            this.loadUserProfile();
+        }
     }
     showSection(sectionName) {
         if (this.currentSection === sectionName) {
@@ -911,13 +1274,14 @@ export class GamePage {
             window.history.pushState({ section: sectionName }, "", newUrl);
         }
         this.currentSection = sectionName;
-        console.log(`Section active: ${sectionName}`);
         if (sectionName === "profile") {
             this.loadUserProfile();
         }
+        if (sectionName === "dashboard") {
+            this.loadDashboardData();
+        }
     }
     startGame(mode) {
-        console.log(`Starting ${mode} game...`);
         const canvasDiv = document.getElementById("game-canvas");
         canvasDiv.innerHTML = `<canvas id="renderCanvas" class="w-full h-full" tabindex="0"></canvas>`;
         const oldScript = document.getElementById("pong-script");
