@@ -101,3 +101,23 @@ export function setupRemoteSocket(app) {
         }
     });
 }
+
+export function setupRemoteGame(app) {
+    app.get("/ws/remote/game", { websocket: true }, async (connection, req) => {
+        try {
+        const decoded = await authenticateSocket(req, connection);
+        if (!decoded) return;
+    
+        const userId = decoded.id;
+
+        
+    
+        connection.socket.on('close', () => {
+            console.log(`Déconnexion de l'utilisateur ${userId} (REMOTE GAME)`);
+        });
+        } catch (err) {
+        console.error("Token invalide:", err);
+        connection.socket.close();
+        }
+    });
+}
