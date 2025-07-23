@@ -2,7 +2,7 @@ import db from "../db.js";
 import { loginExist, isStrongPassword, emailExist } from "./auth.js";
 import bcrypt from "bcrypt";
 import { getMatchesByUser } from "./matches.js";
-import { logConnectedUsers} from "../server.js";
+import { logConnectedUsers} from "../remote.js";
 import {app} from "../server.js";
 
 export async function verifyUser(req, reply) {

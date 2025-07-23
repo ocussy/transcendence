@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename)
 
 const dbPath = path.join(__dirname, 'db_volume', 'db.sqlite')
 
-const db = new Database(dbPath)
+export const db = new Database(dbPath)
 
 db.exec(`
     CREATE TABLE IF NOT EXISTS users (
