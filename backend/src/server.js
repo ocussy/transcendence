@@ -11,6 +11,8 @@ import authRoutes from "./routes/auth.js";
 import jwt from "@fastify/jwt";
 import dotenv from "dotenv";
 import cookie from "@fastify/cookie";
+import statsRoutes from "./routes/stats.js";
+
 // import websocket from "@fastify/websocket";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -46,6 +48,7 @@ app.register(formbody);
 app.register(userRoutes);
 app.register(matchRoutes);
 app.register(authRoutes);
+app.register(statsRoutes);
 
 // pour SPA sinon les routes pas trouve
 const spaRoutes = [
@@ -73,22 +76,21 @@ app.decorate("authenticate", async (request, reply) => {
   }
 });
 
-app.get('/me', { preHandler: [app.authenticate] }, async (request, reply) => {
+app.get("/me", { preHandler: [app.authenticate] }, async (request, reply) => {
   const token = request.user; // => contenu du JWT
 
   // Mettre à jour la liste des utilisateurs connectés
-  const user = db.prepare('SELECT login FROM users WHERE id = ?').get(token.id);
+  const user = db.prepare("SELECT login FROM users WHERE id = ?").get(token.id);
   connectedUsers.set(user.id, {
-    login : user.login,
+    login: user.login,
   });
 
-  return { message: 'User verified', user };
+  return { message: "User verified", user };
 });
 
-app.get('/connected-users', async (req, reply) => {
+app.get("/connected-users", async (req, reply) => {
   return Array.from(connectedUsers.values());
 });
-
 
 const start = async () => {
   try {

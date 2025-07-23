@@ -19,6 +19,226 @@ export class GamePage {
         }
         this.showSectionWithoutPush(targetSection);
     }
+    async loadDashboardData() {
+        try {
+            await this.loadUserStats();
+            await this.loadMatchHistory();
+            await this.loadPerformanceData();
+        }
+        catch (error) {
+            console.error("Error loading dashboard data:", error);
+        }
+    }
+    async loadUserStats() {
+        try {
+            const response = await fetch("/stats", { credentials: "include" });
+            if (!response.ok)
+                throw new Error("Failed to fetch stats");
+            const stats = await response.json();
+            this.updateStatsCards(stats);
+        }
+        catch (error) {
+            console.error("Error loading user stats:", error);
+        }
+    }
+    updateStatsCards(stats) {
+        const totalGamesCard = document.querySelector(".grid .bg-gray-900:nth-child(1) .text-3xl.font-mono.font-bold.text-blue-400");
+        if (totalGamesCard) {
+            totalGamesCard.textContent = stats.totalGames.toString();
+        }
+        const victoriesCard = document.querySelector(".grid .bg-gray-900:nth-child(2) .text-3xl.font-mono.font-bold.text-green-400");
+        if (victoriesCard) {
+            victoriesCard.textContent = stats.totalWins.toString();
+        }
+        const winRateCard = document.querySelector(".grid .bg-gray-900:nth-child(3) .text-3xl.font-mono.font-bold.text-amber-400");
+        if (winRateCard) {
+            winRateCard.textContent = `${stats.winRate}%`;
+        }
+        const rankingCard = document.querySelector(".grid .bg-gray-900:nth-child(4) .text-3xl.font-mono.font-bold.text-purple-400");
+        if (rankingCard) {
+            rankingCard.textContent = stats.ranking ? `#${stats.ranking}` : "#--";
+        }
+        const streakCard = document.querySelector(".space-y-4 .text-3xl.font-bold.text-green-400");
+        if (streakCard) {
+            streakCard.textContent = stats.currentStreak.toString();
+        }
+    }
+    async loadMatchHistory() {
+        try {
+            const response = await fetch("/match-history?limit=5", {
+                credentials: "include",
+            });
+            if (!response.ok)
+                throw new Error("Failed to fetch match history");
+            const matches = await response.json();
+            const tbody = document.querySelector("#section-dashboard tbody");
+            if (!tbody)
+                return;
+            if (matches.length === 0) {
+                tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="py-8 text-center text-gray-500 font-mono">
+              No matches played yet
+            </td>
+          </tr>
+        `;
+                return;
+            }
+            tbody.innerHTML = matches
+                .map((match) => `
+        <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
+          <td class="py-3 px-4 text-white">${this.escapeHtml(match.opponent)}</td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-1 rounded text-xs ${this.getResultClass(match.result)}">
+              ${match.result}
+            </span>
+          </td>
+          <td class="py-3 px-4 text-gray-300">${match.score1 || 0} - ${match.score2 || 0}</td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-1 rounded text-xs ${this.getModeClass(match.mode)}">
+              ${(match.mode || "normal").toUpperCase()}
+            </span>
+          </td>
+          <td class="py-3 px-4 text-gray-400">${this.formatDate(match.formatted_date)}</td>
+          <td class="py-3 px-4 text-gray-500">${this.formatDuration(match.duration)}</td>
+        </tr>
+      `)
+                .join("");
+        }
+        catch (error) {
+            console.error("Error loading match history:", error);
+            this.showMatchHistoryError();
+        }
+    }
+    getResultClass(result) {
+        switch (result) {
+            case "WIN":
+                return "bg-green-500/20 text-green-400 border border-green-500/30";
+            case "LOSS":
+                return "bg-red-500/20 text-red-400 border border-red-500/30";
+            case "DRAW":
+                return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
+            default:
+                return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
+        }
+    }
+    getModeClass(mode) {
+        switch (mode?.toLowerCase()) {
+            case "tournament":
+                return "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30";
+            case "ai":
+                return "bg-purple-500/20 text-purple-400 border border-purple-500/30";
+            case "local":
+                return "bg-blue-500/20 text-blue-400 border border-blue-500/30";
+            default:
+                return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
+        }
+    }
+    formatDate(dateString) {
+        if (!dateString)
+            return "--";
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffTime = Math.abs(now.getTime() - date.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (diffDays === 1)
+            return "Today";
+        if (diffDays === 2)
+            return "Yesterday";
+        if (diffDays <= 7)
+            return `${diffDays - 1} days ago`;
+        return date.toLocaleDateString();
+    }
+    formatDuration(seconds) {
+        if (!seconds)
+            return "--";
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${minutes}m ${secs}s`;
+    }
+    escapeHtml(text) {
+        if (!text)
+            return "";
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    showMatchHistoryError() {
+        const tbody = document.querySelector("#section-dashboard tbody");
+        if (tbody) {
+            tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="py-8 text-center text-red-400 font-mono">
+            $ error: failed to load match history
+          </td>
+        </tr>
+      `;
+        }
+    }
+    async loadPerformanceData() {
+        try {
+            const response = await fetch("/stats/performance", {
+                credentials: "include",
+            });
+            if (!response.ok)
+                throw new Error("Failed to fetch performance data");
+            const performanceData = await response.json();
+            if (performanceData.length > 0) {
+                this.updatePerformanceChart(performanceData);
+            }
+            else {
+                this.showNoPerformanceData();
+            }
+        }
+        catch (error) {
+            console.error("Error loading performance data:", error);
+            this.showNoPerformanceData();
+        }
+    }
+    updatePerformanceChart(data) {
+        const svg = document.getElementById("performance-chart");
+        const placeholder = document.getElementById("chart-placeholder");
+        if (!svg)
+            return;
+        if (placeholder) {
+            placeholder.style.display = "none";
+        }
+        const maxWinRate = Math.max(...data.map((d) => d.winRate), 100);
+        const points = data
+            .map((d, index) => {
+            const x = 5 + (index * 90) / Math.max(data.length - 1, 1);
+            const y = 95 - (d.winRate / maxWinRate) * 90;
+            return `${x},${y}`;
+        })
+            .join(" ");
+        svg.innerHTML = `
+      <polyline
+        fill="none"
+        stroke="#3b82f6"
+        stroke-width="0.8"
+        points="${points}"
+      />
+      ${data
+            .map((d, index) => {
+            const x = 5 + (index * 90) / Math.max(data.length - 1, 1);
+            const y = 95 - (d.winRate / maxWinRate) * 90;
+            return `<circle cx="${x}" cy="${y}" r="1" fill="#3b82f6"/>`;
+        })
+            .join("")}
+    `;
+    }
+    showNoPerformanceData() {
+        const placeholder = document.getElementById("chart-placeholder");
+        if (placeholder) {
+            placeholder.style.display = "flex";
+            placeholder.innerHTML = `
+        <div class="text-center text-gray-600">
+          <div class="font-mono text-sm">--No recent data--</div>
+          <p class="font-mono text-xs mt-1 opacity-70">Play matches to see performance trends</p>
+        </div>
+      `;
+        }
+    }
     async loadUserProfile() {
         try {
             const res = await fetch("/user", {
@@ -123,7 +343,6 @@ export class GamePage {
             if (response.ok) {
                 const data = await response.json();
                 this.friendsList = data || [];
-                console.log("Friends loaded:", this.friendsList);
                 this.renderFriendsSection();
             }
             else {
@@ -209,7 +428,6 @@ export class GamePage {
       `;
             return;
         }
-        console.log("Rendering friends list:", this.friendsList);
         container.innerHTML = this.friendsList
             .map((friend) => `
       <div class="bg-gray-800 border border-gray-700 rounded-lg p-3 mb-2">
@@ -331,7 +549,7 @@ export class GamePage {
                             </div>
                         </div>
 
-                        <!-- Tournament Management - VERSION SIMPLIFIÉE -->
+                        <!-- Tournament Management -->
                                                 <div class="grid grid-cols-1 gap-6">
                                                     <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
                                                         <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
@@ -368,7 +586,7 @@ export class GamePage {
                             <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
                                 <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
                                 <div class="text-center">
-                                    <div class="text-3xl font-mono font-bold text-blue-400 mb-2">24</div>
+                                    <div class="text-3xl font-mono font-bold text-blue-400 mb-2">--</div>
                                     <div class="text-sm font-mono text-gray-400">TOTAL GAMES</div>
                                     <div class="text-xs font-mono text-gray-600 mt-1">matches.exe</div>
                                 </div>
@@ -378,7 +596,7 @@ export class GamePage {
                             <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
                                 <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #10b981, transparent);"></div>
                                 <div class="text-center">
-                                    <div class="text-3xl font-mono font-bold text-green-400 mb-2">18</div>
+                                    <div class="text-3xl font-mono font-bold text-green-400 mb-2">--</div>
                                     <div class="text-sm font-mono text-gray-400">VICTORIES</div>
                                     <div class="text-xs font-mono text-gray-600 mt-1">win.count</div>
                                 </div>
@@ -388,7 +606,7 @@ export class GamePage {
                             <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
                                 <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
                                 <div class="text-center">
-                                    <div class="text-3xl font-mono font-bold text-amber-400 mb-2">75%</div>
+                                    <div class="text-3xl font-mono font-bold text-amber-400 mb-2">--%</div>
                                     <div class="text-sm font-mono text-gray-400">WIN RATE</div>
                                     <div class="text-xs font-mono text-gray-600 mt-1">efficiency</div>
                                 </div>
@@ -398,7 +616,7 @@ export class GamePage {
                             <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
                                 <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #8b5cf6, transparent);"></div>
                                 <div class="text-center">
-                                    <div class="text-3xl font-mono font-bold text-purple-400 mb-2">#42</div>
+                                    <div class="text-3xl font-mono font-bold text-purple-400 mb-2">#--</div>
                                     <div class="text-sm font-mono text-gray-400">RANKING</div>
                                     <div class="text-xs font-mono text-gray-600 mt-1">leaderboard</div>
                                 </div>
@@ -412,7 +630,7 @@ export class GamePage {
                                 <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
                                 <h3 class="font-mono font-bold text-lg text-blue-400 mb-4">$ performance --trend</h3>
 
-                                <!-- Mock Chart Area -->
+                                <!-- Chart Area -->
                                 <div class="h-48 bg-black border border-gray-700 rounded-lg p-4 relative">
                                     <!-- Grid Lines -->
                                     <div class="absolute inset-0 p-4">
@@ -433,23 +651,18 @@ export class GamePage {
                                         </div>
                                     </div>
 
-                                    <!-- Performance Line -->
-                                    <svg class="w-full h-full absolute inset-0 p-4" viewBox="0 0 100 100" preserveAspectRatio="none">
-                                        <polyline
-                                            fill="none"
-                                            stroke="#3b82f6"
-                                            stroke-width="0.8"
-                                            points="5,65 20,45 35,35 50,55 65,25 80,40 95,30"
-                                        />
-                                        <!-- Data points -->
-                                        <circle cx="5" cy="65" r="1" fill="#3b82f6"/>
-                                        <circle cx="20" cy="45" r="1" fill="#3b82f6"/>
-                                        <circle cx="35" cy="35" r="1" fill="#3b82f6"/>
-                                        <circle cx="50" cy="55" r="1" fill="#3b82f6"/>
-                                        <circle cx="65" cy="25" r="1" fill="#3b82f6"/>
-                                        <circle cx="80" cy="40" r="1" fill="#3b82f6"/>
-                                        <circle cx="95" cy="30" r="1" fill="#3b82f6"/>
+                                    <!-- SVG vide pour être rempli plus tard -->
+                                    <svg id="performance-chart" class="w-full h-full absolute inset-0 p-4" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                        <!-- Sera rempli par JavaScript -->
                                     </svg>
+
+                                    <!-- Message d'attente -->
+                                    <div id="chart-placeholder" class="absolute inset-0 flex items-center justify-center">
+                                        <div class="text-center text-gray-600">
+                                            <div class="font-mono text-sm">--No data yet--</div>
+                                            <p class="font-mono text-xs mt-1 opacity-70">Play matches to see trends</p>
+                                        </div>
+                                    </div>
 
                                     <!-- Labels -->
                                     <div class="absolute bottom-2 left-4 font-mono text-xs text-gray-500">7d ago</div>
@@ -466,7 +679,7 @@ export class GamePage {
                                     <div class="flex items-center justify-between">
                                         <div>
                                             <div class="font-mono text-sm text-gray-400">CURRENT STREAK</div>
-                                            <div class="font-mono text-3xl font-bold text-green-400">5</div>
+                                            <div class="font-mono text-3xl font-bold text-green-400">--</div>
                                         </div>
                                         <div class="text-green-400 opacity-60">
                                             <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
@@ -497,85 +710,11 @@ export class GamePage {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
-                                            <td class="py-3 px-4 text-white">AI_Bot_Expert</td>
-                                            <td class="py-3 px-4">
-                                                <span class="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400 border border-green-500/30">
-                                                    WIN
-                                                </span>
+                                        <tr>
+                                            <td colspan="6" class="py-8 text-center text-gray-500 font-mono">
+                                                <div class="text-lg">[LOADING...]</div>
+                                                <p class="text-xs mt-1">Fetching match history...</p>
                                             </td>
-                                            <td class="py-3 px-4 text-gray-300">5 - 3</td>
-                                            <td class="py-3 px-4">
-                                                <span class="px-2 py-1 rounded text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                                                    AI
-                                                </span>
-                                            </td>
-                                            <td class="py-3 px-4 text-gray-400">Today</td>
-                                            <td class="py-3 px-4 text-gray-500">3m 42s</td>
-                                        </tr>
-                                        <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
-                                            <td class="py-3 px-4 text-white">player_42</td>
-                                            <td class="py-3 px-4">
-                                                <span class="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400 border border-green-500/30">
-                                                    WIN
-                                                </span>
-                                            </td>
-                                            <td class="py-3 px-4 text-gray-300">5 - 2</td>
-                                            <td class="py-3 px-4">
-                                                <span class="px-2 py-1 rounded text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                                                    TOURNAMENT
-                                                </span>
-                                            </td>
-                                            <td class="py-3 px-4 text-gray-400">Yesterday</td>
-                                            <td class="py-3 px-4 text-gray-500">5m 18s</td>
-                                        </tr>
-                                        <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
-                                            <td class="py-3 px-4 text-white">pong_master</td>
-                                            <td class="py-3 px-4">
-                                                <span class="px-2 py-1 rounded text-xs bg-red-500/20 text-red-400 border border-red-500/30">
-                                                    LOSS
-                                                </span>
-                                            </td>
-                                            <td class="py-3 px-4 text-gray-300">2 - 5</td>
-                                            <td class="py-3 px-4">
-                                                <span class="px-2 py-1 rounded text-xs bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                                                    LOCAL
-                                                </span>
-                                            </td>
-                                            <td class="py-3 px-4 text-gray-400">2 days ago</td>
-                                            <td class="py-3 px-4 text-gray-500">4m 33s</td>
-                                        </tr>
-                                        <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
-                                            <td class="py-3 px-4 text-white">speed_demon</td>
-                                            <td class="py-3 px-4">
-                                                <span class="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400 border border-green-500/30">
-                                                    WIN
-                                                </span>
-                                            </td>
-                                            <td class="py-3 px-4 text-gray-300">5 - 1</td>
-                                            <td class="py-3 px-4">
-                                                <span class="px-2 py-1 rounded text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                                                    TOURNAMENT
-                                                </span>
-                                            </td>
-                                            <td class="py-3 px-4 text-gray-400">3 days ago</td>
-                                            <td class="py-3 px-4 text-gray-500">2m 57s</td>
-                                        </tr>
-                                        <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
-                                            <td class="py-3 px-4 text-white">AI_Bot_Hard</td>
-                                            <td class="py-3 px-4">
-                                                <span class="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400 border border-green-500/30">
-                                                    WIN
-                                                </span>
-                                            </td>
-                                            <td class="py-3 px-4 text-gray-300">5 - 0</td>
-                                            <td class="py-3 px-4">
-                                                <span class="px-2 py-1 rounded text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                                                    AI
-                                                </span>
-                                            </td>
-                                            <td class="py-3 px-4 text-gray-400">4 days ago</td>
-                                            <td class="py-3 px-4 text-gray-500">3m 15s</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -589,7 +728,6 @@ export class GamePage {
                             </div>
                         </div>
                     </div>
-
 
                     <!-- Section Profile AMÉLIORÉE -->
                     <div id="section-profile" class="section hidden">
@@ -1105,6 +1243,12 @@ export class GamePage {
         activeBtn.classList.add("bg-blue-500", "text-white");
         this.currentSection = sectionName;
         console.log(`Section active (browser nav): ${sectionName}`);
+        if (sectionName === "dashboard") {
+            this.loadDashboardData();
+        }
+        else if (sectionName === "profile") {
+            this.loadUserProfile();
+        }
     }
     showSection(sectionName) {
         if (this.currentSection === sectionName) {
@@ -1128,13 +1272,14 @@ export class GamePage {
             window.history.pushState({ section: sectionName }, "", newUrl);
         }
         this.currentSection = sectionName;
-        console.log(`Section active: ${sectionName}`);
         if (sectionName === "profile") {
             this.loadUserProfile();
         }
+        if (sectionName === "dashboard") {
+            this.loadDashboardData();
+        }
     }
     startGame(mode) {
-        console.log(`Starting ${mode} game...`);
         const canvasDiv = document.getElementById("game-canvas");
         canvasDiv.innerHTML = `<canvas id="renderCanvas" class="w-full h-full" tabindex="0"></canvas>`;
         const oldScript = document.getElementById("pong-script");
