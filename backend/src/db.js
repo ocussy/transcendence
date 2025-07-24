@@ -44,20 +44,24 @@ db.exec(`
     CREATE TABLE IF NOT EXISTS tournaments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
-        organizer TEXT NOT NULL,
         maxPlayers INTEGER NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        start_at TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS participants (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tournament_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS friends (
         user_id INTEGER NOT NULL,
         friend_id INTEGER NOT NULL,
         PRIMARY KEY (user_id, friend_id),
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        FOREIGN KEY (user_id) REFERENCES users(id),
         FOREIGN KEY (friend_id) REFERENCES users(id)
     );
-
 `);
 
 

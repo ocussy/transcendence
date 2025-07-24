@@ -2,6 +2,16 @@ import bcrypt from 'bcrypt';
 
 
 export async function seedDatabase(db) {
+  // Vérifier si la base de données contient déjà des utilisateurs
+  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
+  
+  if (userCount.count > 0) {
+    console.log(`📊 Base de données déjà initialisée avec ${userCount.count} utilisateurs.`);
+    return;
+  }
+
+  console.log('🌱 Initialisation de la base de données...');
+
   // Utilisateurs fictifs
   const users = [
     { login: 'adem', email: 'adem@example.com', games_won: 3, games_played: 5 },
@@ -73,5 +83,5 @@ export async function seedDatabase(db) {
   addFriend('coco', 'rydom');
   addFriend('rydom', 'oceane');
 
-  console.log('✅ Base de données remplie avec 6 utilisateurs, 6 matchs, 1 tournoi et des amitiés.');
+  console.log('✅ Base de données initialisée avec succès : 6 utilisateurs, 6 matchs, 1 tournoi et des amitiés.');
 }

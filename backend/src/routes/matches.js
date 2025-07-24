@@ -62,10 +62,9 @@ const postMatchOptions = {
   schema: {
     body: {
       type: "object",
-      required: ["player1", "player2", "mode"],
+      required: ["player_id", "mode"],
       properties: {
-        player1: { type: "string" },
-        player2: { type: "string" },
+        player_id: { type: "integer" },
         mode: { type: "string" },
       },
     },
@@ -74,8 +73,7 @@ const postMatchOptions = {
         type: "object",
         properties: {
           id: { type: "integer" },
-          player1: { type: "string" },
-          player2: { type: "string" },
+          player_id: { type: "integer" },
         },
       },
     },
@@ -93,10 +91,9 @@ const updateMatchOptions = {
     },
     body: {
       type: "object",
-      required: ["player1", "player2", "score1", "score2"],
+      required: ["player_id", "score1", "score2"],
       properties: {
-        player1: { type: "string" },
-        player2: { type: "string" },
+        player_id: { type: "integer" },
         score1: { type: "integer" },
         score2: { type: "integer" },
         winner: { type: "string", nullable: true },
@@ -115,5 +112,5 @@ export default async function matchRoutes(fastify, options) {
   fastify.get("/match/:id", getMatchByIdOptions);
   fastify.post("/match", postMatchOptions);
   fastify.put("/match/:id", updateMatchOptions);
-  fastify.get("/matches/user/:login", getMatchByUserOptions);
+  fastify.get("/matches/user/:id", getMatchByUserOptions);
 }
