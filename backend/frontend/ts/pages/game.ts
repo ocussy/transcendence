@@ -265,7 +265,6 @@ export class GamePage {
     if (placeholder) {
       placeholder.style.display = "none";
     }
-
     const maxWinRate = Math.max(...data.map((d) => d.winRate), 100);
     const points = data
       .map((d, index) => {

@@ -1,4 +1,33 @@
 
+# services:
+#   backend:
+#     build: ./backend
+#     ports:
+#       - "8000:8000"
+#     depends_on:
+#       - redis
+#     volumes:
+#       - ./backend:/app
+#       - /app/node_modules
+#       - sqlite-data:/app/src/db_volume
+#     environment:
+#       - NODE_ENV=development
+#       - REDIS_HOST=redis
+#       - REDIS_PORT=6379
+#     command: npm run dev
+
+#   redis:
+#     image: redis:6
+#     ports:
+#       - "6380:6379"
+#     volumes:
+#       - redis-data:/data
+
+# volumes:
+#   sqlite-data:
+#     driver: local
+#   redis-data:
+
 services:
   backend:
     build: ./backend
@@ -16,6 +45,18 @@ services:
       - REDIS_PORT=6379
     command: npm run dev
 
+  frontend:
+    build:
+      context: ./backend/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000" # Le conteneur expose 8000, on le mappe à 8001 côté hôte
+    volumes:
+      - ./backend/frontend:/app
+      - /app/node_modules
+    working_dir: /app
+    command: npm run dev # ou le CMD de ton Dockerfile est utilisé si tu veux
+
   redis:
     image: redis:6
     ports:
@@ -25,5 +66,4 @@ services:
 
 volumes:
   sqlite-data:
-    driver: local
   redis-data:

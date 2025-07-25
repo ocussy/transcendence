@@ -18,6 +18,8 @@ const createTournamentOptions = {
                 type: "object",
                 properties: {
                     id: { type: "integer" },
+                    status : { type: "string" },
+                    player_id: { type: "integer" },
                     player_1: { type: "string" },
                     player_2: { type: "string" }
                 },
@@ -28,6 +30,7 @@ const createTournamentOptions = {
 }
 
 const updateTournamentOptions = {
+    preHandler: verifyUser,
     schema: {
         params: {
             type: "object",
@@ -40,6 +43,8 @@ const updateTournamentOptions = {
                 type: "object",
                 properties: {
                     id: { type: "integer" },
+                    status: { type: "string" },
+                    player_id: { type: "integer" },
                     player_1: { type: "string" },
                     player_2: { type: "string" }
                 },

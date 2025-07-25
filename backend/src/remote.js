@@ -15,19 +15,25 @@ export async function clearConnectedUsers(app) {
 
 export async function logConnectedUsers(app) {
   const userIds = await app.redis.hkeys('connectedUsers');
-  console.log('🔍 userIds =', userIds);
   console.log(`👥 Utilisateurs connectés : ${userIds.length}`);
 
-  if (userIds.length === 0) return { count: 0, logins: [] };
+  const numericUserIds = userIds.map(id => parseInt(id, 10));
 
-  const placeholders = userIds.map(() => '?').join(', ');
-  const query = `SELECT id, login FROM users WHERE id IN (${placeholders})`;
+  db.prepare("UPDATE users SET online = 0").run();
 
-  const stmt = db.prepare(query);
-  const rows = stmt.all(...userIds);
+  if (numericUserIds.length > 0) {
+    const placeholders = numericUserIds.map(() => "?").join(", ");
+    db.prepare(`UPDATE users SET online = 1 WHERE id IN (${placeholders})`).run(...numericUserIds);
+  }
 
-  const logins = rows.map((user) => user.login);
-  console.log(`🔐 Logins connectés : ${logins.join(', ')}`);
+  let logins = [];
+  if (numericUserIds.length > 0) {
+    const placeholders = numericUserIds.map(() => "?").join(", ");
+    const rows = db.prepare(`SELECT login FROM users WHERE id IN (${placeholders})`).all(...numericUserIds);
+    logins = rows.map(row => row.login);
+  }
+
+  console.log("Logins des utilisateurs connectés :", logins);
 
   return { count: userIds.length, logins };
 }
@@ -63,7 +69,6 @@ export function setupConnexionSocket(app) {
           console.log(`Déconnexion de l'utilisateur ${userId}`);
         });
     
-        logConnectedUsers(app);
     });
 }
 

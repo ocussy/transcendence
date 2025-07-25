@@ -18,6 +18,5 @@ RUN npm run build
 # Expose le port 8000 (au lieu de 8080)
 EXPOSE 8000
 
-# Sert le dossier compilé via live-server
-CMD ["live-server", "dist", "--host=0.0.0.0", "--port=8000", "--watch=."]
+CMD ["npm", "run", "dev"]
 

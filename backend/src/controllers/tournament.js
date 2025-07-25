@@ -34,7 +34,11 @@ export function createTournament(req, reply) {
     db.prepare(`DELETE FROM participants WHERE tournament_id = ? AND name = ?`).run(tournament.lastInsertRowid, player_1);
     db.prepare(`DELETE FROM participants WHERE tournament_id = ? AND name = ?`).run(tournament.lastInsertRowid, player_2);
 
-    reply.status(201).send({ id: tournament.lastInsertRowid, player_1, player_2 });
+    if (user.alias === player_1 || user.alias === player_2) {
+        reply.status(201).send({ id: tournament.lastInsertRowid, status: "in progress", player_id : id, player_1, player_2 });
+    } else {
+        reply.status(201).send({ id: tournament.lastInsertRowid, status: "in progress", player_id : -1, player_1, player_2 });
+    }
 }
 
 export function updateTournament(req, reply) {
@@ -50,18 +54,24 @@ export function updateTournament(req, reply) {
 
     const participants = db.prepare(`SELECT * FROM participants WHERE tournament_id = ?`).all(id);
 
+    const user = db.prepare('SELECT alias FROM users WHERE id = ?').get(req.user.id);
     if (participants.length >= 2) {
         const player_1 = participants[0].name;
         const player_2 = participants[1].name;
 
         db.prepare(`DELETE FROM participants WHERE tournament_id = ? AND name = ?`).run(id, player_1);
         db.prepare(`DELETE FROM participants WHERE tournament_id = ? AND name = ?`).run(id, player_2);
-        reply.status(200).send({ id, player_1, player_2 });
+        if (user.alias === player_1 || user.alias === player_2) {
+            reply.status(200).send({ id, status: "in progress", player_id: id, player_1, player_2 });
+        }
+        else {
+            reply.status(200).send({ id, status: "in progress", player_id: -1, player_1, player_2 });
+        }
     }
     else
     {
         const player_1 = participants[0].name;
-        reply.status(200).send({ id, player_1, player_2: null });
+        reply.status(200).send({ id, status: "finished", player_id: id, player_1, player_2: null });
     }
 
 }

@@ -88,10 +88,10 @@ export async function signUp(req, reply) {
   const avatarUrl = `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${encodeURIComponent(login)}`;
   try {
     const stmt = db.prepare(
-      "INSERT INTO users (login, password, email, avatarUrl) VALUES (?, ?, ?, ?)",
+      "INSERT INTO users (login, password, email, avatarUrl, alias) VALUES (?, ?, ?, ?, ?)",
     );
     const hashedPassword = await bcrypt.hash(password, 10);
-    stmt.run(login, hashedPassword, email, avatarUrl);
+    stmt.run(login, hashedPassword, email, avatarUrl, login);
     reply.status(201).send({ message: "User created successfully" });
   } catch (err) {
     reply.status(500).send({ error: err.message });
@@ -126,9 +126,9 @@ export async function signUpGoogle(req, reply) {
     const avatarUrl = `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${encodeURIComponent(login)}`;
 
     const stmt = db.prepare(
-      "INSERT INTO users (login, email, avatarUrl, auth_provider) VALUES (?, ?, ?, ?)",
+      "INSERT INTO users (login, email, avatarUrl, auth_provider, alias) VALUES (?, ?, ?, ?, ?)",
     );
-    stmt.run(login, email, avatarUrl, "google");
+    stmt.run(login, email, avatarUrl, "google", login);
     const user = db.prepare("SELECT * FROM users WHERE login = ?").get(login);
     const tokenJWT = await reply.jwtSign({ id : user.id });
     reply

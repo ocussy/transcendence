@@ -1,14 +1,5 @@
-import { getUser, debugDb, verifyUser, updateUser,getStatUser, getFriendsUser } from '../controllers/users.js';
-import { type} from 'os'
+import { getUser, debugDb, verifyUser, updateUser,getStatUser, getFriendsUser} from '../controllers/users.js';
 
-// const User = {
-//   type: "object",
-//   properties: {
-//     login: { type: "string" },
-//     email: { type: "string" },
-//     password: { type: "string" },
-//   },
-// };
 
 const getUserOptions = {
   preHandler: verifyUser,
@@ -45,6 +36,7 @@ const getFriendsOptions = {
             avatarUrl: { type: "string" },
             games_played: { type: "number" },
             games_won: { type: "number" },
+            online: { type: "boolean" },
           },
         },
       },
@@ -93,6 +85,7 @@ const updateUserOptions = {
         password: { type: "string", minLength: 8 },
         secure_auth: { type: "boolean" },
         friend: { type: "string" },
+        alias: { type: "string" },
       },
       additionalProperties: false, // refuse les clés inconnues
       minProperties: 1, // exige au moins une propriété à modifier
@@ -116,22 +109,13 @@ const updateUserOptions = {
 };
 
 
-// const debugOptions = {
-//   schema: {
-//     response: {
-//       200: {
-//         type: "array",
-//         items: User,
-//       },
-//     },
-//   },
-//   handler: debugDb,
-// };
-
 const debugOptions = {
   // pour tt voir
   handler: debugDb,
 };
+
+
+
 export default async function userRoutes(fastify, options) {
   fastify.get("/user", getUserOptions);
   fastify.get("/friends", getFriendsOptions);

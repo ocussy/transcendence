@@ -6,7 +6,6 @@ import { logConnectedUsers} from "../remote.js";
 import {app} from "../server.js";
 
 export async function verifyUser(req, reply) {
-  logConnectedUsers(app);
   try {
     await req.jwtVerify();
   } catch (err) {
@@ -57,11 +56,12 @@ export async function getFriendsUser(req, reply) {
   try {
     const id = req.user.id;
     const friends = db.prepare(`
-      SELECT u.login, u.avatarUrl, u.games_played, u.games_won
+      SELECT u.login, u.avatarUrl, u.games_played, u.games_won, u.online
       FROM friends f
       JOIN users u ON f.friend_id = u.id
       WHERE f.user_id = ?
     `).all(id);
+    
     return reply.status(200).send(friends);
   } catch (err) {
     reply.status(500).send({ error: err.message });
@@ -162,6 +162,10 @@ export async function updateUser(req, reply) {
     const hashedPassword = await bcrypt.hash(password, 10);
     updates.push("password = ?");
     values.push(hashedPassword);
+  }
+  if (alias) {
+    updates.push("alias = ?");
+    values.push(alias);
   }
   if (typeof secure_auth === "boolean") {
     updates.push("secure_auth = ?");
