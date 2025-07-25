@@ -209,7 +209,10 @@ export class GamePage {
             .map((d, index) => {
             const x = 5 + (index * 90) / Math.max(data.length - 1, 1);
             const y = 95 - (d.winRate / maxWinRate) * 90;
-            return `${x},${y}`;
+            return `${x},: MatchHistory[] = await response.json();
+
+      const tbody = document.querySelector("#section-dashboard tbody");
+      if (!tbody) r${y}`;
         })
             .join(" ");
         svg.innerHTML = `
@@ -240,6 +243,17 @@ export class GamePage {
       `;
         }
     }
+    extractSeedFromUrl(url) {
+        if (!url || !url.includes('seed='))
+            return 'coco';
+        const match = url.match(/seed=([^&]*)/);
+        return match ? decodeURIComponent(match[1]) : 'coco';
+    }
+    rebuildUrlWithSeed(originalUrl, newSeed) {
+        if (!originalUrl || !originalUrl.includes('seed='))
+            return originalUrl;
+        return originalUrl.replace(/seed=([^&]*)/, `seed=${encodeURIComponent(newSeed)}`);
+    }
     async loadUserProfile() {
         try {
             const res = await fetch("/user", {
@@ -254,20 +268,21 @@ export class GamePage {
             const user = this.currentUser;
             const usernameInput = document.getElementById("profile-username");
             const emailInput = document.getElementById("profile-email");
-            const languageSelect = document.getElementById("profile-language");
+            const aliasInput = document.getElementById("profile-alias");
             const avatarImg = document.getElementById("user-avatar");
-            const avatarUrlInput = document.getElementById("profile-avatar-url");
+            const avatarSeedInput = document.getElementById("profile-avatar-seed");
             const twoFAToggle = document.getElementById("profile-2fa");
             if (usernameInput)
                 usernameInput.value = user.login || "";
             if (emailInput)
                 emailInput.value = user.email || "";
-            if (languageSelect)
-                languageSelect.value = user.language || "fr";
+            if (aliasInput)
+                aliasInput.value = user.alias || user.login || "";
             if (avatarImg && user.avatarUrl)
                 avatarImg.src = user.avatarUrl;
-            if (avatarUrlInput)
-                avatarUrlInput.value = user.avatarUrl || "";
+            if (avatarSeedInput && user.avatarUrl) {
+                avatarSeedInput.value = this.extractSeedFromUrl(user.avatarUrl);
+            }
             if (twoFAToggle)
                 twoFAToggle.checked = !!user.secure_auth;
             if (data.auth_provider === "google") {
@@ -464,6 +479,10 @@ export class GamePage {
         app.innerHTML = `
             <!-- Background avec effets -->
             <div class="min-h-screen bg-black text-white relative overflow-x-hidden">
+
+            <!-- Alerts TOUJOURS visibles en haut de la fenêtre -->
+            <div id="profile-alert" class="hidden fixed top-16 left-1/2 transform -translate-x-1/2 z-[9999] p-4 border border-red-500 bg-red-500/10 text-red-400 rounded-lg font-mono text-sm max-w-md backdrop-blur-sm shadow-xl"></div>
+            <div id="profile-success" class="hidden fixed top-16 left-1/2 transform -translate-x-1/2 z-[9999] p-4 border border-green-500 bg-green-500/10 text-green-400 rounded-lg font-mono text-sm max-w-md backdrop-blur-sm shadow-xl"></div>
 
                 <!-- Background gradients -->
                 <div class="fixed inset-0 -z-10 animate-pulse">
@@ -741,11 +760,6 @@ export class GamePage {
                           <span class="text-blue-500">></span> account settings
                         </p>
                       </div>
-
-                      <!-- Alerts -->
-                      <div id="profile-alert" class="hidden p-4 mb-6 border border-red-500 bg-red-500/10 text-red-400 rounded-lg font-mono text-sm max-w-4xl mx-auto"></div>
-                      <div id="profile-success" class="hidden p-4 mb-6 border border-green-500 bg-green-500/10 text-green-400 rounded-lg font-mono text-sm max-w-4xl mx-auto"></div>
-
                       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                         <!-- Left Column - Avatar, Info & Friends -->
@@ -848,19 +862,19 @@ export class GamePage {
                                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg font-mono text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                               </div>
                               <div>
-                                <label class="block font-mono text-sm text-gray-400 mb-2">language</label>
-                                <select id="profile-language"
-                                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg font-mono text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                  <option value="fr">🇫🇷 Français</option>
-                                  <option value="en">🇺🇸 English</option>
-                                </select>
+                                <label class="block font-mono text-sm text-gray-400 mb-2">alias</label>
+                                <input type="text"
+                                      id="profile-alias"
+                                      placeholder="your gaming alias"
+                                      class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg font-mono text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <p class="font-mono text-xs text-gray-500 mt-1">display name for tournaments</p>
                               </div>
                               <div>
-                                <label class="block font-mono text-sm text-gray-400 mb-2">avatar URL</label>
-                                <input type="url"
-                                       id="profile-avatar-url"
-                                       placeholder="https://example.com/avatar.jpg"
-                                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg font-mono text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <label class="block font-mono text-sm text-gray-400 mb-2">avatar seed</label>
+                                <input type="text"
+                                      id="profile-avatar-seed"
+                                      placeholder="coco"
+                                      class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg font-mono text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                               </div>
                             </div>
                           </div>
@@ -956,12 +970,14 @@ export class GamePage {
     }
     attachProfileEvents() {
         document
-            .getElementById("profile-avatar-url")
-            ?.addEventListener("input", (e) => {
-            const url = e.target.value;
-            const preview = document.getElementById("user-avatar");
-            if (url) {
-                preview.src = url;
+            .getElementById("profile-avatar-seed")?.addEventListener("input", (e) => {
+            const seed = e.target.value;
+            if (this.currentUser?.avatarUrl) {
+                const newUrl = this.rebuildUrlWithSeed(this.currentUser.avatarUrl, seed);
+                const preview = document.getElementById("user-avatar");
+                if (preview) {
+                    preview.src = newUrl;
+                }
             }
         });
         document
@@ -1010,8 +1026,9 @@ export class GamePage {
             return;
         const username = document.getElementById("profile-username").value.trim();
         const email = document.getElementById("profile-email").value.trim();
-        const language = document.getElementById("profile-language").value;
-        const avatarUrl = document.getElementById("profile-avatar-url").value.trim();
+        const alias = document.getElementById("profile-alias").value.trim();
+        const avatarSeed = document.getElementById("profile-avatar-seed").value.trim();
+        const avatarUrl = avatarSeed ? this.rebuildUrlWithSeed(this.currentUser.avatarUrl, avatarSeed) : this.currentUser.avatarUrl;
         const btn = document.getElementById("save-basic-btn");
         this.hideProfileAlerts();
         if (!username || !email) {
@@ -1026,8 +1043,8 @@ export class GamePage {
                 updateData.login = username;
             if (email !== this.currentUser.email)
                 updateData.email = email;
-            if (language !== this.currentUser.language)
-                updateData.language = language;
+            if (alias !== (this.currentUser.alias || this.currentUser.login))
+                updateData.alias = alias;
             if (avatarUrl !== this.currentUser.avatarUrl)
                 updateData.avatarUrl = avatarUrl;
             if (Object.keys(updateData).length === 0) {
@@ -1230,15 +1247,27 @@ export class GamePage {
         if (alert) {
             alert.textContent = message;
             alert.classList.remove("hidden");
-            if (type === "success") {
-                setTimeout(() => this.hideProfileAlert(id), 4000);
-            }
+            alert.style.transform = "translate(-50%, -20px)";
+            alert.style.opacity = "-0";
+            setTimeout(() => {
+                alert.style.transform = "translate(-50%, 0)";
+                alert.style.opacity = "1";
+                alert.style.transition = "all 0.3s ease-out";
+            }, 10);
+            setTimeout(() => this.hideProfileAlert(id), 2000);
         }
     }
     hideProfileAlert(id) {
         const alert = document.getElementById(id);
-        if (alert) {
-            alert.classList.add("hidden");
+        if (alert && !alert.classList.contains("hidden")) {
+            alert.style.transform = "translate(-50%, -20px)";
+            alert.style.opacity = "0";
+            setTimeout(() => {
+                alert.classList.add("hidden");
+                alert.style.transform = "";
+                alert.style.opacity = "";
+                alert.style.transition = "";
+            }, 300);
         }
     }
     hideProfileAlerts() {

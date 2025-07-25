@@ -271,7 +271,10 @@ export class GamePage {
       .map((d, index) => {
         const x = 5 + (index * 90) / Math.max(data.length - 1, 1);
         const y = 95 - (d.winRate / maxWinRate) * 90;
-        return `${x},${y}`;
+        return `${x},: MatchHistory[] = await response.json();
+
+      const tbody = document.querySelector("#section-dashboard tbody");
+      if (!tbody) r${y}`;
       })
       .join(" ");
 
@@ -307,6 +310,20 @@ export class GamePage {
 
   ////////////////////////////////////////////////FIN DASH////////////////////////////////////////////
 
+  ///////////////////////////////////////////////avatar//////////////////////////////////////////////
+  private extractSeedFromUrl(url: string): string {
+    if (!url || !url.includes('seed=')) return 'coco';
+    const match = url.match(/seed=([^&]*)/);
+    return match ? decodeURIComponent(match[1]) : 'coco';
+  }
+
+  private rebuildUrlWithSeed(originalUrl: string, newSeed: string): string {
+    if (!originalUrl || !originalUrl.includes('seed=')) return originalUrl;
+    return originalUrl.replace(/seed=([^&]*)/, `seed=${encodeURIComponent(newSeed)}`);
+  }
+  ///////////////////////////////////////////////avatar//////////////////////////////////////////////
+
+
   private async loadUserProfile(): Promise<void> {
     try {
       const res = await fetch("/user", {
@@ -327,14 +344,14 @@ export class GamePage {
       const emailInput = document.getElementById(
         "profile-email",
       ) as HTMLInputElement;
-      const languageSelect = document.getElementById(
-        "profile-language",
-      ) as HTMLSelectElement;
+      const aliasInput = document.getElementById(
+        "profile-alias",
+      ) as HTMLInputElement;
       const avatarImg = document.getElementById(
         "user-avatar",
       ) as HTMLImageElement;
-      const avatarUrlInput = document.getElementById(
-        "profile-avatar-url",
+      const avatarSeedInput = document.getElementById(
+        "profile-avatar-seed",
       ) as HTMLInputElement;
       const twoFAToggle = document.getElementById(
         "profile-2fa",
@@ -342,9 +359,11 @@ export class GamePage {
 
       if (usernameInput) usernameInput.value = user.login || "";
       if (emailInput) emailInput.value = user.email || "";
-      if (languageSelect) languageSelect.value = user.language || "fr";
+      if (aliasInput) aliasInput.value = user.alias || user.login || "";
       if (avatarImg && user.avatarUrl) avatarImg.src = user.avatarUrl;
-      if (avatarUrlInput) avatarUrlInput.value = user.avatarUrl || "";
+      if (avatarSeedInput && user.avatarUrl) {
+        avatarSeedInput.value = this.extractSeedFromUrl(user.avatarUrl);
+      }
       if (twoFAToggle) twoFAToggle.checked = !!user.secure_auth;
 
       if (data.auth_provider === "google") {
@@ -582,6 +601,10 @@ export class GamePage {
     app.innerHTML = `
             <!-- Background avec effets -->
             <div class="min-h-screen bg-black text-white relative overflow-x-hidden">
+
+            <!-- Alerts TOUJOURS visibles en haut de la fenêtre -->
+            <div id="profile-alert" class="hidden fixed top-16 left-1/2 transform -translate-x-1/2 z-[9999] p-4 border border-red-500 bg-red-500/10 text-red-400 rounded-lg font-mono text-sm max-w-md backdrop-blur-sm shadow-xl"></div>
+            <div id="profile-success" class="hidden fixed top-16 left-1/2 transform -translate-x-1/2 z-[9999] p-4 border border-green-500 bg-green-500/10 text-green-400 rounded-lg font-mono text-sm max-w-md backdrop-blur-sm shadow-xl"></div>
 
                 <!-- Background gradients -->
                 <div class="fixed inset-0 -z-10 animate-pulse">
@@ -859,11 +882,6 @@ export class GamePage {
                           <span class="text-blue-500">></span> account settings
                         </p>
                       </div>
-
-                      <!-- Alerts -->
-                      <div id="profile-alert" class="hidden p-4 mb-6 border border-red-500 bg-red-500/10 text-red-400 rounded-lg font-mono text-sm max-w-4xl mx-auto"></div>
-                      <div id="profile-success" class="hidden p-4 mb-6 border border-green-500 bg-green-500/10 text-green-400 rounded-lg font-mono text-sm max-w-4xl mx-auto"></div>
-
                       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                         <!-- Left Column - Avatar, Info & Friends -->
@@ -966,19 +984,19 @@ export class GamePage {
                                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg font-mono text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                               </div>
                               <div>
-                                <label class="block font-mono text-sm text-gray-400 mb-2">language</label>
-                                <select id="profile-language"
-                                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg font-mono text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                                  <option value="fr">🇫🇷 Français</option>
-                                  <option value="en">🇺🇸 English</option>
-                                </select>
+                                <label class="block font-mono text-sm text-gray-400 mb-2">alias</label>
+                                <input type="text"
+                                      id="profile-alias"
+                                      placeholder="your gaming alias"
+                                      class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg font-mono text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <p class="font-mono text-xs text-gray-500 mt-1">display name for tournaments</p>
                               </div>
                               <div>
-                                <label class="block font-mono text-sm text-gray-400 mb-2">avatar URL</label>
-                                <input type="url"
-                                       id="profile-avatar-url"
-                                       placeholder="https://example.com/avatar.jpg"
-                                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg font-mono text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                <label class="block font-mono text-sm text-gray-400 mb-2">avatar seed</label>
+                                <input type="text"
+                                      id="profile-avatar-seed"
+                                      placeholder="coco"
+                                      class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg font-mono text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                               </div>
                             </div>
                           </div>
@@ -1081,17 +1099,18 @@ export class GamePage {
   }
 
   private attachProfileEvents(): void {
+
     document
-      .getElementById("profile-avatar-url")
-      ?.addEventListener("input", (e) => {
-        const url = (e.target as HTMLInputElement).value;
-        const preview = document.getElementById(
-          "user-avatar",
-        ) as HTMLImageElement;
-        if (url) {
-          preview.src = url;
+      .getElementById("profile-avatar-seed")?.addEventListener("input", (e) => {
+      const seed = (e.target as HTMLInputElement).value;
+      if (this.currentUser?.avatarUrl) {
+        const newUrl = this.rebuildUrlWithSeed(this.currentUser.avatarUrl, seed);
+        const preview = document.getElementById("user-avatar") as HTMLImageElement;
+        if (preview) {
+          preview.src = newUrl;
         }
-      });
+      }
+    });
 
     document
       .getElementById("avatar-edit-btn")
@@ -1151,12 +1170,9 @@ export class GamePage {
     const email = (
       document.getElementById("profile-email") as HTMLInputElement
     ).value.trim();
-    const language = (
-      document.getElementById("profile-language") as HTMLSelectElement
-    ).value;
-    const avatarUrl = (
-      document.getElementById("profile-avatar-url") as HTMLInputElement
-    ).value.trim();
+    const alias = (document.getElementById("profile-alias") as HTMLInputElement).value.trim();
+    const avatarSeed = (document.getElementById("profile-avatar-seed") as HTMLInputElement).value.trim();
+    const avatarUrl = avatarSeed ? this.rebuildUrlWithSeed(this.currentUser.avatarUrl, avatarSeed) : this.currentUser.avatarUrl;
     const btn = document.getElementById("save-basic-btn") as HTMLButtonElement;
 
     this.hideProfileAlerts();
@@ -1177,8 +1193,7 @@ export class GamePage {
 
       if (username !== this.currentUser.login) updateData.login = username;
       if (email !== this.currentUser.email) updateData.email = email;
-      if (language !== this.currentUser.language)
-        updateData.language = language;
+      if (alias !== (this.currentUser.alias || this.currentUser.login)) updateData.alias = alias;
       if (avatarUrl !== this.currentUser.avatarUrl)
         updateData.avatarUrl = avatarUrl;
 
@@ -1448,28 +1463,41 @@ export class GamePage {
     this.createTournament(tournamentName, maxPlayers, players);
   }
 
-  private showProfileAlert(
-    id: string,
-    message: string,
-    type: string = "error",
-  ): void {
-    const alert = document.getElementById(id);
-    if (alert) {
-      alert.textContent = message;
-      alert.classList.remove("hidden");
+  private showProfileAlert(id: string, message: string, type: string = "error"): void {
+  const alert = document.getElementById(id);
+  if (alert) {
+    alert.textContent = message;
+    alert.classList.remove("hidden");
+    
+    // Animation d'entrée fluide
+    alert.style.transform = "translate(-50%, -20px)";
+    alert.style.opacity = "-0";
+    
+    setTimeout(() => {
+      alert.style.transform = "translate(-50%, 0)";
+      alert.style.opacity = "1";
+      alert.style.transition = "all 0.3s ease-out";
+    }, 10);
 
-      if (type === "success") {
-        setTimeout(() => this.hideProfileAlert(id), 4000);
-      }
-    }
+    // Auto-hide après 5 secondes (pour TOUS les types d'alertes)
+    setTimeout(() => this.hideProfileAlert(id), 2000);
   }
+}
 
   private hideProfileAlert(id: string): void {
-    const alert = document.getElementById(id);
-    if (alert) {
+  const alert = document.getElementById(id);
+  if (alert && !alert.classList.contains("hidden")) {
+    alert.style.transform = "translate(-50%, -20px)";
+    alert.style.opacity = "0";
+    
+    setTimeout(() => {
       alert.classList.add("hidden");
-    }
+      alert.style.transform = "";
+      alert.style.opacity = "";
+      alert.style.transition = "";
+    }, 300);
   }
+}
 
   private hideProfileAlerts(): void {
     this.hideProfileAlert("profile-alert");
