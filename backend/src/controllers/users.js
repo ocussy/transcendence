@@ -69,10 +69,10 @@ export async function getFriendsUser(req, reply) {
 }
 
 async function verifData(req, reply) {
-  const { login, email, avatarUrl, language, password, secure_auth, friend } = req.body;
+  const { login, email, avatarUrl, language, password, secure_auth, friend, alias } = req.body;
 
   // verifier si j'ai besoin de cette verif
-  if (!email && !avatarUrl && !language && !password && secure_auth === undefined && !login && !friend) {
+  if (!email && !avatarUrl && !language && !password && secure_auth === undefined && !login && !friend && !alias) {
     return reply.status(400).send({
       error: "No fields to update",
     });
@@ -136,7 +136,7 @@ export async function updateUser(req, reply) {
   const id = req.user.id;
   if (error) return error;
 
-  const { login, email, avatarUrl, language, password, secure_auth, friend } =
+  const { login, email, avatarUrl, language, password, secure_auth, friend, alias } =
     req.body;
 
   const updates = [];
