@@ -5,6 +5,7 @@ export class GamePage {
         this.currentSection = "tournament";
         this.currentUser = null;
         this.friendsList = [];
+        this.currentMatchId = null;
         verifyToken();
         this.render();
         this.attachEvents();
@@ -125,7 +126,7 @@ export class GamePage {
     }
     getModeClass(mode) {
         switch (mode?.toLowerCase()) {
-            case "tournament":
+            case "remote":
                 return "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30";
             case "ai":
                 return "bg-purple-500/20 text-purple-400 border border-purple-500/30";
@@ -253,6 +254,32 @@ export class GamePage {
         if (!originalUrl || !originalUrl.includes('seed='))
             return originalUrl;
         return originalUrl.replace(/seed=([^&]*)/, `seed=${encodeURIComponent(newSeed)}`);
+    }
+    async createMatch(mode) {
+        try {
+            const response = await fetch("/match", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify({
+                    mode: mode
+                }),
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to create match: ${response.status}`);
+            }
+            const data = await response.json();
+            this.currentMatchId = data.id;
+            this.showProfileAlert("profile-success", `$ match-${mode} initialized`, "success");
+            return data.id;
+        }
+        catch (error) {
+            this.showProfileAlert("profile-alert", `$ error: failed to create ${mode} match`);
+            return null;
+        }
     }
     async loadUserProfile() {
         try {
@@ -562,10 +589,10 @@ export class GamePage {
                                     <div class="text-sm text-gray-400">bot.challenge</div>
                                 </button>
 
-                                <button id="tournament-start-btn" class="group p-6 bg-gray-800 border border-gray-700 rounded-lg font-mono transition-all duration-200 hover:border-yellow-500 hover:bg-gray-800/80">
-                                    <div class="text-2xl mb-2 font-mono">[TOURNAMENT]</div>
-                                    <div class="font-bold text-white">$ new-tournament</div>
-                                    <div class="text-sm text-gray-400">bracket.init</div>
+                                <button id="remote-game-btn" class="group p-6 bg-gray-800 border border-gray-700 rounded-lg font-mono transition-all duration-200 hover:border-green-500 hover:bg-gray-800/80">
+                                    <div class="text-2xl mb-2 font-mono">[REMOTE]</div>
+                                    <div class="font-bold text-white">$ remote-match</div>
+                                    <div class="text-sm text-gray-400">online.opponent</div>
                                 </button>
                             </div>
                         </div>
@@ -958,13 +985,8 @@ export class GamePage {
         document.getElementById("ai-game-btn").addEventListener("click", () => {
             this.startGame("ai");
         });
-        document
-            .getElementById("tournament-start-btn")
-            .addEventListener("click", () => {
-            this.startGame("tournament");
-        });
-        document.getElementById("tournament")?.addEventListener("click", () => {
-            this.handleCreateTournament();
+        document.getElementById("remote-game-btn").addEventListener("click", () => {
+            this.startGame("remote");
         });
         this.attachProfileEvents();
     }
@@ -1359,7 +1381,14 @@ export class GamePage {
             this.loadDashboardData();
         }
     }
-    startGame(mode) {
+    async startGame(mode) {
+        if (mode === "local" || mode === "ai") {
+            const matchId = await this.createMatch(mode);
+            if (!matchId) {
+                console.error("Failed to create match, aborting game start");
+                return;
+            }
+        }
         const canvasDiv = document.getElementById("game-canvas");
         canvasDiv.innerHTML = `<canvas id="renderCanvas" class="w-full h-full" tabindex="0"></canvas>`;
         const oldScript = document.getElementById("pong-script");
@@ -1368,13 +1397,14 @@ export class GamePage {
         let scriptSrc = "../../pong/pong.js";
         if (mode === "ai")
             scriptSrc = "../../pong/pov.js";
-        if (mode === "tournament")
-            scriptSrc = "../../pong/newPov.js";
+        if (mode === "remote")
+            scriptSrc = "../../pong/pong.js";
         const script = document.createElement("script");
         script.id = "pong-script";
         script.src = scriptSrc;
         script.async = true;
         canvasDiv.appendChild(script);
+        console.log(`Game ${mode} started`);
     }
     async handleLogout() {
         if (confirm("$ logout: Are you sure you want to exit?")) {
