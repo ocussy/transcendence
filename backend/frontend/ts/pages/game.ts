@@ -682,7 +682,7 @@ export class GamePage {
                                                                 <option>8.players</option>
                                                                 <option>16.players</option>
                                                             </select>
-                                                            <button class="py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-mono font-semibold rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/30">
+                                                            <button id="tournament" class="py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-mono font-semibold rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/30">
                                                                 $ initialize-tournament
                                                             </button>
                                                         </div>
@@ -1073,6 +1073,10 @@ export class GamePage {
         this.startGame("tournament");
       });
 
+    document.getElementById("tournament")?.addEventListener("click", () => {
+      this.handleCreateTournament();
+    });
+
     this.attachProfileEvents();
   }
 
@@ -1385,6 +1389,63 @@ export class GamePage {
       btn.disabled = false;
       console.error("2FA update error:", error);
     }
+  }
+
+  private async createTournament(name: string, maxPlayers: number, players: string[]): Promise<void> {
+    try {
+      const response = await fetch("/tournament", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // <-- CORRECT: credentials should be outside headers
+        body: JSON.stringify({
+          name: name,
+          max_players: maxPlayers,
+          players: players
+        }),
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log("Tournament created successfully:", data);
+        // Vous pouvez ajouter ici la logique pour traiter la réponse
+      } else {
+        console.error("Failed to create tournament:", data.error);
+      }
+    } catch (error) {
+      console.error("Network error:", error);
+    }
+  }
+
+  private handleCreateTournament(): void {
+    // Récupérer les valeurs du formulaire
+    const nameInput = document.querySelector('input[placeholder="tournament_name"]') as HTMLInputElement;
+    const playersSelect = document.querySelector('select') as HTMLSelectElement;
+    
+    if (!nameInput || !playersSelect) {
+      console.error("Tournament form elements not found");
+      return;
+    }
+
+    const tournamentName = nameInput.value.trim();
+    const maxPlayersText = playersSelect.value;
+    const maxPlayers = parseInt(maxPlayersText.split('.')[0]); // "4.players" -> 4
+
+    if (!tournamentName) {
+      alert("Please enter a tournament name");
+      return;
+    }
+
+    // Pour l'instant, on crée un tableau de joueurs fictifs
+    // Vous pourrez modifier cela selon vos besoins
+    const players: string[] = [];
+    for (let i = 1; i <= maxPlayers; i++) {
+      players.push(`Player ${i}`);
+    }
+
+    // Appeler la fonction createTournament
+    this.createTournament(tournamentName, maxPlayers, players);
   }
 
   private showProfileAlert(

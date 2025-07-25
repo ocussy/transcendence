@@ -16,6 +16,7 @@ import db from "./db.js"
 import { seedDatabase } from './seed.js';
 import { setupConnexionSocket, setupRemoteSocket, setupRemoteGame, clearConnectedUsers } from "./remote.js";
 import statsRoutes from "./routes/stats.js";
+import tournamentRoutes from "./routes/tournament.js";
 
 // import websocket from "@fastify/websocket";
 
@@ -66,6 +67,7 @@ app.register(userRoutes);
 app.register(matchRoutes);
 app.register(authRoutes);
 app.register(statsRoutes);
+app.register(tournamentRoutes);
 
 // pour SPA sinon les routes pas trouve
 const spaRoutes = [

@@ -1,6 +1,8 @@
 import { createTournament, getTournamentById, updateTournament } from "../controllers/tournament.js";
+import { verifyUser } from '../controllers/users.js';
 
 const createTournamentOptions = {
+    preHandler: verifyUser,
     schema: {
         body: {
             type: "object",
@@ -47,8 +49,40 @@ const updateTournamentOptions = {
     handler: updateTournament,  
 }
 
+const getTournamentByIdOptions = {
+    schema: {
+        params: {
+            type: "object",
+            properties: {
+                id: { type: "integer" },
+            },
+        },
+        response: {
+            200: {
+                type: "object",
+                properties: {
+                    id: { type: "integer" },
+                    name: { type: "string" },
+                    maxPlayers: { type: "integer" },
+                    created_at: { type: "string", format: "date-time" },
+                    participants: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                name: { type: "string" }
+                            }
+                        }
+                    }
+                },
+            },
+        },
+    },
+    handler: getTournamentById,
+}
+
 export default async function tournamentRoutes(fastify, options) {
-    fastify.post("/tournament/", createTournamentOptions);
+    fastify.post("/tournament", createTournamentOptions);
     fastify.get("/tournament/:id", getTournamentByIdOptions);
     fastify.put("/tournament/:id", updateTournamentOptions);
 }
