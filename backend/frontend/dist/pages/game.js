@@ -564,7 +564,7 @@ export class GamePage {
                                                                 <option>8.players</option>
                                                                 <option>16.players</option>
                                                             </select>
-                                                            <button class="py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-mono font-semibold rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/30">
+                                                            <button id="tournament" class="py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-mono font-semibold rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/30">
                                                                 $ initialize-tournament
                                                             </button>
                                                         </div>
@@ -949,6 +949,9 @@ export class GamePage {
             .addEventListener("click", () => {
             this.startGame("tournament");
         });
+        document.getElementById("tournament")?.addEventListener("click", () => {
+            this.handleCreateTournament();
+        });
         this.attachProfileEvents();
     }
     attachProfileEvents() {
@@ -1175,6 +1178,52 @@ export class GamePage {
             btn.disabled = false;
             console.error("2FA update error:", error);
         }
+    }
+    async createTournament(name, maxPlayers, players) {
+        try {
+            const response = await fetch("/tournament", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify({
+                    name: name,
+                    max_players: maxPlayers,
+                    players: players
+                }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                console.log("Tournament created successfully:", data);
+            }
+            else {
+                console.error("Failed to create tournament:", data.error);
+            }
+        }
+        catch (error) {
+            console.error("Network error:", error);
+        }
+    }
+    handleCreateTournament() {
+        const nameInput = document.querySelector('input[placeholder="tournament_name"]');
+        const playersSelect = document.querySelector('select');
+        if (!nameInput || !playersSelect) {
+            console.error("Tournament form elements not found");
+            return;
+        }
+        const tournamentName = nameInput.value.trim();
+        const maxPlayersText = playersSelect.value;
+        const maxPlayers = parseInt(maxPlayersText.split('.')[0]);
+        if (!tournamentName) {
+            alert("Please enter a tournament name");
+            return;
+        }
+        const players = [];
+        for (let i = 1; i <= maxPlayers; i++) {
+            players.push(`Player ${i}`);
+        }
+        this.createTournament(tournamentName, maxPlayers, players);
     }
     showProfileAlert(id, message, type = "error") {
         const alert = document.getElementById(id);

@@ -2,14 +2,14 @@ import db from '../db.js'
 // Handler pour match creation
 
 export function postMatch(req, reply) {
-  const { player1, player2, mode } = req.body;
+  const { player_id, player_2, mode } = req.body;
+  const { id: userId } = req.user;
 
   try {
     const stmt = db.prepare('INSERT INTO matches (player1, player2, mode) VALUES (?, ?, ?)');
-    const info = stmt.run(player1, player2, mode);
-    db.prepare('UPDATE users SET games_played = games_played + 1 WHERE login = ?').run(player1);
-    db.prepare('UPDATE users SET games_played = games_played + 1 WHERE login = ?').run(player2);
-    reply.code(201).send({ id: info.lastInsertRowid, player1, player2 });
+      stmt.run(player_id, player_2, mode);
+    db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
+    reply.code(201).send({ id: info.lastInsertRowid, player1: player_id, player2: mode === 'ia' ? "ia" : "guest" });
   } catch (err) {
     reply.status(500).send({ error: err.message });
   }
@@ -17,19 +17,15 @@ export function postMatch(req, reply) {
 
 export function updateMatch(req, reply) {
   const { id } = req.params;
-  const { player1, player2, score1, score2 } = req.body;
+  const { player_id, score1, score2 } = req.body;
 
   try {
     let winner = null;
     if (score1 > score2) {
-      winner = player1;
-      db.prepare('UPDATE users SET games_won = games_won + 1 WHERE login = ?').run(player1);
-    } 
-    else {
-      winner = player2;
-      db.prepare('UPDATE users SET games_won = games_won + 1 WHERE login = ?').run(player2);
+      winner = player_id;
+      db.prepare('UPDATE users SET games_won = games_won + 1 WHERE id = ?').run(player_id);
     }
-    const games_wons = db.prepare('SELECT games_won FROM users WHERE login = ?').get(winner);
+    const games_wons = db.prepare('SELECT games_won FROM users WHERE id = ?').get(winner);
     console.log(`Games won by ${winner}: ${games_wons ? games_wons.games_won : 0}`);
     db.prepare('UPDATE matches SET score1 = ?, score2 = ?, winner = ? WHERE id = ?').run(score1, score2, winner, id);
     reply.send({ id, score1, score2, winner });
@@ -54,7 +50,7 @@ export async function getMatchesByUser(req, reply, userId) {
       return reply.status(404).send({ error: 'User not found' });
     }
 
-    const rows = db.prepare('SELECT * FROM matches WHERE player1 = ? OR player2 = ?').all(user.login, user.login);
+    const rows = db.prepare('SELECT * FROM matches WHERE player1 = ? OR player2 = ?').all(user.id, user.id);
     reply.send(rows);
   } catch (err) {
     reply.status(500).send({ error: err.message });

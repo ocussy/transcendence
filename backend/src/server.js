@@ -14,8 +14,9 @@ import websocket from "@fastify/websocket";
 import FastifyRedis from "@fastify/redis";
 import db from "./db.js"
 import { seedDatabase } from './seed.js';
-import { setupConnexionSocket, setupRemoteSocket } from "./remote.js";
+import { setupConnexionSocket, setupRemoteSocket, setupRemoteGame, clearConnectedUsers } from "./remote.js";
 import statsRoutes from "./routes/stats.js";
+import tournamentRoutes from "./routes/tournament.js";
 
 // import websocket from "@fastify/websocket";
 
@@ -25,7 +26,7 @@ dotenv.config();
 
 export const app = fastify();
 
-// seedDatabase(db);
+seedDatabase(db);
 
 
 await app.register(websocket);
@@ -53,6 +54,9 @@ await app.register(FastifyRedis, {
   port:6379,
 });
 
+// Nettoyer les utilisateurs connectés au démarrage du serveur
+await clearConnectedUsers(app);
+
 app.register(fastifyStatic, {
   root: path.join(__dirname, "../frontend"),
   prefix: "/",
@@ -63,6 +67,7 @@ app.register(userRoutes);
 app.register(matchRoutes);
 app.register(authRoutes);
 app.register(statsRoutes);
+app.register(tournamentRoutes);
 
 // pour SPA sinon les routes pas trouve
 const spaRoutes = [
@@ -82,6 +87,7 @@ spaRoutes.forEach((route) => {
 
 setupConnexionSocket(app);
 setupRemoteSocket(app);
+setupRemoteGame(app);
 
 app.decorate("authenticate", async (request, reply) => {
   try {
