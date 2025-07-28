@@ -28,8 +28,8 @@ export function createTournament(req, reply) {
     console.log("all participants :", allParticipants);
     const participants = db.prepare(`SELECT * FROM participants WHERE tournament_id = ?`).all(tournament.lastInsertRowid);
 
-    const player_1 = participants[0].name;
-    const player_2 = participants[1].name;
+    const player_1 = participants[1].name;
+    const player_2 = participants[2].name;
 
     db.prepare(`DELETE FROM participants WHERE tournament_id = ? AND name = ?`).run(tournament.lastInsertRowid, player_1);
     db.prepare(`DELETE FROM participants WHERE tournament_id = ? AND name = ?`).run(tournament.lastInsertRowid, player_2);

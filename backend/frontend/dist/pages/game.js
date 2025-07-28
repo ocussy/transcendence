@@ -269,7 +269,7 @@ export class GamePage {
             });
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Failed to create match: ${response.status}`);
+                throw new Error(`Failed to create match: ${errorText}`);
             }
             const data = await response.json();
             this.currentMatchId = data.id;

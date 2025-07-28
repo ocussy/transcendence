@@ -54,6 +54,7 @@ export async function getUser(req, reply) {
 
 export async function getFriendsUser(req, reply) {
   try {
+    logConnectedUsers(app);
     const id = req.user.id;
     const friends = db.prepare(`
       SELECT u.login, u.avatarUrl, u.games_played, u.games_won, u.online

@@ -6,6 +6,8 @@ import {
   getMatchesByUser,
 } from "../controllers/matches.js";
 
+import { verifyUser } from "../controllers/users.js";
+
 const Match = {
   type: "object",
   properties: {
@@ -59,6 +61,7 @@ const getMatchesOptions = {
 };
 
 const postMatchOptions = {
+  preHandler: verifyUser,
   schema: {
     body: {
       type: "object",

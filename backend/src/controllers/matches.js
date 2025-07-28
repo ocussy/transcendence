@@ -3,23 +3,26 @@ import db from '../db.js'
 
 export function postMatch(req, reply) {
   const { mode } = req.body;
-  const { id: userId } = req.user;
+  const userId = req.user.id;
+  console.log(`User ID: ${userId}, Mode: ${mode}`);
 
   try {
-    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
+      console.log("Received request to create match");
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
     const stmt = db.prepare('INSERT INTO matches (player1, player2, mode) VALUES (?, ?, ?)');
       stmt.run(user.login, "guest", mode);
     db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
-    reply.code(201).send({ id: info.lastInsertRowid, player1: user.login });
+    const idMatch = db.prepare('SELECT last_insert_rowid() as id').get().id;
+    console.log(`Match created with ID: ${idMatch}`);
+    reply.code(201).send({ id: idMatch, player1: user.login });
   } catch (err) {
     reply.status(500).send({ error: err.message });
   }
 }
 
 export function updateMatch(req, reply) {
-  const { id } = req.params;
+  const id = req.user.id;
   const {score1, score2 } = req.body;
-  const { player_id } = req.user;
 
   try {
     let winner = null;
