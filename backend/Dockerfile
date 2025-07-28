@@ -30,6 +30,12 @@ WORKDIR /app
 # Copy backend sources
 COPY . .
 
+RUN mkdir -p certs && \
+    openssl req -nodes -new -x509 \
+    -keyout certs/server.key \
+    -out certs/server.cert \
+    -subj "/C=FR/ST=Ile-de-France/L=Paris/O=42/CN=localhost"
+
 # Expose port
 EXPOSE 8000
 

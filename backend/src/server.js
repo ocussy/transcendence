@@ -17,6 +17,8 @@ import { seedDatabase } from './seed.js';
 import { setupConnexionSocket, setupRemoteSocket, setupRemoteGame, clearConnectedUsers } from "./remote.js";
 import statsRoutes from "./routes/stats.js";
 import tournamentRoutes from "./routes/tournament.js";
+import fs from "fs";
+
 
 // import websocket from "@fastify/websocket";
 
@@ -24,10 +26,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config();
 
-export const app = fastify();
+const key = fs.readFileSync(path.join(__dirname, "../certs/server.key"));
+const cert = fs.readFileSync(path.join(__dirname, "../certs/server.cert"));
+
+export const app = fastify({
+  https: {
+    key,
+    cert,
+  },
+});
 
 seedDatabase(db);
 
+console.log("Database seeded successfully");
 
 await app.register(websocket);
 
