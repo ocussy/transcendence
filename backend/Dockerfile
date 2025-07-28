@@ -1,29 +1,43 @@
 FROM node:20
 
-# 1. Dossier de travail principal
 WORKDIR /app
 
-# 2. Installer les dépendances backend
+# Install backend deps
 COPY package.json package-lock.json* ./
 RUN npm install
 
-# 3. Installer OpenSSL + SQLite
-RUN apt-get update && \
-    apt-get install -y openssl sqlite3 && \
-    rm -rf /var/lib/apt/lists/*
+# Install SQLite (si nécessaire)
+RUN apt-get update && apt-get install -y sqlite3 && rm -rf /var/lib/apt/lists/*
 
-# 6. Construire le frontend
+# --- FRONTEND BUILD ---
+
 WORKDIR /app/frontend
+
+# Copy frontend package.json and install deps
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm install
-COPY frontend ./
+
+# Copy all frontend sources
+COPY frontend .
+
+# Build frontend (génère /app/frontend/dist)
 RUN npm run build
 
-# 7. Revenir au backend
-WORKDIR /app
-COPY . .
-# 8. Exposer le port HTTPS
-EXPOSE 443
+# --- BACK TO BACKEND ---
 
-# 9. Démarrer le backend
+WORKDIR /app
+
+# Copy backend sources
+COPY . .
+
+RUN mkdir -p certs && \
+    openssl req -nodes -new -x509 \
+    -keyout certs/server.key \
+    -out certs/server.cert \
+    -subj "/C=FR/ST=Ile-de-France/L=Paris/O=42/CN=localhost"
+
+# Expose port
+EXPOSE 8000
+
+# Launch backend
 CMD ["npm", "run", "dev"]

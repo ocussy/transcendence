@@ -1,35 +1,33 @@
-# Variables
-DOCKER_COMPOSE = docker compose
 
 # Lancer avec --build (par défaut : make)
 .DEFAULT_GOAL := up
  
 # Lancer les conteneurs avec build
 up:
-	$(DOCKER_COMPOSE) up --build
+	docker compose up --build
 
 # Arrêter les conteneurs sans supprimer les volumes
 down:
-	$(DOCKER_COMPOSE) down
+	docker compose down
 
 # Arrêter les conteneurs et supprimer les volumes
 prune:
-	$(DOCKER_COMPOSE) down -v
+	docker compose down -v
 
 # Redémarrer le projet proprement (down puis up)
 restart: down up
 
 # Rebuild sans lancer
 build:
-	$(DOCKER_COMPOSE) build
+	docker compose build
 
 # Voir les conteneurs actifs
 ps:
-	$(DOCKER_COMPOSE) ps
+	docker compose ps
 
 # Accès shell à un service : make sh SERVICE=web
 sh:
-	$(DOCKER_COMPOSE) exec $(SERVICE) sh
+	docker compose exec $(SERVICE) sh
 
 # Nettoyer les images non utilisées
 clean-images:

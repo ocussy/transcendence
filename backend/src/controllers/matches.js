@@ -2,14 +2,15 @@ import db from '../db.js'
 // Handler pour match creation
 
 export function postMatch(req, reply) {
-  const { player_id, player_2, mode } = req.body;
+  const { mode } = req.body;
   const { id: userId } = req.user;
 
   try {
+    const user = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
     const stmt = db.prepare('INSERT INTO matches (player1, player2, mode) VALUES (?, ?, ?)');
-      stmt.run(player_id, player_2, mode);
+      stmt.run(user.login, "guest", mode);
     db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
-    reply.code(201).send({ id: info.lastInsertRowid, player1: player_id, player2: mode === 'ia' ? "ia" : "guest" });
+    reply.code(201).send({ id: info.lastInsertRowid, player1: user.login });
   } catch (err) {
     reply.status(500).send({ error: err.message });
   }
@@ -17,7 +18,8 @@ export function postMatch(req, reply) {
 
 export function updateMatch(req, reply) {
   const { id } = req.params;
-  const { player_id, score1, score2 } = req.body;
+  const {score1, score2 } = req.body;
+  const { player_id } = req.user;
 
   try {
     let winner = null;
