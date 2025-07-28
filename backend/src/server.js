@@ -17,6 +17,7 @@ import { seedDatabase } from './seed.js';
 import { setupConnexionSocket, setupRemoteSocket, setupRemoteGame, clearConnectedUsers } from "./remote.js";
 import statsRoutes from "./routes/stats.js";
 import tournamentRoutes from "./routes/tournament.js";
+import fs from "fs";
 
 // import websocket from "@fastify/websocket";
 
@@ -24,10 +25,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config();
 
-export const app = fastify();
+export const app = fastify({
+  logger: true,
+  https: {
+    key: fs.readFileSync(path.join(__dirname, "../ssl/key.pem")),
+    cert: fs.readFileSync(path.join(__dirname, "../ssl/cert.pem")),
+  }
+});
 
 seedDatabase(db);
-
 
 await app.register(websocket);
 
@@ -97,12 +103,12 @@ app.decorate("authenticate", async (request, reply) => {
   }
 });
 
-const start = async () => {
-  try {
-    await app.listen({ port: 8000, host: "0.0.0.0" });
-  } catch (err) {
-    console.error(err);
+
+app.listen({ port: 443, host: "0.0.0.0" }, (err, address) => {
+  if (err) {
+    app.log.error(err);
     process.exit(1);
   }
-};
+  console.log(`🚀 HTTPS server listening at ${address}`);
+});
 start();
