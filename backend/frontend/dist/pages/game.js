@@ -245,13 +245,13 @@ export class GamePage {
         }
     }
     extractSeedFromUrl(url) {
-        if (!url || !url.includes('seed='))
-            return 'coco';
+        if (!url || !url.includes("seed="))
+            return "coco";
         const match = url.match(/seed=([^&]*)/);
-        return match ? decodeURIComponent(match[1]) : 'coco';
+        return match ? decodeURIComponent(match[1]) : "coco";
     }
     rebuildUrlWithSeed(originalUrl, newSeed) {
-        if (!originalUrl || !originalUrl.includes('seed='))
+        if (!originalUrl || !originalUrl.includes("seed="))
             return originalUrl;
         return originalUrl.replace(/seed=([^&]*)/, `seed=${encodeURIComponent(newSeed)}`);
     }
@@ -264,7 +264,7 @@ export class GamePage {
                 },
                 credentials: "include",
                 body: JSON.stringify({
-                    mode: mode
+                    mode: mode,
                 }),
             });
             if (!response.ok) {
@@ -474,25 +474,32 @@ export class GamePage {
         }
         container.innerHTML = this.friendsList
             .map((friend) => `
-      <div class="bg-gray-800 border border-gray-700 rounded-lg p-3 mb-2">
+      <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-3">
         <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <img
-              src="${friend.avatarUrl}"
-              alt="${friend.login}"
-              class="w-8 h-8 rounded-full border border-gray-600"
-              onerror="this.src='https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${friend.login}'"
-            >
+          <div class="flex items-center gap-3">
+            <div class="relative">
+              <img
+                src="${friend.avatarUrl}"
+                alt="${friend.login}"
+                class="w-12 h-12 rounded-full border-2 border-gray-600"
+                onerror="this.src='https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${friend.login}'"
+              >
+              <!-- Indicateur de statut en ligne -->
+              <div class="absolute -bottom-1 -right-1 w-4 h-4 ${friend.online ? "bg-green-500" : "bg-gray-500"} rounded-full border-2 border-gray-800"></div>
+            </div>
             <div>
-              <div class="font-mono font-bold text-white text-xs">${friend.login}</div>
+              <div class="flex items-center gap-2">
+                <div class="font-mono font-bold text-white text-sm">${friend.login}</div>
+              </div>
               <div class="font-mono text-xs text-gray-400">
-                ${friend.games_played === 0 ? "No matches" : `${friend.games_won}% • ${friend.games_played}m`}
+                ${friend.games_played === 0 ? "No matches" : `${friend.games_won}% win rate • ${friend.games_played} games`}
               </div>
             </div>
           </div>
           <button
-            class="text-red-400 hover:text-red-300 p-1 hover:bg-gray-700 rounded text-xs"
+            class="text-red-400 hover:text-red-300 p-2 hover:bg-gray-700 rounded text-sm transition-colors"
             onclick="if(window.gamePageInstance) window.gamePageInstance.removeFriend('${friend.login}')"
+            title="Remove friend"
           >
             ×
           </button>
@@ -608,7 +615,6 @@ export class GamePage {
                                                             <select class="px-4 py-3 border border-gray-700 rounded-lg font-mono bg-gray-800 text-white focus:outline-none focus:ring-3 focus:ring-blue-500/30 focus:border-blue-500">
                                                                 <option>4.players</option>
                                                                 <option>8.players</option>
-                                                                <option>16.players</option>
                                                             </select>
                                                             <button id="tournament" class="py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-mono font-semibold rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/30">
                                                                 $ initialize-tournament
@@ -985,14 +991,20 @@ export class GamePage {
         document.getElementById("ai-game-btn").addEventListener("click", () => {
             this.startGame("ai");
         });
-        document.getElementById("remote-game-btn").addEventListener("click", () => {
+        document
+            .getElementById("remote-game-btn")
+            .addEventListener("click", () => {
             this.startGame("remote");
+        });
+        document.getElementById("tournament")?.addEventListener("click", () => {
+            this.showTournamentPopup();
         });
         this.attachProfileEvents();
     }
     attachProfileEvents() {
         document
-            .getElementById("profile-avatar-seed")?.addEventListener("input", (e) => {
+            .getElementById("profile-avatar-seed")
+            ?.addEventListener("input", (e) => {
             const seed = e.target.value;
             if (this.currentUser?.avatarUrl) {
                 const newUrl = this.rebuildUrlWithSeed(this.currentUser.avatarUrl, seed);
@@ -1050,7 +1062,9 @@ export class GamePage {
         const email = document.getElementById("profile-email").value.trim();
         const alias = document.getElementById("profile-alias").value.trim();
         const avatarSeed = document.getElementById("profile-avatar-seed").value.trim();
-        const avatarUrl = avatarSeed ? this.rebuildUrlWithSeed(this.currentUser.avatarUrl, avatarSeed) : this.currentUser.avatarUrl;
+        const avatarUrl = avatarSeed
+            ? this.rebuildUrlWithSeed(this.currentUser.avatarUrl, avatarSeed)
+            : this.currentUser.avatarUrl;
         const btn = document.getElementById("save-basic-btn");
         this.hideProfileAlerts();
         if (!username || !email) {
@@ -1218,52 +1232,6 @@ export class GamePage {
             console.error("2FA update error:", error);
         }
     }
-    async createTournament(name, maxPlayers, players) {
-        try {
-            const response = await fetch("/tournament", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                credentials: "include",
-                body: JSON.stringify({
-                    name: name,
-                    max_players: maxPlayers,
-                    players: players
-                }),
-            });
-            const data = await response.json();
-            if (response.ok) {
-                console.log("Tournament created successfully:", data);
-            }
-            else {
-                console.error("Failed to create tournament:", data.error);
-            }
-        }
-        catch (error) {
-            console.error("Network error:", error);
-        }
-    }
-    handleCreateTournament() {
-        const nameInput = document.querySelector('input[placeholder="tournament_name"]');
-        const playersSelect = document.querySelector('select');
-        if (!nameInput || !playersSelect) {
-            console.error("Tournament form elements not found");
-            return;
-        }
-        const tournamentName = nameInput.value.trim();
-        const maxPlayersText = playersSelect.value;
-        const maxPlayers = parseInt(maxPlayersText.split('.')[0]);
-        if (!tournamentName) {
-            alert("Please enter a tournament name");
-            return;
-        }
-        const players = [];
-        for (let i = 1; i <= maxPlayers; i++) {
-            players.push(`Player ${i}`);
-        }
-        this.createTournament(tournamentName, maxPlayers, players);
-    }
     showProfileAlert(id, message, type = "error") {
         const alert = document.getElementById(id);
         if (alert) {
@@ -1381,7 +1349,110 @@ export class GamePage {
             this.loadDashboardData();
         }
     }
-    async startGame(mode) {
+    startGame(mode) {
+        const canvasDiv = document.getElementById("game-canvas");
+        let controlsHTML = "";
+        if (mode === "local") {
+            controlsHTML = `
+        <div class="text-center text-gray-500">
+          <div class="text-6xl mb-4 font-mono">[PONG]</div>
+          <p class="font-mono mb-6">pong.exe ready</p>
+          <p class="font-mono text-blue-400 mb-8">local mode initialized</p>
+
+          <!-- Contrôles Local -->
+          <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-md mx-auto mb-6">
+            <h3 class="font-mono text-white font-bold mb-4">$ controls --local</h3>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+              <div class="text-left">
+                <div class="font-mono text-blue-400 font-bold mb-2">PLAYER 1</div>
+                <div class="font-mono text-gray-300">W - move up</div>
+                <div class="font-mono text-gray-300">S - move down</div>
+              </div>
+              <div class="text-left">
+                <div class="font-mono text-purple-400 font-bold mb-2">PLAYER 2</div>
+                <div class="font-mono text-gray-300">I - move up</div>
+                <div class="font-mono text-gray-300">K - move down</div>
+              </div>
+            </div>
+          </div>
+
+          <button id="start-local-game" class="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-mono font-bold rounded-lg transition-colors">
+            $ start-game
+          </button>
+        </div>
+      `;
+        }
+        else if (mode === "ai") {
+            controlsHTML = `
+        <div class="text-center text-gray-500">
+          <div class="text-6xl mb-4 font-mono">[PONG]</div>
+          <p class="font-mono mb-6">pong.exe ready</p>
+          <p class="font-mono text-purple-400 mb-8">ai mode initialized</p>
+
+          <!-- Contrôles AI -->
+          <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-md mx-auto mb-6">
+            <h3 class="font-mono text-white font-bold mb-4">$ controls --ai</h3>
+            <div class="text-center">
+              <div class="font-mono text-blue-400 font-bold mb-3">PLAYER vs AI</div>
+              <div class="font-mono text-gray-300 mb-2">🖱️ Mouse - control paddle</div>
+              <div class="mt-4 p-3 bg-purple-500/10 border border-purple-500/30 rounded">
+                <div class="font-mono text-purple-400 text-sm">AI opponent active</div>
+              </div>
+            </div>
+          </div>
+
+          <button id="start-ai-game" class="px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white font-mono font-bold rounded-lg transition-colors">
+            $ start-game
+          </button>
+        </div>
+      `;
+        }
+        else if (mode === "remote") {
+            controlsHTML = `
+        <div class="text-center text-gray-500">
+          <div class="text-6xl mb-4 font-mono">[PONG]</div>
+          <p class="font-mono mb-6">pong.exe ready</p>
+          <p class="font-mono text-green-400 mb-8">remote mode selected ᯤ</p>
+
+          <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-md mx-auto mb-6">
+            <div class="space-y-4">
+              <button id="create-room" class="w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white font-mono font-bold rounded-lg transition-colors">
+                $--create room
+              </button>
+              <button id="join-room" class="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white font-mono font-bold rounded-lg transition-colors">
+                $--join room
+              </button>
+            </div>
+            </div>
+          </div>
+        </div>
+      `;
+        }
+        canvasDiv.innerHTML = controlsHTML;
+        if (mode == "local" || mode == "ai") {
+            const startButton = document.getElementById(`start-${mode}-game`);
+            if (startButton) {
+                startButton.addEventListener("click", () => {
+                    this.launchGame(mode);
+                });
+            }
+        }
+        else if (mode === "remote") {
+            const createRoomBtn = document.getElementById("create-room");
+            const joinRoomBtn = document.getElementById("join-room");
+            if (createRoomBtn) {
+                createRoomBtn.addEventListener("click", () => {
+                    this.showProfileAlert("profile-alert", "$ create: feature not implemented yet");
+                });
+            }
+            if (joinRoomBtn) {
+                joinRoomBtn.addEventListener("click", () => {
+                    this.showProfileAlert("profile-alert", "$ join: feature not implemented yet");
+                });
+            }
+        }
+    }
+    async launchGame(mode) {
         if (mode === "local" || mode === "ai") {
             const matchId = await this.createMatch(mode);
             if (!matchId) {
@@ -1405,6 +1476,239 @@ export class GamePage {
         script.async = true;
         canvasDiv.appendChild(script);
         console.log(`Game ${mode} started`);
+    }
+    showTournamentPopup() {
+        const nameInput = document.querySelector('input[placeholder="tournament_name"]');
+        const playersSelect = document.querySelector("select");
+        if (!nameInput || !playersSelect) {
+            this.showProfileAlert("profile-alert", "$ error: form elements not found");
+            return;
+        }
+        const tournamentName = nameInput.value.trim();
+        const maxPlayersText = playersSelect.value;
+        const maxPlayers = parseInt(maxPlayersText.split(".")[0]);
+        if (!tournamentName) {
+            this.showProfileAlert("profile-alert", "$ error: tournament name required");
+            return;
+        }
+        this.createTournamentPopup(tournamentName, maxPlayers);
+    }
+    createTournamentPopup(tournamentName, maxPlayers) {
+        const existingPopup = document.getElementById("tournament-popup");
+        if (existingPopup) {
+            existingPopup.remove();
+        }
+        let aliasFields = "";
+        for (let i = 1; i <= maxPlayers; i++) {
+            const isCurrentUser = i === 1;
+            const placeholder = isCurrentUser
+                ? this.currentUser?.alias || this.currentUser?.login || "Your alias"
+                : `Player ${i}`;
+            const value = isCurrentUser
+                ? this.currentUser?.alias || this.currentUser?.login || ""
+                : "";
+            aliasFields += `
+        <div class="mb-4">
+          <label class="block font-mono text-sm text-gray-400 mb-2">
+            Player ${i} ${isCurrentUser ? "(You)" : ""}
+          </label>
+          <input
+            type="text"
+            id="player-${i}-alias"
+            value="${value}"
+            placeholder="${placeholder}"
+            ${isCurrentUser ? "readonly" : ""}
+            class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg font-mono text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isCurrentUser ? "opacity-75 cursor-not-allowed" : ""}"
+          >
+        </div>
+      `;
+        }
+        const popup = document.createElement("div");
+        popup.id = "tournament-popup";
+        popup.className =
+            "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]";
+        popup.innerHTML = `
+      <div class="bg-gray-900 border border-gray-700 rounded-xl p-8 max-w-md w-full mx-4 relative">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="font-mono text-xl font-bold text-yellow-400">$ setup-tournament</h3>
+          <button id="close-popup" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+        </div>
+
+        <!-- Tournament Info -->
+        <div class="mb-6 p-4 bg-gray-800 rounded-lg">
+          <div class="font-mono text-white font-bold">${tournamentName}</div>
+          <div class="font-mono text-gray-400 text-sm">${maxPlayers} players tournament</div>
+        </div>
+
+        <!-- Alias Fields -->
+        <div class="mb-6 max-h-64 overflow-y-auto">
+          ${aliasFields}
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex gap-4">
+          <button id="cancel-tournament" class="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white font-mono rounded-lg transition-colors">
+            $ cancel
+          </button>
+          <button id="create-tournament" class="flex-1 px-4 py-3 bg-yellow-500 hover:bg-yellow-600 text-white font-mono font-bold rounded-lg transition-colors">
+            $ create
+          </button>
+        </div>
+      </div>
+    `;
+        document.body.appendChild(popup);
+        document.getElementById("close-popup")?.addEventListener("click", () => {
+            popup.remove();
+        });
+        document
+            .getElementById("cancel-tournament")
+            ?.addEventListener("click", () => {
+            popup.remove();
+        });
+        document
+            .getElementById("create-tournament")
+            ?.addEventListener("click", () => {
+            this.handleCreateTournamentFromPopup(tournamentName, maxPlayers);
+            popup.remove();
+        });
+        popup.addEventListener("click", (e) => {
+            if (e.target === popup) {
+                popup.remove();
+            }
+        });
+    }
+    async handleCreateTournamentFromPopup(tournamentName, maxPlayers) {
+        const players = [];
+        for (let i = 1; i <= maxPlayers; i++) {
+            const aliasInput = document.getElementById(`player-${i}-alias`);
+            if (aliasInput) {
+                const alias = aliasInput.value.trim();
+                if (!alias) {
+                    this.showProfileAlert("profile-alert", `$ error: Player ${i} alias is required`);
+                    return;
+                }
+                players.push(alias);
+            }
+        }
+        const uniqueAliases = new Set(players);
+        if (uniqueAliases.size !== players.length) {
+            this.showProfileAlert("profile-alert", "$ error: all aliases must be unique");
+            return;
+        }
+        try {
+            console.log(` creating tournament: ${tournamentName} with players:`, players);
+            const response = await fetch("/tournament", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify({
+                    name: tournamentName,
+                    max_players: maxPlayers,
+                    players: players,
+                }),
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error("❌ Tournament creation failed:", errorText);
+                this.showProfileAlert("profile-alert", `$ error: failed to create tournament`);
+                return;
+            }
+            const data = await response.json();
+            console.log(" Tournament created:", data);
+            this.showProfileAlert("profile-success", `$ tournament "${tournamentName}" created`, "success");
+            const nameInput = document.querySelector('input[placeholder="tournament_name"]');
+            if (nameInput)
+                nameInput.value = "";
+            this.showTournamentRules(tournamentName, players, data);
+        }
+        catch (error) {
+            console.error(" Error creating tournament:", error);
+            this.showProfileAlert("profile-alert", `$ error: network error`);
+        }
+    }
+    showTournamentRules(tournamentName, players, tournamentData) {
+        const canvasDiv = document.getElementById("game-canvas");
+        const displayName = tournamentName.length > 25
+            ? tournamentName.substring(0, 25) + "..."
+            : tournamentName;
+        canvasDiv.innerHTML = `
+      <div class="text-center text-white h-[500px] flex flex-col p-6 overflow-hidden">
+        <!-- Header -->
+        <div class="mb-4 flex-shrink-0">
+          <div class="text-3xl mb-2 font-mono text-yellow-400">[TOURNOI]</div>
+          <h2 class="font-mono text-xl font-bold mb-1" title="${tournamentName}">${displayName}</h2>
+          <p class="font-mono text-gray-400">${players.length} participants • </p>
+        </div>
+
+        <!-- Contenu scrollable -->
+        <div class="flex-1 overflow-auto min-h-0 space-y-6">
+
+          <!-- Liste des participants -->
+          <div class="bg-gray-900 border border-gray-700 rounded-lg p-4">
+            <h3 class="font-mono text-blue-400 font-bold mb-4 text-center">$ participants</h3>
+            <div class="grid grid-cols-2 gap-3">
+              ${players
+            .map((player, index) => `
+                <div class="bg-gray-800 border ${index === 0 ? "border-green-500" : "border-gray-600"} rounded px-3 py-2 font-mono text-sm">
+                  <span class="text-gray-400">${index + 1}.</span>
+                  <span class="${index === 0 ? "text-green-400 font-bold" : "text-white"}">${player}</span>
+                  ${index === 0 ? '<span class="text-green-400 text-xs"> (Vous)</span>' : ""}
+                </div>
+              `)
+            .join("")}
+            </div>
+          </div>
+
+          <!-- Règles du tournoi -->
+          <div class="bg-gray-900 border border-gray-700 rounded-lg p-4">
+            <h3 class="font-mono text-purple-400 font-bold mb-4 text-center">$ règles</h3>
+            <div class="text-left space-y-2 font-mono text-sm text-gray-300">
+              <div class="flex items-start gap-2">
+                <span class="text-yellow-400">•</span>
+                <span>Tournoi à élimination directe</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-yellow-400">•</span>
+                <span>Premier à 7 points gagne le match</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-yellow-400">•</span>
+                <span>Les matchs se jouent en tour par tour</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-yellow-400">•</span>
+                <span>Le vainqueur passe au tour suivant</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-yellow-400">•</span>
+                <span>Le perdant est éliminé définitivement</span>
+              </div>
+              <div class="flex items-start gap-2">
+                <span class="text-yellow-400">•</span>
+                <span>Le dernier joueur restant remporte le tournoi</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Bouton pour commencer -->
+        <div class="mt-4 flex-shrink-0">
+          <button id="start-tournament" class="w-full max-w-sm mx-auto px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-black font-mono font-bold rounded-lg transition-colors block">
+            $ START TOURNAMENT
+          </button>
+        </div>
+      </div>
+    `;
+        document
+            .getElementById("start-tournament")
+            ?.addEventListener("click", () => {
+            this.showProfileAlert("profile-success", "$ post match a faire", "success");
+            console.log("Starting tournament with data:", tournamentData);
+        });
     }
     async handleLogout() {
         if (confirm("$ logout: Are you sure you want to exit?")) {

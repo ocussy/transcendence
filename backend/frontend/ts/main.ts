@@ -2,6 +2,7 @@
 import { Router } from "./router.js";
 import { AuthPage } from "./pages/auth.js";
 import { GamePage } from "./pages/game.js";
+import "./sus.js";
 
 class App {
   private router: Router;
