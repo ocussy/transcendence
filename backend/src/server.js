@@ -12,28 +12,33 @@ import dotenv from "dotenv";
 import cookie from "@fastify/cookie";
 import websocket from "@fastify/websocket";
 import FastifyRedis from "@fastify/redis";
-import db from "./db.js"
-import { seedDatabase } from './seed.js';
-import { setupConnexionSocket, setupRemoteSocket, setupRemoteGame, clearConnectedUsers } from "./remote.js";
+import fs from "fs";
+import db from "./db.js";
+import { seedDatabase } from "./seed.js";
+import {
+  setupConnexionSocket,
+  setupRemoteSocket,
+  setupRemoteGame,
+  clearConnectedUsers,
+} from "./remote.js";
 import statsRoutes from "./routes/stats.js";
 import tournamentRoutes from "./routes/tournament.js";
-import fs from "fs";
 
-// import websocket from "@fastify/websocket";
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config();
+
 
 export const app = fastify({
-  logger: true,
   https: {
-    key: fs.readFileSync(path.join(__dirname, "../ssl/key.pem")),
-    cert: fs.readFileSync(path.join(__dirname, "../ssl/cert.pem")),
-  }
+    key: fs.readFileSync("./certs/server.key"),
+    cert: fs.readFileSync("./certs/server.cert"),
+  },
+  logger: true,
 });
-
 seedDatabase(db);
+
 
 await app.register(websocket);
 
@@ -103,12 +108,14 @@ app.decorate("authenticate", async (request, reply) => {
   }
 });
 
-
-app.listen({ port: 443, host: "0.0.0.0" }, (err, address) => {
-  if (err) {
-    app.log.error(err);
+const start = async () => {
+  try {
+    await app.listen({ port: 443, host: "0.0.0.0" });
+  } catch (err) {
+    console.error(err);
     process.exit(1);
   }
-  console.log(`🚀 HTTPS server listening at ${address}`);
-});
+};
 start();
+
+console.log("🚀 Serveur démarré sur https://localhost:443");
