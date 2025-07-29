@@ -98,7 +98,6 @@ export function getMatchHistory(req, reply) {
           END as opponent,
           CASE
             WHEN winner = ? THEN 'WIN'
-            WHEN winner IS NULL THEN 'DRAW'
             ELSE 'LOSS'
           END as result,
           datetime(created_at, 'localtime') as formatted_date
@@ -108,7 +107,7 @@ export function getMatchHistory(req, reply) {
         LIMIT ?
       `,
       )
-      .all(userLogin, userLogin, userLogin, userLogin, limit);
+      .all(userLogin, userId, userLogin, userLogin, limit);
 
     reply.send(matches);
   } catch (error) {

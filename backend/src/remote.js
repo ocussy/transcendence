@@ -35,7 +35,7 @@ export async function logConnectedUsers(app) {
 
   console.log("Logins des utilisateurs connectés :", logins);
 
-  return { count: userIds.length, logins };
+  return { count: userIds.length, logins, ids: numericUserIds };
 }
 
 async function authenticateSocket(req, connection) {

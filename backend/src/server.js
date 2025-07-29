@@ -14,7 +14,7 @@ import websocket from "@fastify/websocket";
 import FastifyRedis from "@fastify/redis";
 import db from "./db.js"
 import { seedDatabase } from './seed.js';
-import { setupConnexionSocket, setupRemoteSocket, setupRemoteGame, clearConnectedUsers } from "./remote.js";
+import { setupConnexionSocket, setupRemoteSocket, setupRemoteGame, clearConnectedUsers, logConnectedUsers } from "./remote.js";
 import statsRoutes from "./routes/stats.js";
 import tournamentRoutes from "./routes/tournament.js";
 import fs from "fs";

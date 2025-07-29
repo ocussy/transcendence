@@ -58,12 +58,12 @@ export async function seedDatabase(db) {
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
-  insertMatch.run('adem', 'geoffrey', 'adem', 11, 7, 300, 'normal');
-  insertMatch.run('oceane', 'lucie', 'lucie', 9, 11, 290, 'normal');
-  insertMatch.run('coco', 'rydom', 'coco', 11, 8, 310, 'tournament');
-  insertMatch.run('adem', 'oceane', 'oceane', 10, 12, 260, 'normal');
-  insertMatch.run('lucie', 'rydom', 'lucie', 11, 6, 280, 'tournament');
-  insertMatch.run('geoffrey', 'coco', 'geoffrey', 11, 9, 295, 'normal');
+  insertMatch.run('adem', 'geoffrey', 1, 11, 7, 300, 'normal');
+  insertMatch.run('oceane', 'lucie', null, 9, 11, 290, 'normal');
+  insertMatch.run('coco', 'rydom', 5, 11, 8, 310, 'tournament');
+  insertMatch.run('adem', 'oceane', null, 10, 12, 260, 'normal');
+  insertMatch.run('lucie', 'rydom', 4, 11, 6, 280, 'tournament');
+  insertMatch.run('geoffrey', 'coco', 2, 11, 9, 295, 'normal');
 
   // Amitiés
   const insertFriend = db.prepare(`

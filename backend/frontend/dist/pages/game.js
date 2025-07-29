@@ -5,7 +5,6 @@ export class GamePage {
         this.currentSection = "tournament";
         this.currentUser = null;
         this.friendsList = [];
-        this.currentMatchId = null;
         verifyToken();
         this.render();
         this.attachEvents();
@@ -255,7 +254,7 @@ export class GamePage {
             return originalUrl;
         return originalUrl.replace(/seed=([^&]*)/, `seed=${encodeURIComponent(newSeed)}`);
     }
-    async createMatch(mode) {
+    static async createMatch(mode) {
         try {
             const response = await fetch("/match", {
                 method: "POST",
@@ -272,13 +271,34 @@ export class GamePage {
                 throw new Error(`Failed to create match: ${errorText}`);
             }
             const data = await response.json();
-            this.currentMatchId = data.id;
-            this.showProfileAlert("profile-success", `$ match-${mode} initialized`, "success");
+            if (!data || !data.id) {
+                throw new Error("Invalid match data received");
+            }
+            GamePage.currentMatchId = data.id;
+            GamePage.showProfileAlert("profile-success", `$ match-${mode} initialized`, "success");
             return data.id;
         }
         catch (error) {
-            this.showProfileAlert("profile-alert", `$ error: failed to create ${mode} match`);
+            GamePage.showProfileAlert("profile-alert", `$ error: failed to create ${mode} match`);
             return null;
+        }
+    }
+    static async sendEndMatch(matchId, score1, score2) {
+        try {
+            const response = await fetch(`/match/${matchId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify({
+                    score1: score1,
+                    score2: score2,
+                }),
+            });
+        }
+        catch (error) {
+            console.error("Erreur lors de l'envoi des résultats du match:", error);
         }
     }
     async loadUserProfile() {
@@ -403,7 +423,7 @@ export class GamePage {
     }
     async addFriend(username) {
         if (!username.trim()) {
-            this.showProfileAlert("profile-alert", "Username is required");
+            GamePage.showProfileAlert("profile-alert", "Username is required");
             return;
         }
         try {
@@ -417,18 +437,18 @@ export class GamePage {
             });
             const data = await response.json();
             if (response.ok) {
-                this.showProfileAlert("profile-success", `Friend ${username} added successfully!`, "success");
+                GamePage.showProfileAlert("profile-success", `Friend ${username} added successfully!`, "success");
                 await this.loadFriends();
                 const input = document.getElementById("add-friend-input");
                 if (input)
                     input.value = "";
             }
             else {
-                this.showProfileAlert("profile-alert", data.error || "Failed to add friend");
+                GamePage.showProfileAlert("profile-alert", data.error || "Failed to add friend");
             }
         }
         catch (error) {
-            this.showProfileAlert("profile-alert", "Network error");
+            GamePage.showProfileAlert("profile-alert", "Network error");
             console.error("Add friend error:", error);
         }
     }
@@ -447,15 +467,15 @@ export class GamePage {
             });
             const data = await response.json();
             if (response.ok) {
-                this.showProfileAlert("profile-success", `Friend ${username} removed`, "success");
+                GamePage.showProfileAlert("profile-success", `Friend ${username} removed`, "success");
                 await this.loadFriends();
             }
             else {
-                this.showProfileAlert("profile-alert", data.error || "Failed to remove friend");
+                GamePage.showProfileAlert("profile-alert", data.error || "Failed to remove friend");
             }
         }
         catch (error) {
-            this.showProfileAlert("profile-alert", "Network error");
+            GamePage.showProfileAlert("profile-alert", "Network error");
             console.error("Remove friend error:", error);
         }
     }
@@ -1068,7 +1088,7 @@ export class GamePage {
         const btn = document.getElementById("save-basic-btn");
         this.hideProfileAlerts();
         if (!username || !email) {
-            this.showProfileAlert("profile-alert", "$ error: username and email are required");
+            GamePage.showProfileAlert("profile-alert", "$ error: username and email are required");
             return;
         }
         btn.textContent = "saving...";
@@ -1084,7 +1104,7 @@ export class GamePage {
             if (avatarUrl !== this.currentUser.avatarUrl)
                 updateData.avatarUrl = avatarUrl;
             if (Object.keys(updateData).length === 0) {
-                this.showProfileAlert("profile-alert", "$ no changes to save");
+                GamePage.showProfileAlert("profile-alert", "$ no changes to save");
                 btn.textContent = "save";
                 btn.disabled = false;
                 return;
@@ -1099,7 +1119,7 @@ export class GamePage {
             });
             const data = await response.json();
             if (response.ok) {
-                this.showProfileAlert("profile-success", "$ basic information updated successfully", "success");
+                GamePage.showProfileAlert("profile-success", "$ basic information updated successfully", "success");
                 Object.assign(this.currentUser, updateData);
                 this.updateProfileDisplay();
                 btn.textContent = "saved ✓";
@@ -1111,13 +1131,13 @@ export class GamePage {
                 }, 2000);
             }
             else {
-                this.showProfileAlert("profile-alert", `$ ${data.error || "update failed"}`);
+                GamePage.showProfileAlert("profile-alert", `$ ${data.error || "update failed"}`);
                 btn.textContent = "save";
                 btn.disabled = false;
             }
         }
         catch (error) {
-            this.showProfileAlert("profile-alert", "$ network error");
+            GamePage.showProfileAlert("profile-alert", "$ network error");
             btn.textContent = "save";
             btn.disabled = false;
             console.error("Update error:", error);
@@ -1129,16 +1149,16 @@ export class GamePage {
         const btn = document.getElementById("save-password-btn");
         this.hideProfileAlerts();
         if (!newPassword || !confirmPassword) {
-            this.showProfileAlert("profile-alert", "$ error: both password fields are required");
+            GamePage.showProfileAlert("profile-alert", "$ error: both password fields are required");
             return;
         }
         if (newPassword !== confirmPassword) {
-            this.showProfileAlert("profile-alert", "$ error: passwords do not match");
+            GamePage.showProfileAlert("profile-alert", "$ error: passwords do not match");
             return;
         }
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
         if (!passwordRegex.test(newPassword)) {
-            this.showProfileAlert("profile-alert", "$ error: password must be at least 8 characters with uppercase, lowercase, number and special character");
+            GamePage.showProfileAlert("profile-alert", "$ error: password must be at least 8 characters with uppercase, lowercase, number and special character");
             return;
         }
         btn.textContent = "updating...";
@@ -1154,7 +1174,7 @@ export class GamePage {
             });
             const data = await response.json();
             if (response.ok) {
-                this.showProfileAlert("profile-success", "$ password updated successfully", "success");
+                GamePage.showProfileAlert("profile-success", "$ password updated successfully", "success");
                 document.getElementById("profile-new-password").value = "";
                 document.getElementById("profile-confirm-password").value = "";
                 btn.textContent = "updated ✓";
@@ -1166,13 +1186,13 @@ export class GamePage {
                 }, 2000);
             }
             else {
-                this.showProfileAlert("profile-alert", `$ ${data.error || "password update failed"}`);
+                GamePage.showProfileAlert("profile-alert", `$ ${data.error || "password update failed"}`);
                 btn.textContent = "update";
                 btn.disabled = false;
             }
         }
         catch (error) {
-            this.showProfileAlert("profile-alert", "$ network error");
+            GamePage.showProfileAlert("profile-alert", "$ network error");
             btn.textContent = "update";
             btn.disabled = false;
             console.error("Password update error:", error);
@@ -1195,7 +1215,7 @@ export class GamePage {
             });
             const data = await response.json();
             if (response.ok) {
-                this.showProfileAlert("profile-success", `$ 2FA ${isEnabled ? "enabled" : "disabled"} successfully`, "success");
+                GamePage.showProfileAlert("profile-success", `$ 2FA ${isEnabled ? "enabled" : "disabled"} successfully`, "success");
                 if (this.currentUser) {
                     this.currentUser.secure_auth = isEnabled;
                 }
@@ -1209,7 +1229,7 @@ export class GamePage {
                 }, 2000);
             }
             else {
-                this.showProfileAlert("profile-alert", `$ ${data.error || "2FA update failed"}`);
+                GamePage.showProfileAlert("profile-alert", `$ ${data.error || "2FA update failed"}`);
                 if (this.currentUser) {
                     document.getElementById("profile-2fa").checked =
                         this.currentUser.secure_auth;
@@ -1226,13 +1246,13 @@ export class GamePage {
             }
         }
         catch (error) {
-            this.showProfileAlert("profile-alert", "$ network error");
+            GamePage.showProfileAlert("profile-alert", "$ network error");
             btn.textContent = "$ apply security settings";
             btn.disabled = false;
             console.error("2FA update error:", error);
         }
     }
-    showProfileAlert(id, message, type = "error") {
+    static showProfileAlert(id, message, type = "error") {
         const alert = document.getElementById(id);
         if (alert) {
             alert.textContent = message;
@@ -1244,10 +1264,10 @@ export class GamePage {
                 alert.style.opacity = "1";
                 alert.style.transition = "all 0.3s ease-out";
             }, 10);
-            setTimeout(() => this.hideProfileAlert(id), 2000);
+            setTimeout(() => GamePage.hideProfileAlert(id), 2000);
         }
     }
-    hideProfileAlert(id) {
+    static hideProfileAlert(id) {
         const alert = document.getElementById(id);
         if (alert && !alert.classList.contains("hidden")) {
             alert.style.transform = "translate(-50%, -20px)";
@@ -1261,8 +1281,8 @@ export class GamePage {
         }
     }
     hideProfileAlerts() {
-        this.hideProfileAlert("profile-alert");
-        this.hideProfileAlert("profile-success");
+        GamePage.hideProfileAlert("profile-alert");
+        GamePage.hideProfileAlert("profile-success");
     }
     handleBrowserNavigation() {
         window.addEventListener("popstate", (event) => {
@@ -1442,24 +1462,17 @@ export class GamePage {
             const joinRoomBtn = document.getElementById("join-room");
             if (createRoomBtn) {
                 createRoomBtn.addEventListener("click", () => {
-                    this.showProfileAlert("profile-alert", "$ create: feature not implemented yet");
+                    GamePage.showProfileAlert("profile-alert", "$ create: feature not implemented yet");
                 });
             }
             if (joinRoomBtn) {
                 joinRoomBtn.addEventListener("click", () => {
-                    this.showProfileAlert("profile-alert", "$ join: feature not implemented yet");
+                    GamePage.showProfileAlert("profile-alert", "$ join: feature not implemented yet");
                 });
             }
         }
     }
     async launchGame(mode) {
-        if (mode === "local" || mode === "ai") {
-            const matchId = await this.createMatch(mode);
-            if (!matchId) {
-                console.error("Failed to create match, aborting game start");
-                return;
-            }
-        }
         const canvasDiv = document.getElementById("game-canvas");
         canvasDiv.innerHTML = `<canvas id="renderCanvas" class="w-full h-full" tabindex="0"></canvas>`;
         const oldScript = document.getElementById("pong-script");
@@ -1481,14 +1494,14 @@ export class GamePage {
         const nameInput = document.querySelector('input[placeholder="tournament_name"]');
         const playersSelect = document.querySelector("select");
         if (!nameInput || !playersSelect) {
-            this.showProfileAlert("profile-alert", "$ error: form elements not found");
+            GamePage.showProfileAlert("profile-alert", "$ error: form elements not found");
             return;
         }
         const tournamentName = nameInput.value.trim();
         const maxPlayersText = playersSelect.value;
         const maxPlayers = parseInt(maxPlayersText.split(".")[0]);
         if (!tournamentName) {
-            this.showProfileAlert("profile-alert", "$ error: tournament name required");
+            GamePage.showProfileAlert("profile-alert", "$ error: tournament name required");
             return;
         }
         this.createTournamentPopup(tournamentName, maxPlayers);
@@ -1585,7 +1598,7 @@ export class GamePage {
             if (aliasInput) {
                 const alias = aliasInput.value.trim();
                 if (!alias) {
-                    this.showProfileAlert("profile-alert", `$ error: Player ${i} alias is required`);
+                    GamePage.showProfileAlert("profile-alert", `$ error: Player ${i} alias is required`);
                     return;
                 }
                 players.push(alias);
@@ -1593,7 +1606,7 @@ export class GamePage {
         }
         const uniqueAliases = new Set(players);
         if (uniqueAliases.size !== players.length) {
-            this.showProfileAlert("profile-alert", "$ error: all aliases must be unique");
+            GamePage.showProfileAlert("profile-alert", "$ error: all aliases must be unique");
             return;
         }
         try {
@@ -1613,12 +1626,12 @@ export class GamePage {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error("❌ Tournament creation failed:", errorText);
-                this.showProfileAlert("profile-alert", `$ error: failed to create tournament`);
+                GamePage.showProfileAlert("profile-alert", `$ error: failed to create tournament`);
                 return;
             }
             const data = await response.json();
             console.log(" Tournament created:", data);
-            this.showProfileAlert("profile-success", `$ tournament "${tournamentName}" created`, "success");
+            GamePage.showProfileAlert("profile-success", `$ tournament "${tournamentName}" created`, "success");
             const nameInput = document.querySelector('input[placeholder="tournament_name"]');
             if (nameInput)
                 nameInput.value = "";
@@ -1626,7 +1639,7 @@ export class GamePage {
         }
         catch (error) {
             console.error(" Error creating tournament:", error);
-            this.showProfileAlert("profile-alert", `$ error: network error`);
+            GamePage.showProfileAlert("profile-alert", `$ error: network error`);
         }
     }
     showTournamentRules(tournamentName, players, tournamentData) {
@@ -1706,7 +1719,7 @@ export class GamePage {
         document
             .getElementById("start-tournament")
             ?.addEventListener("click", () => {
-            this.showProfileAlert("profile-success", "$ post match a faire", "success");
+            GamePage.showProfileAlert("profile-success", "$ post match a faire", "success");
             console.log("Starting tournament with data:", tournamentData);
         });
     }
@@ -1735,4 +1748,6 @@ export class GamePage {
         }
     }
 }
+GamePage.currentMatchId = null;
+window.GamePage = GamePage;
 //# sourceMappingURL=game.js.map

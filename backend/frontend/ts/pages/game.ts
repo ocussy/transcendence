@@ -28,7 +28,7 @@ export class GamePage {
   private currentSection: string = "tournament";
   private currentUser: any = null; // Ajouté pour stocker les données utilisateur
   private friendsList: any[] = [];
-  private currentMatchId: number | null = null;
+  static currentMatchId: number | null = null;
 
   constructor() {
     verifyToken(); // Vérifie le token JWT à l'initialisation
@@ -328,7 +328,7 @@ export class GamePage {
 
   //////////////////////////////////////////////creation match///////////////////////////////////////
 
-  private async createMatch(mode: string): Promise<number | null> {
+  static async createMatch(mode: string): Promise<number | null> {
     try {
       const response = await fetch("/match", {
         method: "POST",
@@ -345,23 +345,41 @@ export class GamePage {
         const errorText = await response.text();
         throw new Error(`Failed to create match: ${errorText}`);
       }
-
       const data = await response.json();
-
-      this.currentMatchId = data.id;
-      this.showProfileAlert(
+      if (!data || !data.id) {
+        throw new Error("Invalid match data received");
+      }
+      GamePage.currentMatchId = data.id;
+      GamePage.showProfileAlert(
         "profile-success",
         `$ match-${mode} initialized`,
         "success",
       );
-
       return data.id;
     } catch (error) {
-      this.showProfileAlert(
+      GamePage.showProfileAlert(
         "profile-alert",
         `$ error: failed to create ${mode} match`,
       );
       return null;
+    }
+  }
+
+  static async sendEndMatch(matchId: number, score1: number, score2: number): Promise<void> {
+    try {
+      const response = await fetch(`/match/${matchId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          score1: score1,
+          score2: score2,
+        }),
+      });
+    } catch (error) {
+      console.error("Erreur lors de l'envoi des résultats du match:", error);
     }
   }
   //////////////////////////////////////////////creation match///////////////////////////////////////
@@ -517,7 +535,7 @@ export class GamePage {
 
   private async addFriend(username: string): Promise<void> {
     if (!username.trim()) {
-      this.showProfileAlert("profile-alert", "Username is required");
+      GamePage.showProfileAlert("profile-alert", "Username is required");
       return;
     }
 
@@ -534,7 +552,7 @@ export class GamePage {
       const data = await response.json();
 
       if (response.ok) {
-        this.showProfileAlert(
+        GamePage.showProfileAlert(
           "profile-success",
           `Friend ${username} added successfully!`,
           "success",
@@ -545,13 +563,13 @@ export class GamePage {
         ) as HTMLInputElement;
         if (input) input.value = "";
       } else {
-        this.showProfileAlert(
+        GamePage.showProfileAlert(
           "profile-alert",
           data.error || "Failed to add friend",
         );
       }
     } catch (error) {
-      this.showProfileAlert("profile-alert", "Network error");
+      GamePage.showProfileAlert("profile-alert", "Network error");
       console.error("Add friend error:", error);
     }
   }
@@ -574,20 +592,20 @@ export class GamePage {
       const data = await response.json();
 
       if (response.ok) {
-        this.showProfileAlert(
+        GamePage.showProfileAlert(
           "profile-success",
           `Friend ${username} removed`,
           "success",
         );
         await this.loadFriends();
       } else {
-        this.showProfileAlert(
+        GamePage.showProfileAlert(
           "profile-alert",
           data.error || "Failed to remove friend",
         );
       }
     } catch (error) {
-      this.showProfileAlert("profile-alert", "Network error");
+      GamePage.showProfileAlert("profile-alert", "Network error");
       console.error("Remove friend error:", error);
     }
   }
@@ -1237,7 +1255,7 @@ export class GamePage {
     this.hideProfileAlerts();
 
     if (!username || !email) {
-      this.showProfileAlert(
+      GamePage.showProfileAlert(
         "profile-alert",
         "$ error: username and email are required",
       );
@@ -1258,7 +1276,7 @@ export class GamePage {
         updateData.avatarUrl = avatarUrl;
 
       if (Object.keys(updateData).length === 0) {
-        this.showProfileAlert("profile-alert", "$ no changes to save");
+        GamePage.showProfileAlert("profile-alert", "$ no changes to save");
         btn.textContent = "save";
         btn.disabled = false;
         return;
@@ -1276,7 +1294,7 @@ export class GamePage {
       const data = await response.json();
 
       if (response.ok) {
-        this.showProfileAlert(
+        GamePage.showProfileAlert(
           "profile-success",
           "$ basic information updated successfully",
           "success",
@@ -1292,7 +1310,7 @@ export class GamePage {
           btn.disabled = false;
         }, 2000);
       } else {
-        this.showProfileAlert(
+        GamePage.showProfileAlert(
           "profile-alert",
           `$ ${data.error || "update failed"}`,
         );
@@ -1300,7 +1318,7 @@ export class GamePage {
         btn.disabled = false;
       }
     } catch (error) {
-      this.showProfileAlert("profile-alert", "$ network error");
+      GamePage.showProfileAlert("profile-alert", "$ network error");
       btn.textContent = "save";
       btn.disabled = false;
       console.error("Update error:", error);
@@ -1321,7 +1339,7 @@ export class GamePage {
     this.hideProfileAlerts();
 
     if (!newPassword || !confirmPassword) {
-      this.showProfileAlert(
+      GamePage.showProfileAlert(
         "profile-alert",
         "$ error: both password fields are required",
       );
@@ -1329,13 +1347,13 @@ export class GamePage {
     }
 
     if (newPassword !== confirmPassword) {
-      this.showProfileAlert("profile-alert", "$ error: passwords do not match");
+      GamePage.showProfileAlert("profile-alert", "$ error: passwords do not match");
       return;
     }
 
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
     if (!passwordRegex.test(newPassword)) {
-      this.showProfileAlert(
+      GamePage.showProfileAlert(
         "profile-alert",
         "$ error: password must be at least 8 characters with uppercase, lowercase, number and special character",
       );
@@ -1358,7 +1376,7 @@ export class GamePage {
       const data = await response.json();
 
       if (response.ok) {
-        this.showProfileAlert(
+        GamePage.showProfileAlert(
           "profile-success",
           "$ password updated successfully",
           "success",
@@ -1380,7 +1398,7 @@ export class GamePage {
           btn.disabled = false;
         }, 2000);
       } else {
-        this.showProfileAlert(
+        GamePage.showProfileAlert(
           "profile-alert",
           `$ ${data.error || "password update failed"}`,
         );
@@ -1388,7 +1406,7 @@ export class GamePage {
         btn.disabled = false;
       }
     } catch (error) {
-      this.showProfileAlert("profile-alert", "$ network error");
+      GamePage.showProfileAlert("profile-alert", "$ network error");
       btn.textContent = "update";
       btn.disabled = false;
       console.error("Password update error:", error);
@@ -1421,7 +1439,7 @@ export class GamePage {
       const data = await response.json();
 
       if (response.ok) {
-        this.showProfileAlert(
+        GamePage.showProfileAlert(
           "profile-success",
           `$ 2FA ${isEnabled ? "enabled" : "disabled"} successfully`,
           "success",
@@ -1439,7 +1457,7 @@ export class GamePage {
           btn.disabled = false;
         }, 2000);
       } else {
-        this.showProfileAlert(
+        GamePage.showProfileAlert(
           "profile-alert",
           `$ ${data.error || "2FA update failed"}`,
         );
@@ -1459,14 +1477,14 @@ export class GamePage {
         btn.disabled = false;
       }
     } catch (error) {
-      this.showProfileAlert("profile-alert", "$ network error");
+      GamePage.showProfileAlert("profile-alert", "$ network error");
       btn.textContent = "$ apply security settings";
       btn.disabled = false;
       console.error("2FA update error:", error);
     }
   }
 
-  private showProfileAlert(
+  static showProfileAlert(
     id: string,
     message: string,
     type: string = "error",
@@ -1485,11 +1503,11 @@ export class GamePage {
         alert.style.transition = "all 0.3s ease-out";
       }, 10);
 
-      setTimeout(() => this.hideProfileAlert(id), 2000);
+      setTimeout(() => GamePage.hideProfileAlert(id), 2000);
     }
   }
 
-  private hideProfileAlert(id: string): void {
+  static hideProfileAlert(id: string): void {
     const alert = document.getElementById(id);
     if (alert && !alert.classList.contains("hidden")) {
       alert.style.transform = "translate(-50%, -20px)";
@@ -1505,8 +1523,8 @@ export class GamePage {
   }
 
   private hideProfileAlerts(): void {
-    this.hideProfileAlert("profile-alert");
-    this.hideProfileAlert("profile-success");
+    GamePage.hideProfileAlert("profile-alert");
+    GamePage.hideProfileAlert("profile-success");
   }
 
   private handleBrowserNavigation(): void {
@@ -1706,7 +1724,7 @@ export class GamePage {
 
       if (createRoomBtn) {
         createRoomBtn.addEventListener("click", () => {
-          this.showProfileAlert(
+          GamePage.showProfileAlert(
             "profile-alert",
             "$ create: feature not implemented yet",
           );
@@ -1715,7 +1733,7 @@ export class GamePage {
 
       if (joinRoomBtn) {
         joinRoomBtn.addEventListener("click", () => {
-          this.showProfileAlert(
+          GamePage.showProfileAlert(
             "profile-alert",
             "$ join: feature not implemented yet",
           );
@@ -1726,13 +1744,13 @@ export class GamePage {
 
   private async launchGame(mode: "local" | "ai" | "remote"): Promise<void> {
     // POST = creation match
-    if (mode === "local" || mode === "ai") {
-      const matchId = await this.createMatch(mode);
-      if (!matchId) {
-        console.error("Failed to create match, aborting game start");
-        return;
-      }
-    }
+    // if (mode === "local" || mode === "ai") {
+    //   const matchId = await this.createMatch(mode);
+    //   if (!matchId) {
+    //     console.error("Failed to create match, aborting game start");
+    //     return;
+    //   }
+    // }
     //remote a ajouter plus tard
 
     const canvasDiv = document.getElementById("game-canvas")!;
@@ -1754,6 +1772,7 @@ export class GamePage {
 
     console.log(`Game ${mode} started`);
   }
+  
   ///////////////////////////////////////////game//////////////////////////////////////
 
   //////////////////////////////////////////tournois//////////////////////////////////////
@@ -1764,7 +1783,7 @@ export class GamePage {
     const playersSelect = document.querySelector("select") as HTMLSelectElement;
 
     if (!nameInput || !playersSelect) {
-      this.showProfileAlert(
+      GamePage.showProfileAlert(
         "profile-alert",
         "$ error: form elements not found",
       );
@@ -1776,7 +1795,7 @@ export class GamePage {
     const maxPlayers = parseInt(maxPlayersText.split(".")[0]);
 
     if (!tournamentName) {
-      this.showProfileAlert(
+      GamePage.showProfileAlert(
         "profile-alert",
         "$ error: tournament name required",
       );
@@ -1897,7 +1916,7 @@ export class GamePage {
       if (aliasInput) {
         const alias = aliasInput.value.trim();
         if (!alias) {
-          this.showProfileAlert(
+          GamePage.showProfileAlert(
             "profile-alert",
             `$ error: Player ${i} alias is required`,
           );
@@ -1909,7 +1928,7 @@ export class GamePage {
 
     const uniqueAliases = new Set(players);
     if (uniqueAliases.size !== players.length) {
-      this.showProfileAlert(
+      GamePage.showProfileAlert(
         "profile-alert",
         "$ error: all aliases must be unique",
       );
@@ -1938,7 +1957,7 @@ export class GamePage {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("❌ Tournament creation failed:", errorText);
-        this.showProfileAlert(
+        GamePage.showProfileAlert(
           "profile-alert",
           `$ error: failed to create tournament`,
         );
@@ -1948,7 +1967,7 @@ export class GamePage {
       const data = await response.json();
       console.log(" Tournament created:", data);
 
-      this.showProfileAlert(
+      GamePage.showProfileAlert(
         "profile-success",
         `$ tournament "${tournamentName}" created`,
         "success",
@@ -1962,7 +1981,7 @@ export class GamePage {
       this.showTournamentRules(tournamentName, players, data);
     } catch (error) {
       console.error(" Error creating tournament:", error);
-      this.showProfileAlert("profile-alert", `$ error: network error`);
+      GamePage.showProfileAlert("profile-alert", `$ error: network error`);
     }
   }
 
@@ -2054,7 +2073,7 @@ export class GamePage {
       .getElementById("start-tournament")
       ?.addEventListener("click", () => {
         //FAIRE POSt match
-        this.showProfileAlert(
+        GamePage.showProfileAlert(
           "profile-success",
           "$ post match a faire",
           "success",
@@ -2087,3 +2106,13 @@ export class GamePage {
     }
   }
 }
+
+// Extend the Window interface to include GamePage
+declare global {
+  interface Window {
+    GamePage: typeof GamePage;
+    gamePageInstance?: GamePage;
+  }
+}
+
+window.GamePage = GamePage;

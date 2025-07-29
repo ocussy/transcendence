@@ -21,8 +21,9 @@ export function postMatch(req, reply) {
 }
 
 export function updateMatch(req, reply) {
-  const id = req.user.id;
+  const player_id = req.user.id;
   const {score1, score2 } = req.body;
+  const id = req.params.id;
 
   try {
     let winner = null;
@@ -30,8 +31,6 @@ export function updateMatch(req, reply) {
       winner = player_id;
       db.prepare('UPDATE users SET games_won = games_won + 1 WHERE id = ?').run(player_id);
     }
-    const games_wons = db.prepare('SELECT games_won FROM users WHERE id = ?').get(winner);
-    console.log(`Games won by ${winner}: ${games_wons ? games_wons.games_won : 0}`);
     db.prepare('UPDATE matches SET score1 = ?, score2 = ?, winner = ? WHERE id = ?').run(score1, score2, winner, id);
     reply.send({ id, score1, score2, winner });
   } catch (err) {

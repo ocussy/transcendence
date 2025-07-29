@@ -84,6 +84,7 @@ const postMatchOptions = {
 };
 
 const updateMatchOptions = {
+  preHandler: verifyUser,
   schema: {
     params: {
       type: "object",
@@ -93,12 +94,10 @@ const updateMatchOptions = {
     },
     body: {
       type: "object",
-      required: ["player_id", "score1", "score2"],
+      required: [ "score1", "score2"],
       properties: {
-        player_id: { type: "integer" },
         score1: { type: "integer" },
         score2: { type: "integer" },
-        winner: { type: "string", nullable: true },
       },
     },
     response: {
