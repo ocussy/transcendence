@@ -33,7 +33,7 @@ db.exec(`
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         player1 TEXT NOT NULL,
         player2 TEXT NOT NULL,
-        winner TEXT,
+        winner INTEGER DEFAULT NULL,
         score1 INTEGER DEFAULT 0,
         score2 INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

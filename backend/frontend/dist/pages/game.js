@@ -254,7 +254,7 @@ export class GamePage {
             return originalUrl;
         return originalUrl.replace(/seed=([^&]*)/, `seed=${encodeURIComponent(newSeed)}`);
     }
-    static async createMatch(mode) {
+    static async createMatch(mode, score1, score2, duration) {
         try {
             const response = await fetch("/match", {
                 method: "POST",
@@ -264,6 +264,9 @@ export class GamePage {
                 credentials: "include",
                 body: JSON.stringify({
                     mode: mode,
+                    score1: score1,
+                    score2: score2,
+                    duration: duration,
                 }),
             });
             if (!response.ok) {
@@ -271,7 +274,7 @@ export class GamePage {
                 throw new Error(`Failed to create match: ${errorText}`);
             }
             const data = await response.json();
-            if (!data || !data.id) {
+            if (!data) {
                 throw new Error("Invalid match data received");
             }
             GamePage.currentMatchId = data.id;
@@ -281,24 +284,6 @@ export class GamePage {
         catch (error) {
             GamePage.showProfileAlert("profile-alert", `$ error: failed to create ${mode} match`);
             return null;
-        }
-    }
-    static async sendEndMatch(matchId, score1, score2) {
-        try {
-            const response = await fetch(`/match/${matchId}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                credentials: "include",
-                body: JSON.stringify({
-                    score1: score1,
-                    score2: score2,
-                }),
-            });
-        }
-        catch (error) {
-            console.error("Erreur lors de l'envoi des résultats du match:", error);
         }
     }
     async loadUserProfile() {

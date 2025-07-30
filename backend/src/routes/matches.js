@@ -1,7 +1,7 @@
 import {
   getMatches,
   postMatch,
-  updateMatch,
+  // updateMatch,
   getMatchById,
   getMatchesByUser,
 } from "../controllers/matches.js";
@@ -65,17 +65,19 @@ const postMatchOptions = {
   schema: {
     body: {
       type: "object",
-      required: ["mode"],
+      required: ["mode", "score1", "score2"],
       properties: {
         mode: { type: "string" },
+        score1: { type: "integer" },
+        score2: { type: "integer" },
+        duration: { type: "integer" },
       },
     },
     response: {
       201: {
         type: "object",
         properties: {
-          id: { type: "integer" },
-          player_id: { type: "integer" },
+          winner: { type: "integer" },
         },
       },
     },
@@ -83,35 +85,35 @@ const postMatchOptions = {
   handler: postMatch,
 };
 
-const updateMatchOptions = {
-  preHandler: verifyUser,
-  schema: {
-    params: {
-      type: "object",
-      properties: {
-        id: { type: "integer" },
-      },
-    },
-    body: {
-      type: "object",
-      required: [ "score1", "score2"],
-      properties: {
-        score1: { type: "integer" },
-        score2: { type: "integer" },
-      },
-    },
-    response: {
-      200: Match,
-      404: { type: "object", properties: { error: { type: "string" } } },
-    },
-  },
-  handler: updateMatch,
-};
+// const updateMatchOptions = {
+//   preHandler: verifyUser,
+//   schema: {
+//     params: {
+//       type: "object",
+//       properties: {
+//         id: { type: "integer" },
+//       },
+//     },
+//     body: {
+//       type: "object",
+//       required: [ "score1", "score2"],
+//       properties: {
+//         score1: { type: "integer" },
+//         score2: { type: "integer" },
+//       },
+//     },
+//     response: {
+//       200: Match,
+//       404: { type: "object", properties: { error: { type: "string" } } },
+//     },
+//   },
+//   handler: updateMatch,
+// };
 
 export default async function matchRoutes(fastify, options) {
   fastify.get("/matches", getMatchesOptions);
   fastify.get("/match/:id", getMatchByIdOptions);
   fastify.post("/match", postMatchOptions);
-  fastify.put("/match/:id", updateMatchOptions);
+  // fastify.put("/match/:id", updateMatchOptions);
   fastify.get("/matches/user/:id", getMatchByUserOptions);
 }

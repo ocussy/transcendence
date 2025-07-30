@@ -1,8 +1,32 @@
 
 (async function startPongGame() {
+    let gameStartTime = null;
+    let gameEndTime = null;
+    let gameDurationSeconds = 0;
 
-const id = await GamePage.createMatch("local");
-console.log(`Match ID: ${id}`);
+    // Start timer when game starts
+    function startGameTimer() {
+        gameStartTime = Date.now();
+        gameEndTime = null;
+        gameDurationSeconds = 0;
+    }
+
+    // Stop timer and calculate duration
+    function stopGameTimer() {
+        if (gameStartTime) {
+            gameEndTime = Date.now();
+            gameDurationSeconds = Math.floor((gameEndTime - gameStartTime) / 1000);
+        }
+    }
+
+    // Patch: start timer when ball is launched for the first time
+    const originalCountdown = countdown;
+    countdown = async function(...args) {
+        if (!gameStarted && !isGameOver && !gameStartTime) {
+            startGameTimer();
+        }
+        return originalCountdown.apply(this, args);
+    };
 const canvas = document.getElementById("renderCanvas");
 const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
 // Variables de jeu
@@ -596,7 +620,9 @@ function startRenderLoop() {
                 ball.isVisible = false;
                 const winner = scoreLeft >= GAME_CONFIG.scoreLimit ? "PLAYER 1" : "PLAYER 2";
 
-                GamePage.sendEndMatch(id, scoreLeft, scoreRight);
+                stopGameTimer();
+                GamePage.createMatch("local", scoreLeft, scoreRight, gameDurationSeconds);
+                // GamePage.sendEndMatch(id, scoreLeft, scoreRight);
                 if (fontDataGlobal) {
                     try {
                         const victoryText = BABYLON.MeshBuilder.CreateText("victoryText", 
