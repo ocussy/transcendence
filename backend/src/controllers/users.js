@@ -1,9 +1,10 @@
-import db from "../db.js";
+import db from "../../utils/db.js";
 import { loginExist, isStrongPassword, emailExist } from "./auth.js";
 import bcrypt from "bcrypt";
 import { getMatchesByUser } from "./matches.js";
 import { logConnectedUsers} from "../remote.js";
-import {app} from "../server.js";
+import { app } from "../server.js";
+import { t } from "../../utils/i18n.js";
 
 export async function verifyUser(req, reply) {
   try {
@@ -43,12 +44,12 @@ export async function getUser(req, reply) {
     const id = req.user.id;
     const user = db.prepare('SELECT login, email, avatarUrl, alias, auth_provider, language, secure_auth, games_played, games_won FROM users WHERE id = ?').get(id);
     if (!user) {
-      return reply.status(404).send({ error: "User not found" });
+      return reply.status(404).send({ error: t(req.lang, "user_not_found") });
     }
     reply.send(user);
   }
   catch (err) {
-    reply.status(500).send({ error: err.message });
+    reply.status(500).send({ error: t(req.lang, "server_error") });
   }
 }
 
@@ -65,7 +66,7 @@ export async function getFriendsUser(req, reply) {
     
     return reply.status(200).send(friends);
   } catch (err) {
-    reply.status(500).send({ error: err.message });
+    reply.status(500).send({ error: t(req.lang, "server_error") });
   }
 }
 
@@ -75,25 +76,24 @@ async function verifData(req, reply) {
   // verifier si j'ai besoin de cette verif
   if (!email && !avatarUrl && !language && !password && secure_auth === undefined && !login && !friend && !alias) {
     return reply.status(400).send({
-      error: "No fields to update",
+      error: t(req.lang, "no_fields_to_update"),
     });
   }
   if (login && (await loginExist(login))) {
     return reply.status(400).send({
-      error: "Login already exists",
+      error: t(req.lang, "login_exists"),
     });
   }
 
   if (email && (await emailExist(email))) {
     return reply.status(400).send({
-      error: "Email already exists",
+      error: t(req.lang, "email_exists"),
     });
   }
 
   if (password && !isStrongPassword(password)) {
     return reply.status(400).send({
-      error:
-        "Password must be at least 8 characters long, contain uppercase, lowercase, numbers, and special characters",
+      error: t(req.lang, "weak_password"),
     });
   }
 
@@ -102,7 +102,7 @@ async function verifData(req, reply) {
     const friendExist = stmt.get(friend);
     if (!friendExist) {
       return reply.status(400).send({
-        error: "Friend does not exist",
+        error: t(req.lang, "friend_not_found"),
       });
     }
   }
@@ -176,12 +176,12 @@ export async function updateUser(req, reply) {
     const user = db.prepare("SELECT login FROM users WHERE id = ?").get(id);
     console.log("Login :", user.login);
     if (user.login == friend)
-        return reply.status(400).send({error : "You can't add yourself as a friend ..."});
+        return reply.status(400).send({error : t(req.lang, "friend_yourself")});
     const friendAdd = await addFriends(id, friend);
     if (!friendAdd) {
-      return reply.status(400).send({ error: "Friend does not exist" });
+      return reply.status(400).send({ error: t(req.lang, "friend_not_found") });
     }
-    return reply.status(200).send({ message: "User updated successfully" });
+    return reply.status(200).send({ message: t(req.lang, "user_updated") });
   }
 
   values.push(id);
@@ -192,19 +192,19 @@ export async function updateUser(req, reply) {
     WHERE id = ?
   `);
   stmt.run(...values);
-  return reply.status(200).send({ message: "User updated successfully" });
+  return reply.status(200).send({ message: t(req.lang, "user_updated") });
 }
 
 export async function getStatUser(req, reply) {
   try {
     userId = req.user.id;
     if (!userId) {
-      return reply.status(404).send({ error: "User not found" });
+      return reply.status(404).send({ error: t(req.lang, "user_not_found") });
     }
     const matches = getMatchesByUser(req, reply, userId);
     return reply.status(200).send(matches);
   } catch (err) {
-    reply.status(500).send({ error: err.message });
+    reply.status(500).send({ error: t(req.lang, "server_error") });
   }
 }
 
@@ -213,6 +213,6 @@ export function debugDb(req, reply) {
     const rows = db.prepare("SELECT * FROM users").all();
     reply.send(rows);
   } catch (err) {
-    reply.status(500).send({ error: err.message });
+    reply.status(500).send({ error: t(req.lang, "server_error") });
   }
 }

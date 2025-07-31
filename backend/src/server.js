@@ -12,15 +12,13 @@ import dotenv from "dotenv";
 import cookie from "@fastify/cookie";
 import websocket from "@fastify/websocket";
 import FastifyRedis from "@fastify/redis";
-import db from "./db.js"
-import { seedDatabase } from './seed.js';
-import { setupConnexionSocket, setupRemoteSocket, setupRemoteGame, clearConnectedUsers, logConnectedUsers } from "./remote.js";
+import db from "../utils/db.js"
+import { seedDatabase } from '../utils/seed.js';
+import { setupConnexionSocket, setupRemoteSocket, setupRemoteGame, clearConnectedUsers} from "./remote.js";
 import statsRoutes from "./routes/stats.js";
 import tournamentRoutes from "./routes/tournament.js";
 import fs from "fs";
 
-
-// import websocket from "@fastify/websocket";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -106,6 +104,12 @@ app.decorate("authenticate", async (request, reply) => {
   } catch (err) {
     reply.send(err);
   }
+});
+
+app.addHook("preHandler", async (req, reply) => {
+   const headerLang = req.headers['accept-language'];
+   console.log("Header Language:", headerLang);
+  req.lang = headerLang?.startsWith('fr') ? 'fr' : 'en'; // fallback to English
 });
 
 const start = async () => {

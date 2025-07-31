@@ -1,11 +1,11 @@
-import db from "../db.js";
+import db from "../../utils/db.js";
 import validator from "validator";
 import { auth, OAuth2Client } from "google-auth-library";
 import nodemailer from "nodemailer";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
-import {app } from "../server.js"
-
+import { app } from "../server.js";
+import { t } from "../../utils/i18n.js";
 dotenv.config();
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -56,7 +56,7 @@ export async function signUp(req, reply) {
   if (!login || !password || !email) {
     return reply
       .status(400)
-      .send({ error: "Login, password and email are required" });
+      .send({ error: t(req.lang, "signup_required_fields") });
   }
 
   login = login.trim();
@@ -65,23 +65,22 @@ export async function signUp(req, reply) {
   if ((await loginExist(login)) || (await emailExist(email))) {
     return reply
       .status(400)
-      .send({ error: "User with this login or email already exists" });
+      .send({ error: t(req.lang, "user_exists") });
   }
 
   if (login.length > 20 || login.length < 2) {
     return reply
       .status(400)
-      .send({ error: "Login must be between 2 and 20 characters long" });
+      .send({ error: t(req.lang, "login_error") });
   }
 
   if (!validator.isEmail(email)) {
-    return reply.status(400).send({ error: "Invalid email format" });
+    return reply.status(400).send({ error: t(req.lang, "invalid_email") });
   }
 
   if (!isStrongPassword(password)) {
     return reply.status(400).send({
-      error:
-        "Password must be at least 8 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special character.",
+      error: t(req.lang, "weak_password"),
     });
   }
 
@@ -92,9 +91,9 @@ export async function signUp(req, reply) {
     );
     const hashedPassword = await bcrypt.hash(password, 10);
     stmt.run(login, hashedPassword, email, avatarUrl, login);
-    reply.status(201).send({ message: "User created successfully" });
+    reply.status(201).send({ message: t(req.lang, "user_created") });
   } catch (err) {
-    reply.status(500).send({ error: err.message });
+    reply.status(500).send({ error: t(req.lang, "error_user") });
   }
 }
 
@@ -121,7 +120,7 @@ export async function signUpGoogle(req, reply) {
     if (await loginExist(login)) {
       return reply
         .status(400)
-        .send({ error: "User with this login already exists" });
+        .send({ error: t(req.lang, "user_exists") });
     }
     const avatarUrl = `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${encodeURIComponent(login)}`;
 
@@ -143,7 +142,7 @@ export async function signUpGoogle(req, reply) {
       .send({ login });
   } catch (err) {
     console.error("Google sign-up error:", err);
-    reply.status(401).send({ error: "Invalid Google token" });
+    reply.status(401).send({error: t(req.lang, "invalid_google_token")});
   }
 }
 
@@ -160,7 +159,7 @@ export async function signIn(req, reply) {
       const { email, name } = payload;
 
       if (!email || !name) {
-        return reply.status(400).send({ error: "Invalid Google token" });
+        return reply.status(400).send({error: t(req.lang, "invalid_google_token")});
       }
 
       const login = name.replace(/\s+/g, "").toLowerCase();
@@ -172,14 +171,14 @@ export async function signIn(req, reply) {
       `);
       const user = stmt.get(login, email);
       if (!user) {
-        return reply.status(401).send({ error: "User not found" });
+        return reply.status(401).send({ error: t(req.lang, "user_not_found") });
       }
       if (user.auth_provider !== "google") {
-        return reply.status(401).send({ error: "Please login with your password" });
+        return reply.status(401).send({ error: t(req.lang, "login_required") });
       }
       const connectedUsersIds = await getConnectedUsers(app);
       if (connectedUsersIds.includes(user.id.toString())) {
-        return reply.status(400).send({error : "User already connected somewhere else"});
+        return reply.status(400).send({ error: t(req.lang, "already_connected") });
       }
       const tokenJWT = await reply.jwtSign({
         id: user.id,
@@ -197,7 +196,7 @@ export async function signIn(req, reply) {
     } else {
       let { givenLogin, password } = req.body;
       if (!givenLogin) {
-        return reply.status(400).send({ error: "Login is required" });
+        return reply.status(400).send({ error: t(req.lang, "login_required") });
       }
 
       givenLogin = givenLogin.trim();
@@ -209,23 +208,23 @@ export async function signIn(req, reply) {
       const user = stmt.get(givenLogin);
 
       if (!user) {
-        return reply.status(401).send({ error: "User not found" });
+        return reply.status(401).send({ error: t(req.lang, "user_not_found") });
       }
       if (user.password) {
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
-          return reply.status(401).send({ error: "Invalid password" });
+          return reply.status(401).send({ error: t(req.lang, "invalid_password") });
         } // compare les version hash
       }
       else if (user.auth_provider == "google") {
-        return reply.status(401).send({ error: "Google account identified, please login with Google" });
+        return reply.status(401).send({error: t(req.lang, "google_account_identified")});
       }
       else
-        return reply.status(500).send({ error: "Internal server error" });
+        return reply.status(500).send({error: t(req.lang, "server_error")});
 
         const connectedUsersIds = await getConnectedUsers(app);
         if (connectedUsersIds.includes(user.id.toString())) {
-          return reply.status(400).send({error : "User already connected somewhere else"});
+          return reply.status(400).send({error : t(req.lang, "already_connected")});
         }
         
       if (user.secure_auth == true) {
@@ -234,11 +233,11 @@ export async function signIn(req, reply) {
           const token = await reply.jwtSign({
             login: user.login,
           });
-          return reply.code(400).send({ message: "OTP sent to email", token });
+          return reply.code(400).send({ message: t(req.lang, "otp_sent"), token });
         } else {
           return reply
             .code(500)
-            .send({ error: "Failed to send OTP verification email" });
+            .send({ error: t(req.lang, "failed_OTP") });
         }
       }
       const token = await reply.jwtSign({
@@ -274,7 +273,7 @@ export async function signOut(req, reply) {
       .send({ message: "Successfully signed out" });
   } catch (err) {
     console.error("Sign-out error:", err);
-    return reply.status(500).send({ error: "Internal server error" });
+    return reply.status(500).send({ error: t(req.lang, "server_error") });
   }
 }
 
@@ -303,7 +302,6 @@ export async function sendOtpVerificationEmail(user, reply) {
     await transporter.sendMail(mailOptions);
     return true;
   } catch (err) {
-    console.error("Error sending OTP verification email:", err);
     return false;
   }
 }
@@ -328,9 +326,9 @@ export async function verify2FA(req, reply) {
       if (user && user.nb_trys > 2) {
         return reply
           .status(429)
-          .send({ error: "Too many attempts, please try again" });
+          .send({ error: t(req.lang, "too_many_attempts") });
       }
-      return reply.status(400).send({ error: "OTP not found or expired" });
+      return reply.status(400).send({ error: t(req.lang, "otp_expired") });
     }
 
     const isValid = await bcrypt.compare(otp, user.otp_code);
@@ -338,7 +336,7 @@ export async function verify2FA(req, reply) {
       db.prepare(`UPDATE users SET nb_trys = nb_trys + 1 WHERE login = ?`).run(
         login,
       );
-      return reply.status(400).send({ error: "Invalid OTP" });
+      return reply.status(400).send({ error: t(req.lang, "invalid_otp") });
     }
 
     db.prepare(
@@ -356,9 +354,8 @@ export async function verify2FA(req, reply) {
         maxAge: 60 * 60, // 1 hour
       })
       .code(200)
-      .send({ jwtToken, message: "2FA verification successful" });
+      .send({ jwtToken, message: t(req.lang, "2fa_success") });
   } catch (err) {
-    console.error("2FA verification error:", err);
-    return reply.status(500).send({ error: "Internal server error" });
+    return reply.status(500).send({ error: t(req.lang, "server_error") });
   }
 }

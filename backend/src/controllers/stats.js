@@ -1,16 +1,17 @@
-import db from "../db.js";
+import db from "../../utils/db.js";
+import { t } from "../../utils/i18n.js";
 
 export function getStats(req, reply) {
   try {
     if (!req.user || !req.user.id) {
-      return reply.status(401).send({ error: "User not authenticated" });
+      return reply.status(401).send({ error: t(req.lang, "user_not_authenticated") });
     }
 
     const userId = req.user.id;
 
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
     if (!user) {
-      return reply.status(404).send({ error: "User not found" });
+      return reply.status(404).send({ error: t(req.lang, "user_not_found") });
     }
     const userLogin = user.login;
     const userStats = {
@@ -69,15 +70,14 @@ export function getStats(req, reply) {
 
     reply.send(result);
   } catch (error) {
-    console.error("❌ Error fetching stats:", error);
-    reply.status(500).send({ error: "Failed to fetch statistics" });
+    reply.status(500).send({ error: t(req.lang, "failed_to_fetch_stats") });
   }
 }
 
 export function getMatchHistory(req, reply) {
   try {
     if (!req.user || !req.user.id) {
-      return reply.status(401).send({ error: "User not authenticated" });
+      return reply.status(401).send({ error: t(req.lang, "user_not_authenticated") });
     }
 
     const userId = req.user.id;
@@ -85,7 +85,7 @@ export function getMatchHistory(req, reply) {
 
     const user = db.prepare("SELECT login FROM users WHERE id = ?").get(userId);
     if (!user) {
-      return reply.status(404).send({ error: "User not found" });
+      return reply.status(404).send({ error: t(req.lang, "user_not_found") });
     }
 
     const userLogin = user.login;
@@ -113,22 +113,21 @@ export function getMatchHistory(req, reply) {
 
     reply.send(matches);
   } catch (error) {
-    console.error("❌ Error fetching match history:", error);
-    reply.status(500).send({ error: "Failed to fetch match history" });
+    reply.status(500).send({ error: t(req.lang, "failed_to_fetch_stats")});
   }
 }
 
 export function getPerformanceData(req, reply) {
   try {
     if (!req.user || !req.user.id) {
-      return reply.status(401).send({ error: "User not authenticated" });
+      return reply.status(401).send({ error: t(req.lang, "user_not_authenticated") });
     }
 
     const userId = req.user.id;
 
     const user = db.prepare("SELECT login FROM users WHERE id = ?").get(userId);
     if (!user) {
-      return reply.status(404).send({ error: "User not found" });
+      return reply.status(404).send({ error: t(req.lang, "user_not_found") });
     }
 
     const userLogin = user.login;
@@ -161,7 +160,6 @@ export function getPerformanceData(req, reply) {
 
     reply.send(chartData);
   } catch (error) {
-    console.error("❌ Error fetching performance data:", error);
-    reply.status(500).send({ error: "Failed to fetch performance data" });
+    reply.status(500).send({ error: t(req.lang, "failed_to_fetch_stats") });
   }
 }

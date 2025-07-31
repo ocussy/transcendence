@@ -1,10 +1,9 @@
-import {db} from "./db.js";
+import {db} from "../utils/db.js";
 import { app } from "./server.js";
 
 let waitingPlayer = null;
-let gameRooms = new Map(); // Stockage des rooms de jeu actives
+let gameRooms = new Map();
 
-// Fonction pour nettoyer les utilisateurs connectés au démarrage
 export async function clearConnectedUsers(app) {
   try {
     await app.redis.del('connectedUsers');
@@ -15,7 +14,6 @@ export async function clearConnectedUsers(app) {
 
 export async function logConnectedUsers(app) {
   const userIds = await app.redis.hkeys('connectedUsers');
-  console.log(`👥 Utilisateurs connectés : ${userIds.length}`);
 
   const numericUserIds = userIds.map(id => parseInt(id, 10));
 
@@ -32,8 +30,6 @@ export async function logConnectedUsers(app) {
     const rows = db.prepare(`SELECT login FROM users WHERE id IN (${placeholders})`).all(...numericUserIds);
     logins = rows.map(row => row.login);
   }
-
-  console.log("Logins des utilisateurs connectés :", logins);
 
   return { count: userIds.length, logins, ids: numericUserIds };
 }
@@ -60,13 +56,11 @@ export function setupConnexionSocket(app) {
           return;
     
         const userId = decoded.id;
-        console.log(`Connexion de l'utilisateur ${userId}`);
     
         app.redis.hset('connectedUsers', userId, JSON.stringify({ connectedAt: Date.now() }))
     
         connection.socket.on('close', () => {
           app.redis.hdel('connectedUsers', userId)
-          console.log(`Déconnexion de l'utilisateur ${userId}`);
         });
     
     });
@@ -79,7 +73,6 @@ export function setupRemoteSocket(app) {
             if (!decoded) return;
 
             const userId = decoded.id;
-            console.log(`Connexion de l'utilisateur ${userId} (REMOTE)`);
 
             // if no waiting player, set this one as waiting
             if (!waitingPlayer) {
@@ -105,7 +98,6 @@ export function setupRemoteSocket(app) {
 
             connection.socket.on('close', () => {
                 if (waitingPlayer && waitingPlayer.userId === userId) {
-                    console.log(`❌ [REMOTE] User ${userId} left the queue`);
                     waitingPlayer = null; // Reset waiting player if this one disconnects
                 }
             });
@@ -150,7 +142,6 @@ export function setupRemoteGame(app) {
             const room = gameRooms.get(roomId);
             room.players.set(userId, { connection, userId });
 
-            console.log(`Utilisateur ${userId} rejoint la room ${roomId}`);
 
             // Envoyer l'état initial du jeu
             connection.socket.send(JSON.stringify({
@@ -180,7 +171,6 @@ export function setupRemoteGame(app) {
             });
     
             connection.socket.on('close', () => {
-                console.log(`Déconnexion de l'utilisateur ${userId} (REMOTE GAME)`);
                 
                 // Supprimer le joueur de la room
                 if (room.players.has(userId)) {
@@ -200,7 +190,6 @@ export function setupRemoteGame(app) {
                     // Supprimer la room si plus de joueurs
                     if (room.players.size === 0) {
                         gameRooms.delete(roomId);
-                        console.log(`Room ${roomId} supprimée`);
                     }
                 }
             });

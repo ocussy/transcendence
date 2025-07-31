@@ -7,6 +7,7 @@ const __dirname = path.dirname(__filename)
 
 const dbPath = path.join(__dirname, 'db_volume', 'db.sqlite')
 
+console.log("Database path:", dbPath);
 export const db = new Database(dbPath)
 
 db.exec(`

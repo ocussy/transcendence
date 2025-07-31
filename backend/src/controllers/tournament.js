@@ -1,4 +1,5 @@
-import db from '../db.js'
+import db from '../../utils/db.js'
+import { t } from '../../utils/i18n.js';
 
 export function createTournament(req, reply) {
     const id = req.user.id;
@@ -9,7 +10,7 @@ export function createTournament(req, reply) {
     //verifier les alias tous differents
      const uniquePlayers = [...new Set(players)];
     if (uniquePlayers.length !== players.length) {
-        return reply.status(400).send({ error: "Les noms des joueurs doivent être uniques." });
+        return reply.status(400).send({ error: t(req.lang, "unique_players") });
     }
 
     const tournament = db.prepare(`
@@ -47,7 +48,7 @@ export function updateTournament(req, reply) {
 
     const tournament = db.prepare(`SELECT * FROM tournaments WHERE id = ?`).get(id);
     if (!tournament) {
-        return reply.status(404).send({ error: "Tournoi non trouvé." });
+        return reply.status(404).send({ error: t(req.lang, "tournament_not_found") });
     }
 
     db.prepare(`INSERT INTO participants (tournament_id, name) VALUES (?, ?)`).run(id, winner);
@@ -81,7 +82,7 @@ export function getTournamentById(req, reply) {
 
     const tournament = db.prepare(`SELECT * FROM tournaments WHERE id = ?`).get(id);
     if (!tournament) {
-        return reply.status(404).send({ error: "Tournoi non trouvé." });
+        return reply.status(404).send({ error: t(req.lang, "tournament_not_found") });
     }
 
     const participants = db.prepare(`SELECT name FROM participants WHERE tournament_id = ?`).all(id);

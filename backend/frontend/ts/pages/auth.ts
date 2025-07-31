@@ -411,6 +411,7 @@ export class AuthPage {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          // "Accept-Language": "fr",
           "credentials": "include", // pour envoyer les cookies
         },
         body: JSON.stringify({
