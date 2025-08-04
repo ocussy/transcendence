@@ -22,7 +22,7 @@
   "no_fields_to_update": "No fields to update.",
   "login_exists": "Login already exists.",
   "email_exists": "Email already exists.",
-  "friend_not_found": "Friend not found.",
+  "friend_not_found": "User does not exist.",
   "friend_yourself": "You cannot add yourself as a friend.",
   "user_updated": "User updated successfully.",
   "unique_players": "Players names must be unique.",
@@ -30,5 +30,8 @@
   "user_not_authenticated": "User not authenticated.",
   "failed_to_fetch_stats": "Failed to fetch stats.",
   "failed_to_create_match": "Failed to create match.",
-  "match_not_found": "Match not found."
+  "match_not_found": "Match not found.",
+  "friend_already_added": "Friend already added.",
+  "match_saved": "Match saved successfully.",
+  "friend_not_added": "Friend not added."
 }

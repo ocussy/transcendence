@@ -347,7 +347,7 @@ export class GamePage {
       });
 
       const data = await response.json();
-
+      console.log("Create match response:", data.message);
       if (!response.ok) {
         throw new Error(data.error);
       }
@@ -573,8 +573,8 @@ export class GamePage {
     }
 
     try {
-      const response = await fetch("/user", {
-        method: "PUT",
+      const response = await fetch("/friends/remove", {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },

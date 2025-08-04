@@ -77,7 +77,7 @@ const postMatchOptions = {
       201: {
         type: "object",
         properties: {
-          winner: { type: "integer" },
+          message: { type: "string" },
         },
       },
     },

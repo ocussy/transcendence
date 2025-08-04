@@ -124,10 +124,7 @@ async function addFriends(userId, friendLogin) {
     );
     stmtAdd.run(userId, friend.id); //pareil
   } else {
-    const stmtDelete = db.prepare(
-      `DELETE FROM friends WHERE user_id = ? AND friend_id = ?`,
-    );
-    stmtDelete.run(userId, friend.id); //pareil
+    return -1; // Friend already exists
   }
   return friend.id;
 }
@@ -174,12 +171,14 @@ export async function updateUser(req, reply) {
   }
   if (friend) {
     const user = db.prepare("SELECT login FROM users WHERE id = ?").get(id);
-    console.log("Login :", user.login);
     if (user.login == friend)
         return reply.status(400).send({error : t(req.lang, "friend_yourself")});
     const friendAdd = await addFriends(id, friend);
     if (!friendAdd) {
       return reply.status(400).send({ error: t(req.lang, "friend_not_found") });
+    }
+    if (friendAdd === -1) {
+      return reply.status(400).send({ error: t(req.lang, "friend_already_added") });
     }
     return reply.status(200).send({ message: t(req.lang, "user_updated") });
   }
@@ -192,6 +191,31 @@ export async function updateUser(req, reply) {
     WHERE id = ?
   `);
   stmt.run(...values);
+  return reply.status(200).send({ message: t(req.lang, "user_updated") });
+}
+
+export async function removeFriends(req, reply) { 
+  const { friend } = req.body;
+  if (!friend) {
+    return reply.status(400).send({ error: t(req.lang, "no_fields_to_update") });
+  }
+  const userId = req.user.id;
+  const getId = db.prepare(`SELECT id FROM users WHERE login = ?`);
+  const friendId = getId.get(friend);
+  if (!friendId) {
+    return reply.status(404).send({ error: t(req.lang, "friend_not_found") });
+  }
+  const stmtCheck = db.prepare(
+    `SELECT 1 FROM friends WHERE user_id = ? AND friend_id = ?`,
+  );
+  const already = stmtCheck.get(userId, friendId.id);
+  if (already === undefined) {
+    return reply.status(404).send({ error: t(req.lang, "friend_not_added") });
+  }
+  const stmtRemove = db.prepare(
+    `DELETE FROM friends WHERE user_id = ? AND friend_id = ?`,
+  );
+  stmtRemove.run(userId, friendId.id);
   return reply.status(200).send({ message: t(req.lang, "user_updated") });
 }
 

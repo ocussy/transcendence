@@ -22,7 +22,7 @@
   "no_fields_to_update": "Aucun champ à mettre à jour.",
   "login_exists": "Le login existe déjà.",
   "email_exists": "L'email existe déjà.",
-  "friend_not_found": "Ami non trouvé.",
+  "friend_not_found": "L'utilisateur n'existe pas.",
   "friend_yourself": "Vous ne pouvez pas vous ajouter en tant qu'ami.",
   "user_updated": "Utilisateur mis à jour avec succès.",
   "unique_players": "Les noms des joueurs doivent être uniques.",
@@ -30,5 +30,8 @@
   "user_not_authenticated": "Utilisateur non authentifié.",
   "failed_to_fetch_stats": "Échec de la récupération des statistiques.",
   "failed_to_create_match": "Échec de la création du match.",
-  "match_not_found": "Match non trouvé."
+  "match_not_found": "Match non trouvé.",
+  "friend_already_added": "Ami déjà ajouté.",
+  "match_saved": "Match enregistré avec succès.",
+  "friend_not_added": "Ami non ajouté."
 }

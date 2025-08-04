@@ -1,4 +1,11 @@
-import { getUser, debugDb, verifyUser, updateUser,getStatUser, getFriendsUser} from '../controllers/users.js';
+import {  getUser,
+          debugDb, 
+          verifyUser, 
+          updateUser,
+          getStatUser, 
+          getFriendsUser, 
+          removeFriends
+} from '../controllers/users.js';
 
 
 const getUserOptions = {
@@ -23,6 +30,7 @@ const getUserOptions = {
   },
   handler: getUser,
 };
+
 const getFriendsOptions = {
   preHandler: verifyUser,
   schema: {
@@ -108,6 +116,19 @@ const updateUserOptions = {
   handler: updateUser,
 };
 
+const removeFriendsOptions = {
+  preHandler: verifyUser,
+  schema: {
+    body: {
+      type: "object",
+      properties: {
+        friend: { type: "string" },
+      },
+      required: ["friend"],
+    },
+  },
+  handler: removeFriends,
+};
 
 const debugOptions = {
   // pour tt voir
@@ -122,4 +143,5 @@ export default async function userRoutes(fastify, options) {
   fastify.put("/user", updateUserOptions);
   fastify.get("/debug/users", debugOptions);
   fastify.get("/stat", getStatUserOptions);
+  fastify.post("/friends/remove", removeFriendsOptions);
 }

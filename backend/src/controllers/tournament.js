@@ -18,7 +18,6 @@ export function createTournament(req, reply) {
         VALUES (?, ?, ?)
     `).run(name, players.length, Date.now());
 
-    console.log("user alias :", user.alias);
     const insertParticipants = db.prepare(`INSERT INTO participants (tournament_id, name) VALUES (?, ?)`);
     insertParticipants.run(tournament.lastInsertRowid, user.alias);
     for (const player of players) {
@@ -26,7 +25,6 @@ export function createTournament(req, reply) {
     }
 
     const allParticipants = db.prepare(`SELECT name, tournament_id FROM participants`).all();
-    console.log("all participants :", allParticipants);
     const participants = db.prepare(`SELECT * FROM participants WHERE tournament_id = ?`).all(tournament.lastInsertRowid);
 
     const player_1 = participants[1].name;

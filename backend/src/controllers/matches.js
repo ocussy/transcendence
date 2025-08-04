@@ -16,7 +16,7 @@ export function postMatch(req, reply) {
     const stmt = db.prepare('INSERT INTO matches (player1, player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?)');
     stmt.run(user.login, "guest", mode, score1, score2, winner, duration);
     db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
-    reply.code(201).send({ winner: winner ? user.id : null });
+    reply.code(201).send({ message: t(req.lang, "match_saved") });
   } catch (err) {
     reply.status(500).send({ error: t(req.lang, "failed_to_create_match") });
   }
