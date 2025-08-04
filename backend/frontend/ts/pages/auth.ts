@@ -1,22 +1,5 @@
 
-// import {t, loadLang} from "../i18n.js";
 export let socket: WebSocket;
-
-// export async function setLanguage(lang: string) {
-//   if (typeof lang !== "string" || !lang) return;
-//   document.documentElement.lang = lang;
-//   document.cookie = `lang=${lang};path=/;max-age=31536000`;
-  
-//   // Charger les traductions pour la langue sélectionnée
-//   await loadLang(lang as 'en' | 'fr');
-//   console.log(`Language set to ${lang}`);
-// }
-
-// export function getCookieLanguage(): string {
-//   const match = document.cookie.match(/lang=([^;]+)/);
-//   return match ? match[1] : "fr"; // Default to 'fr' if not found
-
-// }
 
 export function tryConnectWebSocketIfAuthenticated() {
   // Si une socket existe déjà et est ouverte, ne rien faire
@@ -26,7 +9,7 @@ export function tryConnectWebSocketIfAuthenticated() {
   }
 
   fetch("/user", { credentials: "include" })
-    .then(async (res) => {
+    .then((res) => {
       if (res.ok) {
         const protocol = window.location.protocol === "https:" ? "wss" : "ws";
         const host = window.location.host;
@@ -51,7 +34,7 @@ export function tryConnectWebSocketIfAuthenticated() {
       }
     })
     .catch((err) => {
-      console.error("❌ Erreur lors de la connexion WebSocket :", err);
+      console.error("Erreur lors de la vérification de l'auth :", err);
     });
 }
 
@@ -100,12 +83,6 @@ export class AuthPage {
   constructor() {
     checkAuthAndRedirect();
     // verifyToken();
-    this.initializeAsync();
-  }
-
-  private async initializeAsync() {
-    // Attendre que les traductions soient chargées avant de rendre
-    // await setLanguage(getCookieLanguage());
     this.render();
     this.attachEvents();
     this.initializeGoogleAuth();
@@ -117,7 +94,7 @@ export class AuthPage {
     const app = document.getElementById("app")!;
 
     app.innerHTML = `
-<!-- Background avec effets (équivalent de votre CSS) -->
+            <!-- Background avec effets (équivalent de votre CSS) -->
             <div class="min-h-screen bg-black text-white flex items-center justify-center p-8 relative overflow-x-hidden">
 
                 <!-- Background animated gradients -->
@@ -434,7 +411,6 @@ export class AuthPage {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // "Accept-Language": "fr",
           "credentials": "include", // pour envoyer les cookies
         },
         body: JSON.stringify({

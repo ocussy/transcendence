@@ -618,41 +618,47 @@ export class GamePage {
     }
 
     container.innerHTML = this.friendsList
-      .map(
-        (friend) => `
-      <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="relative">
-              <img
-                src="${friend.avatarUrl}"
-                alt="${friend.login}"
-                class="w-12 h-12 rounded-full border-2 border-gray-600"
-                onerror="this.src='https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${friend.login}'"
+      .map((friend) => {
+        const winRate =
+          friend.games_played > 0
+            ? Math.round((friend.games_won / friend.games_played) * 100)
+            : 0;
+        return `
+          <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="relative">
+                  <img
+                    src="${friend.avatarUrl}"
+                    alt="${friend.public_login}"
+                    class="w-12 h-12 rounded-full border-2 border-gray-600"
+                    onerror="this.src='https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${friend.public_login}'"
+                  >
+                  <!-- Indicateur de statut en ligne -->
+                  <div class="absolute -bottom-1 -right-1 w-4 h-4 ${friend.online ? "bg-green-500" : "bg-gray-500"} rounded-full border-2 border-gray-800"></div>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <div class="font-mono font-bold text-white text-sm">${friend.public_login}</div>
+                  </div>
+                  <div class="font-mono text-xs text-gray-400">
+                    ${friend.games_played === 0
+                      ? "No matches"
+                      : `${winRate}% win rate • ${friend.games_played} games`}
+                  </div>
+                </div>
+              </div>
+              <button
+                class="text-red-400 hover:text-red-300 p-2 hover:bg-gray-700 rounded text-sm transition-colors"
+                onclick="if(window.gamePageInstance) window.gamePageInstance.removeFriend('${friend.public_login}')"
+                title="Remove friend"
               >
-              <!-- Indicateur de statut en ligne -->
-              <div class="absolute -bottom-1 -right-1 w-4 h-4 ${friend.online ? "bg-green-500" : "bg-gray-500"} rounded-full border-2 border-gray-800"></div>
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <div class="font-mono font-bold text-white text-sm">${friend.login}</div>
-              </div>
-              <div class="font-mono text-xs text-gray-400">
-                ${friend.games_played === 0 ? "No matches" : `${friend.games_won}% win rate • ${friend.games_played} games`}
-              </div>
+                ×
+              </button>
             </div>
           </div>
-          <button
-            class="text-red-400 hover:text-red-300 p-2 hover:bg-gray-700 rounded text-sm transition-colors"
-            onclick="if(window.gamePageInstance) window.gamePageInstance.removeFriend('${friend.login}')"
-            title="Remove friend"
-          >
-            ×
-          </button>
-        </div>
-      </div>
-    `,
-      )
+        `;
+      })
       .join("");
   }
 

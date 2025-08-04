@@ -1,9 +1,9 @@
 import {
   getMatches,
   postMatch,
-  // updateMatch,
   getMatchById,
   getMatchesByUser,
+  removeMatch,
 } from "../controllers/matches.js";
 
 import { verifyUser } from "../controllers/users.js";
@@ -85,35 +85,32 @@ const postMatchOptions = {
   handler: postMatch,
 };
 
-// const updateMatchOptions = {
-//   preHandler: verifyUser,
-//   schema: {
-//     params: {
-//       type: "object",
-//       properties: {
-//         id: { type: "integer" },
-//       },
-//     },
-//     body: {
-//       type: "object",
-//       required: [ "score1", "score2"],
-//       properties: {
-//         score1: { type: "integer" },
-//         score2: { type: "integer" },
-//       },
-//     },
-//     response: {
-//       200: Match,
-//       404: { type: "object", properties: { error: { type: "string" } } },
-//     },
-//   },
-//   handler: updateMatch,
-// };
+const removeMatchOptions = {
+  preHandler: verifyUser,
+  schema: {
+    params: {
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+      },
+    },
+    response: {
+      200: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+        },
+      },
+      404: { type: "object", properties: { error: { type: "string" } } },
+    },
+  },
+  handler: removeMatch,
+}
 
 export default async function matchRoutes(fastify, options) {
   fastify.get("/matches", getMatchesOptions);
   fastify.get("/match/:id", getMatchByIdOptions);
   fastify.post("/match", postMatchOptions);
-  // fastify.put("/match/:id", updateMatchOptions);
+  fastify.put("/match/remove/:id", removeMatchOptions);
   fastify.get("/matches/user/:id", getMatchByUserOptions);
 }

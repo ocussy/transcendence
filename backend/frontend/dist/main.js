@@ -6,6 +6,11 @@ class App {
     constructor() {
         this.router = new Router();
         this.initializeApp();
+        window.onbeforeunload = () => {
+            if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+                window.socket.close();
+            }
+        };
     }
     initializeApp() {
         this.router.addRoute("/", () => {

@@ -4,7 +4,9 @@ import {  getUser,
           updateUser,
           getStatUser, 
           getFriendsUser, 
-          removeFriends
+          removeFriends,
+          anonymizeUser,
+          deleteUser,
 } from '../controllers/users.js';
 
 
@@ -15,7 +17,8 @@ const getUserOptions = {
       200: {
         type: "object",
         properties: {
-          login: { type: 'string' },
+          login: { type: "string" },
+          public_login: { type: 'string' },
           email: { type: 'string' },
           avatarUrl: { type: 'string' },
           alias : { type: 'string' },
@@ -40,7 +43,7 @@ const getFriendsOptions = {
         items: {
           type: "object",
           properties: {
-            login: { type: "string" },
+            public_login: { type: "string" },
             avatarUrl: { type: "string" },
             games_played: { type: "number" },
             games_won: { type: "number" },
@@ -86,6 +89,7 @@ const updateUserOptions = {
     body: {
       type: "object",
       properties: {
+        public_login: { type: "string"},
         login: { type: "string" },
         email: { type: "string" },
         avatarUrl: { type: "string" },
@@ -135,6 +139,41 @@ const debugOptions = {
   handler: debugDb,
 };
 
+const anonymizeUserOptions = {
+  preHandler: verifyUser,
+  schema: {
+    response: {
+      200: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+        },
+      },
+    },
+  },
+  handler: anonymizeUser,
+}
+
+const deleteUserOptions = {
+  preHandler: verifyUser,
+  schema: {
+    response: {
+      200: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+        },
+      },
+      404: {
+        type: "object",
+        properties: {
+          error: { type: "string" },
+        },
+      },
+    },
+  },
+  handler: deleteUser,
+}
 
 
 export default async function userRoutes(fastify, options) {
@@ -144,4 +183,6 @@ export default async function userRoutes(fastify, options) {
   fastify.get("/debug/users", debugOptions);
   fastify.get("/stat", getStatUserOptions);
   fastify.post("/friends/remove", removeFriendsOptions);
+  fastify.post("/anonymize", anonymizeUserOptions);
+  fastify.post("/delete", deleteUserOptions);
 }

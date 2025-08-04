@@ -13,7 +13,7 @@ export function getStats(req, reply) {
     if (!user) {
       return reply.status(404).send({ error: t(req.lang, "user_not_found") });
     }
-    const userLogin = user.login;
+    const userLogin = user.public_login;
     const userStats = {
       games_played: user.games_played || 0,
       games_won: user.games_won || 0,
@@ -46,7 +46,7 @@ export function getStats(req, reply) {
     const allUsers = db
       .prepare(
         `
-        SELECT login, games_played, games_won,
+        SELECT public_login, games_played, games_won,
         CASE WHEN games_played = 0 THEN 0
              ELSE (games_won * 100.0 / games_played) END as win_rate
         FROM users
@@ -56,7 +56,7 @@ export function getStats(req, reply) {
       )
       .all();
 
-    const ranking = allUsers.findIndex((u) => u.login === userLogin) + 1;
+    const ranking = allUsers.findIndex((u) => u.public_login === userLogin) + 1;
 
     const result = {
       totalGames: userStats.games_played,
@@ -81,12 +81,12 @@ export function getMatchHistory(req, reply) {
     const userId = req.user.id;
     const limit = parseInt(req.query.limit) || 5;
 
-    const user = db.prepare("SELECT login FROM users WHERE id = ?").get(userId);
+    const user = db.prepare("SELECT public_login FROM users WHERE id = ?").get(userId);
     if (!user) {
       return reply.status(404).send({ error: t(req.lang, "user_not_found") });
     }
 
-    const userLogin = user.login;
+    const userLogin = user.public_login;
     const matches = db
       .prepare(
         `
@@ -123,12 +123,12 @@ export function getPerformanceData(req, reply) {
 
     const userId = req.user.id;
 
-    const user = db.prepare("SELECT login FROM users WHERE id = ?").get(userId);
+    const user = db.prepare("SELECT public_login FROM users WHERE id = ?").get(userId);
     if (!user) {
       return reply.status(404).send({ error: t(req.lang, "user_not_found") });
     }
 
-    const userLogin = user.login;
+    const userLogin = user.public_login;
 
     const performanceData = db
       .prepare(

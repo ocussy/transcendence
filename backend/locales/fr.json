@@ -33,5 +33,7 @@
   "match_not_found": "Match non trouvé.",
   "friend_already_added": "Ami déjà ajouté.",
   "match_saved": "Match enregistré avec succès.",
-  "friend_not_added": "Ami non ajouté."
+  "friend_not_added": "Ami non ajouté.",
+  "match_removed": "Match supprimé avec succès.",
+  "user_anonymized": "Utilisateur anonymisé avec succès."
 }

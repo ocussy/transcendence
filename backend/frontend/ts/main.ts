@@ -11,6 +11,13 @@ class App {
     this.router = new Router();
     //this.verifyToken();
     this.initializeApp();
+    
+    // Fermer proprement la WebSocket quand l'utilisateur quitte la page
+    window.onbeforeunload = () => {
+      if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+        window.socket.close();
+      }
+    };
   }
 
   private initializeApp(): void {

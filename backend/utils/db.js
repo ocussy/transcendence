@@ -26,7 +26,8 @@ db.exec(`
         nb_trys INTEGER DEFAULT 0,
         games_played INTEGER DEFAULT 0,
         games_won INTEGER DEFAULT 0,
-        online BOOLEAN DEFAULT FALSE
+        online BOOLEAN DEFAULT FALSE,
+        public_login TEXT DEFAULT NULL
     );
 
     CREATE TABLE IF NOT EXISTS matches (

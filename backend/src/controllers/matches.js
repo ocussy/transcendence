@@ -14,7 +14,7 @@ export function postMatch(req, reply) {
       db.prepare('UPDATE users SET games_won = games_won + 1 WHERE id = ?').run(userId);
     }
     const stmt = db.prepare('INSERT INTO matches (player1, player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    stmt.run(user.login, "guest", mode, score1, score2, winner, duration);
+    stmt.run(user.public_login, "guest", mode, score1, score2, winner, duration);
     db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
     reply.code(201).send({ message: t(req.lang, "match_saved") });
   } catch (err) {
@@ -55,6 +55,22 @@ export function getMatchById(req, reply) {
       return reply.status(404).send({ error: t(req.lang, "match_not_found") });
     }
     reply.send(row);
+  } catch (err) {
+    reply.status(500).send({ error: t(req.lang, "server_error") });
+  }
+}
+
+export function removeMatch(req, reply) {
+  const { id } = req.params;
+
+  try {
+    const match = db.prepare('SELECT * FROM matches WHERE id = ?').get(id);
+    if (!match) {
+      return reply.status(404).send({ error: t(req.lang, "match_not_found") });
+    }
+
+    db.prepare('DELETE FROM matches WHERE id = ?').run(id);
+    reply.send({ message: t(req.lang, "match_removed") });
   } catch (err) {
     reply.status(500).send({ error: t(req.lang, "server_error") });
   }

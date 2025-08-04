@@ -17,13 +17,11 @@ export async function logConnectedUsers(app) {
 
   const numericUserIds = userIds.map(id => parseInt(id, 10));
 
-  db.prepare("UPDATE users SET online = 0").run();
-
+  db.prepare("UPDATE users SET online = 0").run();;
   if (numericUserIds.length > 0) {
     const placeholders = numericUserIds.map(() => "?").join(", ");
     db.prepare(`UPDATE users SET online = 1 WHERE id IN (${placeholders})`).run(...numericUserIds);
   }
-
   let logins = [];
   if (numericUserIds.length > 0) {
     const placeholders = numericUserIds.map(() => "?").join(", ");

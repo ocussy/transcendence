@@ -42,7 +42,7 @@ export async function buildUpdateQuery(table, updates, whereClause, whereArgs) {
 export async function getUser(req, reply) {
   try {
     const id = req.user.id;
-    const user = db.prepare('SELECT login, email, avatarUrl, alias, auth_provider, lang, secure_auth, games_played, games_won FROM users WHERE id = ?').get(id);
+    const user = db.prepare('SELECT login, public_login, email, avatarUrl, alias, auth_provider, lang, secure_auth, games_played, games_won FROM users WHERE id = ?').get(id);
     if (!user) {
       return reply.status(404).send({ error: t(req.lang, "user_not_found") });
     }
@@ -55,15 +55,14 @@ export async function getUser(req, reply) {
 
 export async function getFriendsUser(req, reply) {
   try {
-    logConnectedUsers(app);
+    await logConnectedUsers(app);
     const id = req.user.id;
     const friends = db.prepare(`
-      SELECT u.login, u.avatarUrl, u.games_played, u.games_won, u.online
+      SELECT u.public_login, u.avatarUrl, u.games_played, u.games_won, u.online
       FROM friends f
       JOIN users u ON f.friend_id = u.id
       WHERE f.user_id = ?
     `).all(id);
-    
     return reply.status(200).send(friends);
   } catch (err) {
     reply.status(500).send({ error: t(req.lang, "server_error") });
@@ -98,7 +97,7 @@ async function verifData(req, reply) {
   }
 
   if (friend) {
-    const stmt = db.prepare(`SELECT login FROM users WHERE login = ?`);
+    const stmt = db.prepare(`SELECT public_login FROM users WHERE public_login = ?`);
     const friendExist = stmt.get(friend);
     if (!friendExist) {
       return reply.status(400).send({
@@ -111,7 +110,7 @@ async function verifData(req, reply) {
 }
 
 async function addFriends(userId, friendLogin) {
-  const getId = db.prepare(`SELECT id FROM users WHERE login = ?`);
+  const getId = db.prepare(`SELECT id FROM users WHERE public_login = ?`);
   const friend = getId.get(friendLogin);
   if (!friend.id) return null;
   const stmtCheck = db.prepare(
@@ -134,7 +133,7 @@ export async function updateUser(req, reply) {
   const id = req.user.id;
   if (error) return error;
 
-  const { login, email, avatarUrl, lang, password, secure_auth, friend, alias } =
+  const { login, email, avatarUrl, lang, password, secure_auth, friend, alias, public_login } =
     req.body;
 
   const updates = [];
@@ -142,6 +141,8 @@ export async function updateUser(req, reply) {
 
   if (login) {
     updates.push("login = ?");
+    values.push(login);
+    updates.push("public_login = ?");
     values.push(login);
   }
   if (email) {
@@ -170,8 +171,8 @@ export async function updateUser(req, reply) {
     values.push(secure_auth ? 1 : 0);
   }
   if (friend) {
-    const user = db.prepare("SELECT login FROM users WHERE id = ?").get(id);
-    if (user.login == friend)
+    const user = db.prepare("SELECT public_login FROM users WHERE id = ?").get(id);
+    if (user.public_login == friend)
         return reply.status(400).send({error : t(req.lang, "friend_yourself")});
     const friendAdd = await addFriends(id, friend);
     if (!friendAdd) {
@@ -236,6 +237,54 @@ export function debugDb(req, reply) {
   try {
     const rows = db.prepare("SELECT * FROM users").all();
     reply.send(rows);
+  } catch (err) {
+    reply.status(500).send({ error: t(req.lang, "server_error") });
+  }
+}
+
+export function anonymizeUser(req, reply) {
+  try {
+    const userId = req.user.id;
+    if (!userId) {
+      return reply.status(404).send({ error: t(req.lang, "user_not_found") });
+    }
+    // Génère un nombre aléatoire pour le public_login
+    const randomNum = Math.floor(Math.random() * 1000000);
+    const public_login = `user_${userId}_${randomNum}`;
+    db.prepare("UPDATE users SET public_login = ? WHERE id = ?").run(public_login, userId);
+    
+    reply.send({ message: t(req.lang, "user_anonymized") });
+  } catch (err) {
+    reply.status(500).send({ error: t(req.lang, "server_error") });
+  }
+}
+
+
+export function deleteUser(req, reply) {
+  userId = req.user.id;
+  if (!userId) {
+    return reply.status(404).send({ error: t(req.lang, "user_not_found") });
+  }
+  try {
+    const userId = req.user.id;
+    if (!userId) {
+      return reply.status(404).send({ error: t(req.lang, "user_not_found") });
+    }
+
+    db.prepare("UPDATE users SET login = ?, public_login = ?, email = ?, avatarUrl = ?, alias = ?, password = ?, games_played = ?, games_won = ? WHERE id = ?").run(
+      `deleted_user`,
+      `deleted_user`,
+      null,
+      `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=deleted_user`,
+      `deleted_user`,
+      null,
+      0,
+      0,
+      userId
+    );
+
+    db.prepare("DELETE FROM friends WHERE user_id = ? OR friend_id = ?").run(userId, userId);
+    reply.send({ message: t(req.lang, "user_deleted") });
   } catch (err) {
     reply.status(500).send({ error: t(req.lang, "server_error") });
   }

@@ -87,10 +87,10 @@ export async function signUp(req, reply) {
   const avatarUrl = `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${encodeURIComponent(login)}`;
   try {
     const stmt = db.prepare(
-      "INSERT INTO users (login, password, email, avatarUrl, alias) VALUES (?, ?, ?, ?, ?)",
+      "INSERT INTO users (login, password, email, avatarUrl, alias, public_login) VALUES (?, ?, ?, ?, ?, ?)",
     );
     const hashedPassword = await bcrypt.hash(password, 10);
-    stmt.run(login, hashedPassword, email, avatarUrl, login);
+    stmt.run(login, hashedPassword, email, avatarUrl, login, login);
     reply.status(201).send({ message: t(req.lang, "user_created") });
   } catch (err) {
     reply.status(500).send({ error: t(req.lang, "error_user") });
