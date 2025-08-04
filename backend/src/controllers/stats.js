@@ -36,8 +36,6 @@ export function getStats(req, reply) {
 
     let currentStreak = 0;
     for (const match of recentMatches) {
-        console.log("winner:", match.winner);
-        console.log("userId:", userId);
       if (match.winner == userId) {
         currentStreak++;
       } else {

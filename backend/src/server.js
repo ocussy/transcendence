@@ -18,6 +18,7 @@ import { setupConnexionSocket, setupRemoteSocket, setupRemoteGame, clearConnecte
 import statsRoutes from "./routes/stats.js";
 import tournamentRoutes from "./routes/tournament.js";
 import fs from "fs";
+import { verifyUser } from "./controllers/users.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -107,10 +108,21 @@ app.decorate("authenticate", async (request, reply) => {
 });
 
 app.addHook("preHandler", async (req, reply) => {
-   const headerLang = req.headers['accept-language'];
-   console.log("Header Language:", headerLang);
-  req.lang = headerLang?.startsWith('fr') ? 'fr' : 'en'; // fallback to English
+  try {
+    if (req.cookies?.token) {
+      await req.jwtVerify();
+      const userRow = db.prepare('SELECT lang FROM users WHERE id = ?').get(req.user.id);
+      req.lang = userRow?.lang || 'en';
+    } else {
+      req.lang = 'en';
+    }
+  } catch (err) {
+    console.error("JWT verification failed:", err);
+    req.lang = 'en';
+  }
 });
+
+
 
 const start = async () => {
   try {

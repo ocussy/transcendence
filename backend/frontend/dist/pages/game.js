@@ -33,13 +33,14 @@ export class GamePage {
     async loadUserStats() {
         try {
             const response = await fetch("/stats", { credentials: "include" });
+            const data = await response.json();
             if (!response.ok)
-                throw new Error("Failed to fetch stats");
-            const stats = await response.json();
+                throw new Error(data.error);
+            const stats = data;
             this.updateStatsCards(stats);
         }
         catch (error) {
-            console.error("Error loading user stats:", error);
+            console.error(error);
         }
     }
     updateStatsCards(stats) {
@@ -69,9 +70,10 @@ export class GamePage {
             const response = await fetch("/match-history?limit=5", {
                 credentials: "include",
             });
+            const data = await response.json();
             if (!response.ok)
-                throw new Error("Failed to fetch match history");
-            const matches = await response.json();
+                throw new Error(data.error);
+            const matches = data;
             const tbody = document.querySelector("#section-dashboard tbody");
             if (!tbody)
                 return;
@@ -107,7 +109,6 @@ export class GamePage {
                 .join("");
         }
         catch (error) {
-            console.error("Error loading match history:", error);
             this.showMatchHistoryError();
         }
     }
@@ -181,9 +182,10 @@ export class GamePage {
             const response = await fetch("/stats/performance", {
                 credentials: "include",
             });
+            const data = await response.json();
             if (!response.ok)
-                throw new Error("Failed to fetch performance data");
-            const performanceData = await response.json();
+                throw new Error(data.error);
+            const performanceData = data;
             if (performanceData.length > 0) {
                 this.updatePerformanceChart(performanceData);
             }
@@ -192,7 +194,6 @@ export class GamePage {
             }
         }
         catch (error) {
-            console.error("Error loading performance data:", error);
             this.showNoPerformanceData();
         }
     }
@@ -269,20 +270,19 @@ export class GamePage {
                     duration: duration,
                 }),
             });
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Failed to create match: ${errorText}`);
-            }
             const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error);
+            }
             if (!data) {
-                throw new Error("Invalid match data received");
+                throw new Error(data.error);
             }
             GamePage.currentMatchId = data.id;
-            GamePage.showProfileAlert("profile-success", `$ match-${mode} initialized`, "success");
+            GamePage.showProfileAlert("profile-success", data.message, "success");
             return data.id;
         }
         catch (error) {
-            GamePage.showProfileAlert("profile-alert", `$ error: failed to create ${mode} match`);
+            GamePage.showProfileAlert("profile-alert", typeof error === "object" && error !== null && "message" in error ? error.message : String(error));
             return null;
         }
     }
@@ -292,10 +292,10 @@ export class GamePage {
                 method: "GET",
                 credentials: "include",
             });
-            if (!res.ok)
-                throw new Error("Not authenticated");
-            tryConnectWebSocketIfAuthenticated();
             const data = await res.json();
+            if (!res.ok)
+                throw new Error(data.error);
+            tryConnectWebSocketIfAuthenticated();
             this.currentUser = data.user || data;
             const user = this.currentUser;
             const usernameInput = document.getElementById("profile-username");
@@ -326,7 +326,6 @@ export class GamePage {
             this.loadFriends();
         }
         catch (err) {
-            console.error("Erreur chargement profil:", err);
             window.router.navigate("/auth");
         }
     }
@@ -389,19 +388,19 @@ export class GamePage {
             const response = await fetch("/friends", {
                 credentials: "include",
             });
+            const data = await response.json();
             if (response.ok) {
-                const data = await response.json();
                 this.friendsList = data || [];
                 this.renderFriendsSection();
             }
             else {
-                console.error("Failed to load friends");
+                GamePage.showProfileAlert("profile-alert", (data.error instanceof Error ? data.error.message : "$ error: failed to load friends"));
                 this.friendsList = [];
                 this.renderFriendsSection();
             }
         }
         catch (error) {
-            console.error("Error loading friends:", error);
+            GamePage.showProfileAlert("profile-alert", (error instanceof Error ? error.message : "$ error: failed to load friends"));
             this.friendsList = [];
             this.renderFriendsSection();
         }
@@ -422,7 +421,7 @@ export class GamePage {
             });
             const data = await response.json();
             if (response.ok) {
-                GamePage.showProfileAlert("profile-success", `Friend ${username} added successfully!`, "success");
+                GamePage.showProfileAlert("profile-success", data.message, "success");
                 await this.loadFriends();
                 const input = document.getElementById("add-friend-input");
                 if (input)
@@ -452,7 +451,7 @@ export class GamePage {
             });
             const data = await response.json();
             if (response.ok) {
-                GamePage.showProfileAlert("profile-success", `Friend ${username} removed`, "success");
+                GamePage.showProfileAlert("profile-success", data.message, "success");
                 await this.loadFriends();
             }
             else {
@@ -1104,7 +1103,7 @@ export class GamePage {
             });
             const data = await response.json();
             if (response.ok) {
-                GamePage.showProfileAlert("profile-success", "$ basic information updated successfully", "success");
+                GamePage.showProfileAlert("profile-success", data.message, "success");
                 Object.assign(this.currentUser, updateData);
                 this.updateProfileDisplay();
                 btn.textContent = "saved ✓";
@@ -1125,7 +1124,6 @@ export class GamePage {
             GamePage.showProfileAlert("profile-alert", "$ network error");
             btn.textContent = "save";
             btn.disabled = false;
-            console.error("Update error:", error);
         }
     }
     async savePassword() {
@@ -1159,7 +1157,7 @@ export class GamePage {
             });
             const data = await response.json();
             if (response.ok) {
-                GamePage.showProfileAlert("profile-success", "$ password updated successfully", "success");
+                GamePage.showProfileAlert("profile-success", data.message, "success");
                 document.getElementById("profile-new-password").value = "";
                 document.getElementById("profile-confirm-password").value = "";
                 btn.textContent = "updated ✓";
@@ -1200,7 +1198,7 @@ export class GamePage {
             });
             const data = await response.json();
             if (response.ok) {
-                GamePage.showProfileAlert("profile-success", `$ 2FA ${isEnabled ? "enabled" : "disabled"} successfully`, "success");
+                GamePage.showProfileAlert("profile-success", data.message, "success");
                 if (this.currentUser) {
                     this.currentUser.secure_auth = isEnabled;
                 }
@@ -1608,23 +1606,19 @@ export class GamePage {
                     players: players,
                 }),
             });
+            const data = await response.json();
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error("❌ Tournament creation failed:", errorText);
-                GamePage.showProfileAlert("profile-alert", `$ error: failed to create tournament`);
+                GamePage.showProfileAlert("profile-alert", data.error);
                 return;
             }
-            const data = await response.json();
-            console.log(" Tournament created:", data);
-            GamePage.showProfileAlert("profile-success", `$ tournament "${tournamentName}" created`, "success");
+            GamePage.showProfileAlert("profile-success", data.message, "success");
             const nameInput = document.querySelector('input[placeholder="tournament_name"]');
             if (nameInput)
                 nameInput.value = "";
             this.showTournamentRules(tournamentName, players, data);
         }
         catch (error) {
-            console.error(" Error creating tournament:", error);
-            GamePage.showProfileAlert("profile-alert", `$ error: network error`);
+            GamePage.showProfileAlert("profile-alert", typeof error === "object" && error !== null && "message" in error ? error.message : String(error));
         }
     }
     showTournamentRules(tournamentName, players, tournamentData) {
@@ -1710,22 +1704,17 @@ export class GamePage {
     }
     async handleLogout() {
         if (confirm("$ logout: Are you sure you want to exit?")) {
-            console.log("Logging out...");
             try {
-                await fetch("/auth/signout", {
+                const res = await fetch("/auth/signout", {
                     method: "GET",
                     credentials: "include",
                 });
             }
             catch (err) {
-                console.error("Logout failed:", err);
+                GamePage.showProfileAlert("profile-alert", (err instanceof Error ? err.message : "$ error: failed to logout"));
             }
             if (window.socket) {
                 window.socket.close();
-                console.log("Socket closed, redirecting to home...");
-            }
-            else {
-                console.log("No active socket to close.");
             }
             setTimeout(() => {
                 window.router.navigate("/");

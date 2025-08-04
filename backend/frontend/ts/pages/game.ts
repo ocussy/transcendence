@@ -1,7 +1,10 @@
 import { socket } from "./auth.js";
 import { tryConnectWebSocketIfAuthenticated } from "./auth.js";
 import { verifyToken } from "./auth.js";
+// import { getCookieLanguage, setLanguage } from "./auth.js";
 
+
+// setLanguage(getCookieLanguage());
 //interface pour le dashboard
 interface MatchStats {
   totalGames: number;
@@ -67,13 +70,13 @@ export class GamePage {
   private async loadUserStats(): Promise<void> {
     try {
       const response = await fetch("/stats", { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch stats");
-
-      const stats: MatchStats = await response.json();
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      const stats: MatchStats = data;
 
       this.updateStatsCards(stats);
     } catch (error) {
-      console.error("Error loading user stats:", error);
+      console.error(error);
     }
   }
 
@@ -119,9 +122,10 @@ export class GamePage {
       const response = await fetch("/match-history?limit=5", {
         credentials: "include",
       });
-      if (!response.ok) throw new Error("Failed to fetch match history");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
 
-      const matches: MatchHistory[] = await response.json();
+      const matches: MatchHistory[] = data;
 
       const tbody = document.querySelector("#section-dashboard tbody");
       if (!tbody) return;
@@ -160,7 +164,6 @@ export class GamePage {
         )
         .join("");
     } catch (error) {
-      console.error("Error loading match history:", error);
       this.showMatchHistoryError();
     }
   }
@@ -240,17 +243,16 @@ export class GamePage {
       const response = await fetch("/stats/performance", {
         credentials: "include",
       });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
 
-      if (!response.ok) throw new Error("Failed to fetch performance data");
-
-      const performanceData = await response.json();
+      const performanceData = data;
       if (performanceData.length > 0) {
         this.updatePerformanceChart(performanceData);
       } else {
         this.showNoPerformanceData();
       }
     } catch (error) {
-      console.error("Error loading performance data:", error);
       this.showNoPerformanceData();
     }
   }
@@ -344,47 +346,30 @@ export class GamePage {
         }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to create match: ${errorText}`);
-      }
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error);
+      }
       if (!data) {
-        throw new Error("Invalid match data received");
+        throw new Error(data.error);
       }
       GamePage.currentMatchId = data.id;
       GamePage.showProfileAlert(
         "profile-success",
-        `$ match-${mode} initialized`,
+        data.message,
         "success",
       );
       return data.id;
     } catch (error) {
       GamePage.showProfileAlert(
         "profile-alert",
-        `$ error: failed to create ${mode} match`,
+        typeof error === "object" && error !== null && "message" in error ? (error as { message: string }).message : String(error),
       );
       return null;
     }
   }
 
-  // static async sendEndMatch(matchId: number, score1: number, score2: number): Promise<void> {
-  //   try {
-  //     const response = await fetch(`/match/${matchId}`, {
-  //       method: "PUT",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //       },
-  //       credentials: "include",
-  //       body: JSON.stringify({
-  //         score1: score1,
-  //         score2: score2,
-  //       }),
-  //     });
-  //   } catch (error) {
-  //     console.error("Erreur lors de l'envoi des résultats du match:", error);
-  //   }
-  // }
   //////////////////////////////////////////////creation match///////////////////////////////////////
 
   private async loadUserProfile(): Promise<void> {
@@ -393,9 +378,9 @@ export class GamePage {
         method: "GET",
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Not authenticated");
-      tryConnectWebSocketIfAuthenticated();
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      tryConnectWebSocketIfAuthenticated();
 
       this.currentUser = data.user || data;
 
@@ -437,7 +422,6 @@ export class GamePage {
       this.updateAuthBadge(data.auth_provider || "local");
       this.loadFriends();
     } catch (err) {
-      console.error("Erreur chargement profil:", err);
       window.router.navigate("/auth");
     }
   }
@@ -520,17 +504,23 @@ export class GamePage {
       const response = await fetch("/friends", {
         credentials: "include",
       });
+      const data = await response.json();
       if (response.ok) {
-        const data = await response.json();
         this.friendsList = data || [];
         this.renderFriendsSection();
       } else {
-        console.error("Failed to load friends");
+        GamePage.showProfileAlert(
+          "profile-alert",
+          (data.error instanceof Error ? data.error.message : "$ error: failed to load friends"),
+        );
         this.friendsList = [];
         this.renderFriendsSection();
       }
     } catch (error) {
-      console.error("Error loading friends:", error);
+      GamePage.showProfileAlert(
+        "profile-alert",
+        (error instanceof Error ? error.message : "$ error: failed to load friends"),
+      );
       this.friendsList = [];
       this.renderFriendsSection();
     }
@@ -557,7 +547,7 @@ export class GamePage {
       if (response.ok) {
         GamePage.showProfileAlert(
           "profile-success",
-          `Friend ${username} added successfully!`,
+          data.message,
           "success",
         );
         await this.loadFriends();
@@ -597,7 +587,7 @@ export class GamePage {
       if (response.ok) {
         GamePage.showProfileAlert(
           "profile-success",
-          `Friend ${username} removed`,
+          data.message,
           "success",
         );
         await this.loadFriends();
@@ -1299,7 +1289,7 @@ export class GamePage {
       if (response.ok) {
         GamePage.showProfileAlert(
           "profile-success",
-          "$ basic information updated successfully",
+          data.message,
           "success",
         );
         Object.assign(this.currentUser, updateData);
@@ -1324,7 +1314,6 @@ export class GamePage {
       GamePage.showProfileAlert("profile-alert", "$ network error");
       btn.textContent = "save";
       btn.disabled = false;
-      console.error("Update error:", error);
     }
   }
 
@@ -1381,7 +1370,7 @@ export class GamePage {
       if (response.ok) {
         GamePage.showProfileAlert(
           "profile-success",
-          "$ password updated successfully",
+          data.message,
           "success",
         );
         (
@@ -1444,7 +1433,7 @@ export class GamePage {
       if (response.ok) {
         GamePage.showProfileAlert(
           "profile-success",
-          `$ 2FA ${isEnabled ? "enabled" : "disabled"} successfully`,
+          data.message,
           "success",
         );
         if (this.currentUser) {
@@ -1957,22 +1946,18 @@ export class GamePage {
         }),
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ Tournament creation failed:", errorText);
         GamePage.showProfileAlert(
           "profile-alert",
-          `$ error: failed to create tournament`,
+          data.error,
         );
         return;
       }
 
-      const data = await response.json();
-      console.log(" Tournament created:", data);
-
       GamePage.showProfileAlert(
         "profile-success",
-        `$ tournament "${tournamentName}" created`,
+        data.message,
         "success",
       );
 
@@ -1983,8 +1968,7 @@ export class GamePage {
 
       this.showTournamentRules(tournamentName, players, data);
     } catch (error) {
-      console.error(" Error creating tournament:", error);
-      GamePage.showProfileAlert("profile-alert", `$ error: network error`);
+      GamePage.showProfileAlert("profile-alert", typeof error === "object" && error !== null && "message" in error ? (error as { message: string }).message : String(error));
     }
   }
 
@@ -2088,20 +2072,19 @@ export class GamePage {
 
   private async handleLogout(): Promise<void> {
     if (confirm("$ logout: Are you sure you want to exit?")) {
-      console.log("Logging out...");
       try {
-        await fetch("/auth/signout", {
+        const res = await fetch("/auth/signout", {
           method: "GET",
           credentials: "include",
         });
       } catch (err) {
-        console.error("Logout failed:", err);
+        GamePage.showProfileAlert(
+          "profile-alert",
+          (err instanceof Error ? err.message : "$ error: failed to logout"),
+        );
       }
       if (window.socket) {
         window.socket.close();
-        console.log("Socket closed, redirecting to home...");
-      } else {
-        console.log("No active socket to close.");
       }
       setTimeout(() => {
         window.router.navigate("/");

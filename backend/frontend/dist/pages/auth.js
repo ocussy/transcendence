@@ -5,7 +5,7 @@ export function tryConnectWebSocketIfAuthenticated() {
         return;
     }
     fetch("/user", { credentials: "include" })
-        .then((res) => {
+        .then(async (res) => {
         if (res.ok) {
             const protocol = window.location.protocol === "https:" ? "wss" : "ws";
             const host = window.location.host;
@@ -27,7 +27,7 @@ export function tryConnectWebSocketIfAuthenticated() {
         }
     })
         .catch((err) => {
-        console.error("Erreur lors de la vérification de l'auth :", err);
+        console.error("❌ Erreur lors de la connexion WebSocket :", err);
     });
 }
 async function checkAuthAndRedirect() {
@@ -66,6 +66,9 @@ export class AuthPage {
     constructor() {
         this.pendingToken = null;
         checkAuthAndRedirect();
+        this.initializeAsync();
+    }
+    async initializeAsync() {
         this.render();
         this.attachEvents();
         this.initializeGoogleAuth();
@@ -73,7 +76,7 @@ export class AuthPage {
     render() {
         const app = document.getElementById("app");
         app.innerHTML = `
-            <!-- Background avec effets (équivalent de votre CSS) -->
+<!-- Background avec effets (équivalent de votre CSS) -->
             <div class="min-h-screen bg-black text-white flex items-center justify-center p-8 relative overflow-x-hidden">
 
                 <!-- Background animated gradients -->

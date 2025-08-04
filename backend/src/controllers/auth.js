@@ -132,11 +132,18 @@ export async function signUpGoogle(req, reply) {
     const tokenJWT = await reply.jwtSign({ id : user.id });
     reply
       .setCookie("token", tokenJWT, {
-        httpOnly: true,
-        secure: false,
-        sameSite: "Lax",
-        path: "/",
-        maxAge: 60 * 60, // 1 hour
+      httpOnly: true,
+      secure: false,
+      sameSite: "Lax",
+      path: "/",
+      maxAge: 60 * 60, // 1 hour
+      })
+      .setCookie("lang", user.lang, {
+      httpOnly: false,
+      secure: false,
+      sameSite: "Lax",
+      path: "/",
+      maxAge: 60 * 60, // 1 hour
       })
       .code(201)
       .send({ login });
@@ -184,8 +191,15 @@ export async function signIn(req, reply) {
         id: user.id,
       });
       reply
-        .setCookie("token", tokenJWT, {
+        .setCookie("token", tokenJWT,{
           httpOnly: true,
+          secure: false,
+          sameSite: "Lax",
+          path: "/",
+          maxAge: 60 * 60, // 1 hour
+        })
+        .setCookie("lang", user.lang, {
+          httpOnly: false,
           secure: false,
           sameSite: "Lax",
           path: "/",
@@ -206,7 +220,6 @@ export async function signIn(req, reply) {
         LIMIT 1
       `);
       const user = stmt.get(givenLogin);
-
       if (!user) {
         return reply.status(401).send({ error: t(req.lang, "user_not_found") });
       }
@@ -244,13 +257,20 @@ export async function signIn(req, reply) {
         id: user.id,
       });
       reply
-        .setCookie("token", token, {
-          httpOnly: true,
-          secure: false, // false for local dev, true for production
-          sameSite: "Lax",
-          path: "/",
-          maxAge: 60 * 60, // 1 hour
-        })
+      .setCookie("token", token,{
+        httpOnly: true,
+        secure: false,
+        sameSite: "Lax",
+        path: "/",
+        maxAge: 60 * 60, // 1 hour
+      })
+      .setCookie("lang", user.lang, {
+        httpOnly: false,
+        secure: false,
+        sameSite: "Lax",
+        path: "/",
+        maxAge: 60 * 60, // 1 hour
+      })
         .code(200)
         .send({ login: user.login });
     }
@@ -269,10 +289,15 @@ export async function signOut(req, reply) {
         secure: false,
         sameSite: "Lax",
       })
+      .clearCookie("lang", user.lang, {
+        httpOnly: false,
+        secure: false,
+        sameSite: "Lax",
+        path: "/",
+      })
       .code(200)
       .send({ message: "Successfully signed out" });
   } catch (err) {
-    console.error("Sign-out error:", err);
     return reply.status(500).send({ error: t(req.lang, "server_error") });
   }
 }
@@ -346,8 +371,15 @@ export async function verify2FA(req, reply) {
       id : user.id,
     });
     reply
-      .setCookie("token", jwtToken, {
-        httpOnly: true,
+      .setCookie("token", jwtToken,{
+      httpOnly: true,
+      secure: false,
+      sameSite: "Lax",
+      path: "/",
+      maxAge: 60 * 60, // 1 hour
+      })
+      .setCookie("lang", user.lang, {
+        httpOnly: false,
         secure: false,
         sameSite: "Lax",
         path: "/",
