@@ -435,7 +435,7 @@ export class AuthPage {
         setTimeout(() => {
           window.router.navigate("/game");
         }, 1000);
-      } else if (response.status === 400 && data.message === 'OTP sent to email') {
+      } else if (response.status === 400) {
         // 2FA required
         this.pendingToken = data.token;
         btn.textContent = "$ 2FA required";

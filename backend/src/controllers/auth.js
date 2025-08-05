@@ -244,7 +244,7 @@ export async function signIn(req, reply) {
         const result = await sendOtpVerificationEmail(user, reply);
         if (result) {
           const token = await reply.jwtSign({
-            login: user.login,
+            id: user.id,
           });
           return reply.code(400).send({ message: t(req.lang, "otp_sent"), token });
         } else {
@@ -319,9 +319,9 @@ export async function sendOtpVerificationEmail(user, reply) {
     const stmt = db.prepare(`
       UPDATE users
       SET otp_code = ?, otp_expires_at = ?
-      WHERE login = ?
+      WHERE id = ?
     `);
-    stmt.run(hashedCode, expiresAt, user.login);
+    stmt.run(hashedCode, expiresAt, user.id);
 
     // Envoi de l'email après avoir stocké le code
     await transporter.sendMail(mailOptions);
@@ -333,21 +333,21 @@ export async function sendOtpVerificationEmail(user, reply) {
 
 export async function verify2FA(req, reply) {
   const { otp } = req.body;
-  let login;
+  let id;
   try {
     const decoded = await req.jwtVerify();
-    login = decoded.login;
+    id = decoded.id;
     const stmt = db.prepare(`
 			SELECT otp_code, otp_expires_at, login, nb_trys
 			FROM users
-			WHERE login = ?
+			WHERE id = ?
 			LIMIT 1
 		`);
-    const user = stmt.get(login);
+    const user = stmt.get(id);
     if (!user || !user.otp_code || !user.otp_expires_at || user.nb_trys > 2 || Date.now() > user.otp_expires_at) {
       db.prepare(
-        `UPDATE users SET otp_code = NULL, otp_expires_at = NULL, nb_trys = 0 WHERE login = ?`,
-      ).run(login);
+        `UPDATE users SET otp_code = NULL, otp_expires_at = NULL, nb_trys = 0 WHERE id = ?`,
+      ).run(id);
       if (user && user.nb_trys > 2) {
         return reply
           .status(429)
@@ -358,17 +358,15 @@ export async function verify2FA(req, reply) {
 
     const isValid = await bcrypt.compare(otp, user.otp_code);
     if (!isValid) {
-      db.prepare(`UPDATE users SET nb_trys = nb_trys + 1 WHERE login = ?`).run(
-        login,
-      );
+      db.prepare(`UPDATE users SET nb_trys = nb_trys + 1 WHERE id = ?`).run(id);
       return reply.status(400).send({ error: t(req.lang, "invalid_otp") });
     }
 
     db.prepare(
-      `UPDATE users SET otp_code = NULL, otp_expires_at = NULL, nb_trys = 0 WHERE login = ?`,
-    ).run(login);
+      `UPDATE users SET otp_code = NULL, otp_expires_at = NULL, nb_trys = 0 WHERE id = ?`,
+    ).run(id);
     const jwtToken = await reply.jwtSign({
-      id : user.id,
+      id : id,
     });
     reply
       .setCookie("token", jwtToken,{

@@ -142,8 +142,11 @@ export async function updateUser(req, reply) {
   if (login) {
     updates.push("login = ?");
     values.push(login);
-    updates.push("public_login = ?");
-    values.push(login);
+    const user = db.prepare("SELECT login, public_login FROM users WHERE id = ?").get(id);
+    if (user.login === user.public_login) {
+      updates.push("public_login = ?");
+      values.push(login);
+    }
   }
   if (email) {
     updates.push("email = ?");

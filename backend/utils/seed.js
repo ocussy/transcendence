@@ -75,6 +75,7 @@ export async function seedDatabase(db) {
     insertFriend.run(userIds[a], userIds[b]);
     insertFriend.run(userIds[b], userIds[a]);
   }
+  
 
   addFriend('adem', 'oceane');
   addFriend('adem', 'geoffrey');
