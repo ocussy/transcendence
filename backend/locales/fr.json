@@ -35,5 +35,6 @@
   "match_saved": "Match enregistré avec succès.",
   "friend_not_added": "Ami non ajouté.",
   "match_removed": "Match supprimé avec succès.",
-  "user_anonymized": "Utilisateur anonymisé avec succès."
+  "user_anonymized": "Utilisateur anonymisé avec succès.",
+  "friend_deleted": "Ami supprimé avec succès."
 }

@@ -204,7 +204,7 @@ export async function removeFriends(req, reply) {
     return reply.status(400).send({ error: t(req.lang, "no_fields_to_update") });
   }
   const userId = req.user.id;
-  const getId = db.prepare(`SELECT id FROM users WHERE login = ?`);
+  const getId = db.prepare(`SELECT id FROM users WHERE public_login = ?`);
   const friendId = getId.get(friend);
   if (!friendId) {
     return reply.status(404).send({ error: t(req.lang, "friend_not_found") });
@@ -220,7 +220,7 @@ export async function removeFriends(req, reply) {
     `DELETE FROM friends WHERE user_id = ? AND friend_id = ?`,
   );
   stmtRemove.run(userId, friendId.id);
-  return reply.status(200).send({ message: t(req.lang, "user_updated") });
+  return reply.status(200).send({ message: t(req.lang, "friend_deleted") });
 }
 
 export async function getStatUser(req, reply) {

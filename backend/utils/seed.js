@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt';
 export async function seedDatabase(db) {
   // Vérifier si la base de données contient déjà des utilisateurs
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get();
-  
+  console.log(`Nombre d'utilisateurs dans la base de données : ${userCount.count}`);
   if (userCount.count > 0) {
     console.log(`📊 Base de données déjà initialisée avec ${userCount.count} utilisateurs.`);
     return;

@@ -9,7 +9,17 @@ export function postMatch(req, reply) {
   let winner = null;
 
   try {
-    if (!player1 || !player2) {
+    if (mode == "ia") {
+      if (score1 > score2) {
+        winner = user.id;
+        db.prepare('UPDATE users SET games_won = games_won + 1 WHERE id = ?').run(userId);
+      }
+      const stmt = db.prepare('INSERT INTO matches (player1, player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?)');
+      stmt.run(user.public_login, "ia", mode, score1, score2, winner, duration);
+      db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
+      reply.code(201).send({ message: t(req.lang, "match_saved") });
+    }
+    else if (!player1 || !player2) {
       if (score1 > score2) {
         winner = user.id;
         db.prepare('UPDATE users SET games_won = games_won + 1 WHERE id = ?').run(userId);
@@ -17,7 +27,7 @@ export function postMatch(req, reply) {
       const stmt = db.prepare('INSERT INTO matches (player1, player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?)');
       stmt.run(user.public_login, "guest", mode, score1, score2, winner, duration);
       db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
-      reply.code(201).send({ winner: winner ? user.id : null });
+      reply.code(201).send({ message: t(req.lang, "match_saved") });
   }
   else
   {
