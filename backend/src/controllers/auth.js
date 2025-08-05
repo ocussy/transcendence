@@ -306,7 +306,7 @@ export async function sendOtpVerificationEmail(user, reply) {
   try {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     const mailOptions = {
-      from: `"Mon App" <test@openjavascript.info>`,
+      from: `"Tunisienne en chaleur" <test@openjavascript.info>`,
       to: user.email,
       subject: "Your 2FA Code",
       text: `Your 2FA code is: ${code}. It is valid for 5 minutes.`,
