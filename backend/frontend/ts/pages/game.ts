@@ -369,7 +369,6 @@ export class GamePage {
       return null;
     }
   }
-
   //////////////////////////////////////////////creation match///////////////////////////////////////
 
   private async loadUserProfile(): Promise<void> {

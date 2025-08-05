@@ -65,9 +65,11 @@ const postMatchOptions = {
   schema: {
     body: {
       type: "object",
-      required: ["mode", "score1", "score2"],
+      required: ["mode", "score1", "score2", "duration"],
       properties: {
         mode: { type: "string" },
+        player1: { type: "string" },
+        player2: { type: "string" },
         score1: { type: "integer" },
         score2: { type: "integer" },
         duration: { type: "integer" },
