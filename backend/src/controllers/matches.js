@@ -3,20 +3,33 @@ import { t } from '../../utils/i18n.js';
 // Handler pour match creation
 
 export function postMatch(req, reply) {
-  const { mode, score1, score2, duration } = req.body;
+  const { mode, score1, score2, duration, player1, player2 } = req.body;
   const userId = req.user.id;
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  let winner = null;
 
   try {
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-    let winner = null;
+    if (!player1 || !player2) {
+      if (score1 > score2) {
+        winner = user.id;
+        db.prepare('UPDATE users SET games_won = games_won + 1 WHERE id = ?').run(userId);
+      }
+      const stmt = db.prepare('INSERT INTO matches (player1, player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?)');
+      stmt.run(user.public_login, "guest", mode, score1, score2, winner, duration);
+      db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
+      reply.code(201).send({ winner: winner ? user.id : null });
+  }
+  else
+  {
     if (score1 > score2) {
-      winner = user.id;
-      db.prepare('UPDATE users SET games_won = games_won + 1 WHERE id = ?').run(userId);
+      winner = player1;
+      db.prepare('UPDATE users SET games_won = games_won + 1 WHERE login = ?').run(player1);
     }
     const stmt = db.prepare('INSERT INTO matches (player1, player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?)');
     stmt.run(user.public_login, "guest", mode, score1, score2, winner, duration);
     db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
     reply.code(201).send({ message: t(req.lang, "match_saved") });
+  }
   } catch (err) {
     reply.status(500).send({ error: t(req.lang, "failed_to_create_match") });
   }
