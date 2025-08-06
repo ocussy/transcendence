@@ -21,6 +21,7 @@ const createTournamentOptions = {
       201: {
         type: "object",
         properties: {
+          message: { type: "string" },
           id: { type: "integer" },
           status: { type: "string" },
           player_id: { type: "integer" },

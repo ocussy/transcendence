@@ -34,9 +34,9 @@ export function createTournament(req, reply) {
     db.prepare(`DELETE FROM participants WHERE tournament_id = ? AND name = ?`).run(tournament.lastInsertRowid, player_2);
 
     if (user.alias === player_1 || user.alias === player_2) {
-        reply.status(201).send({ id: tournament.lastInsertRowid, status: "in progress", player_id : id, player_1, player_2 });
+        reply.status(201).send({ message: t(req.lang, "tournament_created"), id: tournament.lastInsertRowid, status: "in progress", player_id : id, player_1, player_2 });
     } else {
-        reply.status(201).send({ id: tournament.lastInsertRowid, status: "in progress", player_id : -1, player_1, player_2 });
+        reply.status(201).send({ message: t(req.lang, "tournament_created"), id: tournament.lastInsertRowid, status: "in progress", player_id : -1, player_1, player_2 });
     }
 }
 

@@ -2,7 +2,7 @@ import db from '../../utils/db.js'
 import { t } from '../../utils/i18n.js';
 // Handler pour match creation
 
-export function postMatch(req, reply) {
+ export function postMatch(req, reply) {
   const { mode, score1, score2, duration, player1, player2 } = req.body;
   const userId = req.user.id;
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
@@ -27,19 +27,18 @@ export function postMatch(req, reply) {
       const stmt = db.prepare('INSERT INTO matches (player1, player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?)');
       stmt.run(user.public_login, "guest", mode, score1, score2, winner, duration);
       db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
-      reply.code(201).send({ message: t(req.lang, "match_saved") });
-  }
-  else
-  {
-    if (score1 > score2) {
-      winner = player1;
-      db.prepare('UPDATE users SET games_won = games_won + 1 WHERE login = ?').run(player1);
+      reply.code(201).send({ winner: winner ? user.id : null });
     }
-    const stmt = db.prepare('INSERT INTO matches (player1, player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    stmt.run(user.public_login, "guest", mode, score1, score2, winner, duration);
-    db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
-    reply.code(201).send({ message: t(req.lang, "match_saved") });
-  }
+    else {
+      if (score1 > score2) {
+        winner = user.id;
+        db.prepare('UPDATE users SET games_won = games_won + 1 WHERE login = ?').run(player1);
+      }
+      const stmt = db.prepare('INSERT INTO matches (player1, player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?)');
+      stmt.run(user.public_login, player2, "tournament", score1, score2, winner, duration);
+      db.prepare('UPDATE users SET games_played = games_played + 1 WHERE login IN (?, ?)').run(player1, player2);
+      reply.code(201).send({ winner: winner ? user.id : null  });
+    }
   } catch (err) {
     reply.status(500).send({ error: t(req.lang, "failed_to_create_match") });
   }
