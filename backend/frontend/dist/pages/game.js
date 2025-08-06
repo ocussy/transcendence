@@ -256,33 +256,80 @@ export class GamePage {
         return originalUrl.replace(/seed=([^&]*)/, `seed=${encodeURIComponent(newSeed)}`);
     }
     static async createMatch(mode, score1, score2, duration) {
+        console.log("🎯 createMatch called with:", { mode, score1, score2, duration });
+        console.log("🏆 Tournament state:", {
+            tournamentId: GamePage.currentTournamentId,
+            shouldRecord: GamePage.shouldRecordTournamentMatch,
+            matchData: GamePage.tournamentMatchData
+        });
         try {
-            const response = await fetch("/match", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                credentials: "include",
-                body: JSON.stringify({
-                    mode: mode,
-                    score1: score1,
-                    score2: score2,
-                    duration: duration,
-                }),
-            });
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.error);
+            if (GamePage.currentTournamentId && GamePage.tournamentMatchData) {
+                if (GamePage.shouldRecordTournamentMatch) {
+                    console.log("🏆 USER PARTICIPATING - Recording tournament match with player names...");
+                    const response = await fetch("/match", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        credentials: "include",
+                        body: JSON.stringify({
+                            mode: mode,
+                            score1: score1,
+                            score2: score2,
+                            duration: duration,
+                            player1: GamePage.tournamentMatchData.player_1,
+                            player2: GamePage.tournamentMatchData.player_2,
+                        }),
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        throw new Error(data.error);
+                    }
+                    console.log("✅ Tournament match recorded for user:", data);
+                    GamePage.currentMatchId = data.id;
+                    GamePage.showProfileAlert("profile-success", data.message, "success");
+                    console.log("🔄 Updating tournament with winner...");
+                    await GamePage.updateTournamentWithWinner(score1, score2);
+                    return data.id;
+                }
+                else {
+                    console.log("👥 GUEST vs GUEST - No match recording, only updating tournament...");
+                    GamePage.showProfileAlert("profile-success", "Match terminé (mode spectateur)", "success");
+                    console.log("🔄 Updating tournament with winner (guest match)...");
+                    await GamePage.updateTournamentWithWinner(score1, score2);
+                    return null;
+                }
             }
-            if (!data) {
-                throw new Error(data.error);
+            else {
+                console.log("🎮 NORMAL MATCH - Recording without player names...");
+                const response = await fetch("/match", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    credentials: "include",
+                    body: JSON.stringify({
+                        mode: mode,
+                        score1: score1,
+                        score2: score2,
+                        duration: duration,
+                    }),
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error);
+                }
+                console.log("✅ Normal match recorded:", data);
+                GamePage.currentMatchId = data.id;
+                GamePage.showProfileAlert("profile-success", data.message, "success");
+                return data.id;
             }
-            GamePage.currentMatchId = data.id;
-            GamePage.showProfileAlert("profile-success", data.message, "success");
-            return data.id;
         }
         catch (error) {
-            GamePage.showProfileAlert("profile-alert", typeof error === "object" && error !== null && "message" in error ? error.message : String(error));
+            console.error("❌ Error in createMatch:", error);
+            GamePage.showProfileAlert("profile-alert", typeof error === "object" && error !== null && "message" in error
+                ? error.message
+                : String(error));
             return null;
         }
     }
@@ -1470,8 +1517,15 @@ export class GamePage {
         script.id = "pong-script";
         script.src = scriptSrc;
         script.async = true;
-        canvasDiv.appendChild(script);
         console.log(`Game ${mode} started`);
+        canvasDiv.appendChild(script);
+        if (GamePage.currentTournamentId) {
+            console.log("🏆 Tournament game launched:", {
+                tournamentId: GamePage.currentTournamentId,
+                shouldRecord: GamePage.shouldRecordTournamentMatch,
+                matchData: GamePage.tournamentMatchData
+            });
+        }
     }
     showTournamentPopup() {
         const nameInput = document.querySelector('input[placeholder="tournament_name"]');
@@ -1611,6 +1665,19 @@ export class GamePage {
                 GamePage.showProfileAlert("profile-alert", data.error);
                 return;
             }
+            GamePage.currentTournamentId = data.id;
+            GamePage.shouldRecordTournamentMatch = data.player_id !== -1;
+            GamePage.tournamentMatchData = {
+                player_1: data.player_1,
+                player_2: data.player_2,
+                status: data.status
+            };
+            console.log(" Tournament state initialized:", {
+                id: GamePage.currentTournamentId,
+                shouldRecord: GamePage.shouldRecordTournamentMatch,
+                playerParticipating: data.player_id !== -1,
+                matchData: GamePage.tournamentMatchData
+            });
             GamePage.showProfileAlert("profile-success", data.message, "success");
             const nameInput = document.querySelector('input[placeholder="tournament_name"]');
             if (nameInput)
@@ -1623,84 +1690,203 @@ export class GamePage {
     }
     showTournamentRules(tournamentName, players, tournamentData) {
         const canvasDiv = document.getElementById("game-canvas");
-        const displayName = tournamentName.length > 25
-            ? tournamentName.substring(0, 25) + "..."
-            : tournamentName;
         canvasDiv.innerHTML = `
-      <div class="text-center text-white h-[500px] flex flex-col p-6 overflow-hidden">
-        <!-- Header -->
-        <div class="mb-4 flex-shrink-0">
-          <div class="text-3xl mb-2 font-mono text-yellow-400">[TOURNOI]</div>
-          <h2 class="font-mono text-xl font-bold mb-1" title="${tournamentName}">${displayName}</h2>
-          <p class="font-mono text-gray-400">${players.length} participants • </p>
-        </div>
-
-        <!-- Contenu scrollable -->
-        <div class="flex-1 overflow-auto min-h-0 space-y-6">
-
-          <!-- Liste des participants -->
-          <div class="bg-gray-900 border border-gray-700 rounded-lg p-4">
-            <h3 class="font-mono text-blue-400 font-bold mb-4 text-center">$ participants</h3>
-            <div class="grid grid-cols-2 gap-3">
-              ${players
-            .map((player, index) => `
-                <div class="bg-gray-800 border ${index === 0 ? "border-green-500" : "border-gray-600"} rounded px-3 py-2 font-mono text-sm">
-                  <span class="text-gray-400">${index + 1}.</span>
-                  <span class="${index === 0 ? "text-green-400 font-bold" : "text-white"}">${player}</span>
-                  ${index === 0 ? '<span class="text-green-400 text-xs"> (Vous)</span>' : ""}
-                </div>
-              `)
-            .join("")}
-            </div>
+      <div class="h-[500px] bg-black text-green-400 p-8 font-mono text-sm flex flex-col justify-center">
+        
+        <div class="max-w-lg mx-auto">
+          
+          <!-- Tournament info -->
+          <div class="mb-8">
+            <div class="text-blue-400">$ tournament "${tournamentName}"</div>
+            <div class="text-gray-400 ml-2">${players.length} players • elimination</div>
           </div>
 
-          <!-- Règles du tournoi -->
-          <div class="bg-gray-900 border border-gray-700 rounded-lg p-4">
-            <h3 class="font-mono text-purple-400 font-bold mb-4 text-center">$ règles</h3>
-            <div class="text-left space-y-2 font-mono text-sm text-gray-300">
-              <div class="flex items-start gap-2">
-                <span class="text-yellow-400">•</span>
-                <span>Tournoi à élimination directe</span>
-              </div>
-              <div class="flex items-start gap-2">
-                <span class="text-yellow-400">•</span>
-                <span>Premier à 7 points gagne le match</span>
-              </div>
-              <div class="flex items-start gap-2">
-                <span class="text-yellow-400">•</span>
-                <span>Les matchs se jouent en tour par tour</span>
-              </div>
-              <div class="flex items-start gap-2">
-                <span class="text-yellow-400">•</span>
-                <span>Le vainqueur passe au tour suivant</span>
-              </div>
-              <div class="flex items-start gap-2">
-                <span class="text-yellow-400">•</span>
-                <span>Le perdant est éliminé définitivement</span>
-              </div>
-              <div class="flex items-start gap-2">
-                <span class="text-yellow-400">•</span>
-                <span>Le dernier joueur restant remporte le tournoi</span>
-              </div>
+          <!-- Current match -->
+          <div class="mb-8">
+            <div class="text-yellow-400">$ match</div>
+            <div class="ml-2 mt-1">
+              <div class="text-blue-400">${tournamentData.player_1}</div>
+              <div class="text-gray-500">vs</div>
+              <div class="text-red-400">${tournamentData.player_2}</div>
             </div>
+            ${tournamentData.player_id !== -1 ?
+            '<div class="text-green-400 ml-2 mt-2">you participate</div>' :
+            '<div class="text-gray-500 ml-2 mt-2">spectator mode</div>'}
           </div>
 
-        </div>
+          <!-- Start -->
+          <div class="text-center">
+            <button id="start-tournament" 
+                    class="border border-green-400 text-green-400 hover:bg-green-400 hover:text-black px-6 py-2 font-mono transition-colors">
+              start
+            </button>
+          </div>
 
-        <!-- Bouton pour commencer -->
-        <div class="mt-4 flex-shrink-0">
-          <button id="start-tournament" class="w-full max-w-sm mx-auto px-6 py-3 bg-yellow-500 hover:bg-yellow-600 text-black font-mono font-bold rounded-lg transition-colors block">
-            $ START TOURNAMENT
-          </button>
         </div>
       </div>
     `;
-        document
-            .getElementById("start-tournament")
-            ?.addEventListener("click", () => {
-            GamePage.showProfileAlert("profile-success", "$ post match a faire", "success");
-            console.log("Starting tournament with data:", tournamentData);
+        document.getElementById("start-tournament")?.addEventListener("click", () => {
+            this.showTournamentPreMatch(tournamentData);
         });
+    }
+    showTournamentPreMatch(tournamentData) {
+        const canvasDiv = document.getElementById("game-canvas");
+        canvasDiv.innerHTML = `
+      <div class="h-[500px] bg-black text-green-400 p-8 font-mono flex flex-col justify-center">
+        
+        <div class="text-center max-w-md mx-auto">
+          
+          <!-- Match info -->
+          <div class="mb-12">
+            <div class="text-blue-400 text-xl mb-6">pong</div>
+            <div class="mb-4">
+              <div class="text-blue-400 text-lg">${tournamentData.player_1}</div>
+              <div class="text-gray-500 my-2">vs</div>
+              <div class="text-red-400 text-lg">${tournamentData.player_2}</div>
+            </div>
+          </div>
+
+          <!-- Controls -->
+          <div class="mb-8 text-gray-400 text-xs">
+            <div>W/S • I/K</div>
+          </div>
+
+          <!-- Start button -->
+          <div id="start-button-container">
+            <button id="ready-to-fight" 
+                    class="border border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black px-8 py-3 font-mono transition-colors">
+              ready
+            </button>
+          </div>
+
+        </div>
+      </div>
+    `;
+        document.getElementById("ready-to-fight")?.addEventListener("click", () => {
+            this.startMatchCountdown(tournamentData);
+        });
+    }
+    startMatchCountdown(tournamentData) {
+        const canvasDiv = document.getElementById("game-canvas");
+        let countdown = 3;
+        const updateCountdown = () => {
+            if (countdown > 0) {
+                canvasDiv.innerHTML = `
+          <div class="h-[500px] bg-black text-green-400 font-mono flex items-center justify-center">
+            <div class="text-center">
+              <div class="text-6xl text-yellow-400 mb-4">${countdown}</div>
+              <div class="text-gray-400">starting...</div>
+            </div>
+          </div>
+        `;
+                countdown--;
+                setTimeout(updateCountdown, 1000);
+            }
+            else {
+                canvasDiv.innerHTML = `
+          <div class="h-[500px] bg-black text-green-400 font-mono flex items-center justify-center">
+            <div class="text-center">
+              <div class="text-4xl text-green-400">go</div>
+            </div>
+          </div>
+        `;
+                setTimeout(() => {
+                    this.launchGame("local");
+                }, 800);
+            }
+        };
+        updateCountdown();
+    }
+    static showNextTournamentMatch(tournamentData) {
+        const canvasDiv = document.getElementById("game-canvas");
+        if (!canvasDiv)
+            return;
+        canvasDiv.innerHTML = `
+      <div class="h-[500px] bg-black text-green-400 p-8 font-mono flex flex-col justify-center">
+        
+        <div class="text-center max-w-md mx-auto">
+          
+          <!-- Next match -->
+          <div class="mb-8">
+            <div class="text-gray-400 mb-6">match completed</div>
+            <div class="text-blue-400 mb-6">next match</div>
+            <div class="mb-4">
+              <div class="text-blue-400 text-lg">${tournamentData.player_1}</div>
+              <div class="text-gray-500 my-2">vs</div>
+              <div class="text-red-400 text-lg">${tournamentData.player_2}</div>
+            </div>
+            ${tournamentData.player_id !== -1 ?
+            '<div class="text-green-400">you participate</div>' :
+            '<div class="text-gray-500">spectator mode</div>'}
+          </div>
+
+          <!-- Continue button -->
+          <div>
+            <button id="start-next-match" 
+                    class="border border-green-400 text-green-400 hover:bg-green-400 hover:text-black px-6 py-2 font-mono transition-colors">
+              continue
+            </button>
+          </div>
+
+        </div>
+      </div>
+    `;
+        document.getElementById("start-next-match")?.addEventListener("click", () => {
+            const gamePageInstance = window.gamePageInstance;
+            if (gamePageInstance) {
+                gamePageInstance.showTournamentPreMatch(tournamentData);
+            }
+        });
+    }
+    static async updateTournamentWithWinner(score1, score2) {
+        if (!GamePage.currentTournamentId || !GamePage.tournamentMatchData)
+            return;
+        try {
+            const winner = score1 > score2
+                ? GamePage.tournamentMatchData.player_1
+                : GamePage.tournamentMatchData.player_2;
+            console.log(`🏆 Match finished: ${GamePage.tournamentMatchData.player_1} (${score1}) vs ${GamePage.tournamentMatchData.player_2} (${score2})`);
+            console.log(`🏆 Winner: ${winner}`);
+            const response = await fetch(`/tournament/${GamePage.currentTournamentId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify({
+                    winner: winner,
+                }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                console.log("Tournament updated:", data);
+                if (data.status === "in progress") {
+                    GamePage.tournamentMatchData = {
+                        player_1: data.player_1,
+                        player_2: data.player_2,
+                        status: data.status
+                    };
+                    GamePage.shouldRecordTournamentMatch = data.player_id !== -1;
+                    GamePage.showProfileAlert("profile-success", `🏆 ${winner} wins! Next match: ${data.player_1} vs ${data.player_2}`, "success");
+                    setTimeout(() => {
+                        GamePage.showNextTournamentMatch(data);
+                    }, 3000);
+                }
+                else if (data.status === "finished") {
+                    GamePage.resetTournamentState();
+                    GamePage.showProfileAlert("profile-success", `🏆 TOURNAMENT CHAMPION: ${data.player_1}! 🎉`, "success");
+                }
+            }
+        }
+        catch (error) {
+            console.error("Error updating tournament:", error);
+            GamePage.showProfileAlert("profile-alert", "Failed to update tournament");
+        }
+    }
+    static resetTournamentState() {
+        GamePage.currentTournamentId = null;
+        GamePage.shouldRecordTournamentMatch = false;
+        GamePage.tournamentMatchData = null;
     }
     async handleLogout() {
         if (confirm("$ logout: Are you sure you want to exit?")) {
@@ -1723,5 +1909,8 @@ export class GamePage {
     }
 }
 GamePage.currentMatchId = null;
+GamePage.currentTournamentId = null;
+GamePage.shouldRecordTournamentMatch = false;
+GamePage.tournamentMatchData = null;
 window.GamePage = GamePage;
 //# sourceMappingURL=game.js.map
