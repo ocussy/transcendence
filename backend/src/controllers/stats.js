@@ -102,12 +102,12 @@ export function getMatchHistory(req, reply) {
           END as result,
           datetime(created_at, 'localtime') as formatted_date
         FROM matches
-        WHERE player1 = ? OR player2 = ?
+        WHERE player1 = ?
         ORDER BY created_at DESC
         LIMIT ?
       `,
       )
-      .all(userLogin, userId, userLogin, userLogin, limit);
+      .all(userLogin, userId, userLogin, limit);
 
     reply.send(matches);
   } catch (error) {

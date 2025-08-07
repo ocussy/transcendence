@@ -254,8 +254,8 @@ export function anonymizeUser(req, reply) {
     // Génère un nombre aléatoire pour le public_login
     const randomNum = Math.floor(Math.random() * 1000000);
     const public_login = `user_${userId}_${randomNum}`;
-    db.prepare("UPDATE users SET public_login = ? WHERE id = ?").run(public_login, userId);
-    
+    db.prepare("UPDATE users SET public_login = ?, alias = ? WHERE id = ?").run(public_login, public_login, userId);
+
     reply.send({ message: t(req.lang, "user_anonymized") });
   } catch (err) {
     reply.status(500).send({ error: t(req.lang, "server_error") });

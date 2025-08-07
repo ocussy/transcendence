@@ -237,7 +237,7 @@ export async function signIn(req, reply) {
 
         const connectedUsersIds = await getConnectedUsers(app);
         if (connectedUsersIds.includes(user.id.toString())) {
-          return reply.status(400).send({error : t(req.lang, "already_connected")});
+          return reply.status(403).send({error : t(req.lang, "already_connected")});
         }
         
       if (user.secure_auth == true) {

@@ -27,7 +27,7 @@ import { t } from '../../utils/i18n.js';
       const stmt = db.prepare('INSERT INTO matches (player1, player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?)');
       stmt.run(user.public_login, "guest", mode, score1, score2, winner, duration);
       db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
-      reply.code(201).send({ winner: winner ? user.id : null });
+      reply.code(201).send({ message: t(req.lang, "match_saved"), winner: winner ? user.id : null });
     }
     else {
       if (score1 > score2) {
