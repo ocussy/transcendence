@@ -22,7 +22,7 @@
     startGameTimer();const canvas = document.getElementById("renderCanvas");
     const engine = new BABYLON.Engine(canvas, true);
 
-    let ballVelocity = new BABYLON.Vector3(0.1, 0.2, 0.3);
+    let ballVelocity = getLinearInitialVelocity(0.3, 20);
     const gravity = -0.003;
     const iaSpeed = 0.15;
     let targetPaddlePos = new BABYLON.Vector3();
@@ -40,6 +40,23 @@
     // Éléments DOM pour l'écran de fin
     const gameOverScreen = document.getElementById('gameOverScreen');
     const winnerText = document.getElementById('winnerText');
+
+    function getLinearInitialVelocity(speed = 0.3, maxAngleDeg = 30) {
+        // Convertit l’angle max en radians
+        const maxAngle = BABYLON.Angle.FromDegrees(maxAngleDeg).radians();
+
+        // Tire un angle aléatoire entre –maxAngle et +maxAngle
+        const theta = (Math.random() * 2 - 1) * maxAngle;
+
+        // Composantes X et Z selon l’angle
+        const x = Math.sin(theta) * speed;
+        const z = Math.cos(theta) * speed * (Math.random() < 0.5 ? 1 : -1);
+
+        // Très petite variation Y pour donner un peu de piqué ou d’arc
+        const y = (Math.random() * 2 - 1) * (speed * 0.1);
+
+        return new BABYLON.Vector3(x, y, z);
+    }
 
     async function loadFont() {
     try {
@@ -244,7 +261,7 @@
 
     // Reset de la balle
     ball.position = new BABYLON.Vector3(0, tunnelHeight / 2, 0);
-    ballVelocity = new BABYLON.Vector3(0.1, 0.2, 0.3);
+    ballVelocity =  getLinearInitialVelocity(0.3, 20);
 
     // Cacher l'écran de fin
     // gameOverScreen.style.display = 'none';

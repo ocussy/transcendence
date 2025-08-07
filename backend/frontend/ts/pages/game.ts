@@ -31,6 +31,7 @@ export class GamePage {
   private currentSection: string = "tournament";
   private currentUser: any = null; // Ajouté pour stocker les données utilisateur
   private friendsList: any[] = [];
+  private remoteSocket: WebSocket | null = null; // Ajout pour la WebSocket remote
   static currentMatchId: number | null = null;
 
   //stats pour tournois
@@ -50,6 +51,11 @@ export class GamePage {
     this.handleBrowserNavigation();
 
     (window as any).gamePageInstance = this; // ✅ AJOUTEZ cette ligne
+    
+    // Nettoyer les WebSockets lors du déchargement de la page
+    window.addEventListener('beforeunload', () => {
+      this.cleanup();
+    });
 
     // Récupérer la section depuis l'URL AVANT de la définir
     const currentPath = window.location.pathname;
@@ -1811,12 +1817,224 @@ export class GamePage {
 
       if (joinRoomBtn) {
         joinRoomBtn.addEventListener("click", () => {
-          GamePage.showProfileAlert(
-            "profile-alert",
-            "$ join: feature not implemented yet",
-          );
+          console.log('🖱️ Bouton "join room" cliqué');
+          this.connectToRemoteMatchmaking();
         });
       }
+    }
+  }
+
+  // Fonction pour se connecter au matchmaking remote
+  private connectToRemoteMatchmaking(): void {
+    console.log('🔄 connectToRemoteMatchmaking appelée');
+    console.log('📊 État WebSocket actuel:', this.remoteSocket?.readyState);
+    
+    // Vérifier si une connexion est déjà en cours ou ouverte
+    if (this.remoteSocket && this.remoteSocket.readyState === WebSocket.OPEN) {
+      console.log('⚠️ WebSocket déjà connectée, ignorer');
+      return;
+    }
+    
+    if (this.remoteSocket && this.remoteSocket.readyState === WebSocket.CONNECTING) {
+      console.log('⚠️ WebSocket en cours de connexion, ignorer');
+      return;
+    }
+    
+    // Fermer la connexion existante si elle existe
+    if (this.remoteSocket) {
+      console.log('🔄 Fermeture WebSocket existante');
+      this.remoteSocket.close();
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    const wsUrl = `${protocol}//${host}/ws/remote`;
+
+    try {
+      this.remoteSocket = new WebSocket(wsUrl);
+
+      this.remoteSocket.onopen = () => {
+        console.log('✅ Connecté au matchmaking remote');
+        GamePage.showProfileAlert(
+          "profile-success",
+          "$ searching for opponent...",
+          "success"
+        );
+      };
+
+      this.remoteSocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('📩 Message reçu:', data);
+          this.handleRemoteMessage(data);
+        } catch (error) {
+          console.error('Erreur parsing message WebSocket:', error);
+        }
+      };
+
+      this.remoteSocket.onclose = () => {
+        console.log('❌ Connexion WebSocket fermée');
+        this.remoteSocket = null;
+      };
+
+      this.remoteSocket.onerror = (error) => {
+        console.error('❌ Erreur WebSocket:', error);
+        GamePage.showProfileAlert(
+          "profile-alert",
+          "$ connection failed - try again"
+        );
+      };
+
+    } catch (error) {
+      console.error('❌ Erreur création WebSocket:', error);
+      GamePage.showProfileAlert(
+        "profile-alert",
+        "$ connection error - check network"
+      );
+    }
+  }
+
+  // // Fonction pour gérer les messages du serveur remote
+  private handleRemoteMessage(data: any): void {
+    console.log('📩 Message reçu du serveur remote:', data.type);
+    switch (data.type) {
+      case 'waiting':
+        console.log('⏳ En attente d\'un adversaire...');
+        GamePage.showProfileAlert(
+          "profile-success",
+          data.message || "$ waiting for opponent...",
+          "success"
+        );
+        break;
+
+      case 'match_found':
+        console.log('🎮 Match trouvé!', data);
+        GamePage.showProfileAlert(
+          "profile-success",
+          "$ match found! starting game...",
+          "success"
+        );
+        
+        // Démarrer le jeu remote avec roomId
+        setTimeout(() => {
+          this.startRemoteGame(data.roomId, data.opponentId);
+        }, 1500);
+        break;
+
+      case 'error':
+        console.error('❌ Erreur serveur:', data.message);
+        GamePage.showProfileAlert(
+          "profile-alert",
+          `$ error: ${data.message}`
+        );
+        break;
+
+      default:
+        console.log('Message non géré:', data);
+    }
+  }
+
+  // Fonction pour démarrer le jeu remote avec roomId
+  private startRemoteGame(roomId: string, opponentId: number): void {
+    console.log(`🎮 Démarrage jeu remote - Room: ${roomId}, Opponent: ${opponentId}`);
+    
+    // Fermer la connexion matchmaking
+    if (this.remoteSocket) {
+      this.remoteSocket.close();
+      this.remoteSocket = null;
+    }
+
+    // Stocker les informations du jeu
+    localStorage.setItem('currentRoomId', roomId);
+    localStorage.setItem('opponentId', opponentId.toString());
+
+    // Créer une nouvelle WebSocket pour le jeu remote
+    this.connectToRemoteGame(roomId);
+    
+    // Lancer le jeu remote
+    this.launchGame("remote");
+  }
+
+  // Fonction pour se connecter au jeu remote via WebSocket
+  private connectToRemoteGame(roomId: string): void {
+    console.log(`🔗 Connexion au jeu remote - Room: ${roomId}`);
+    
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    const wsUrl = `${protocol}//${host}/ws/remote/game?roomId=${roomId}`;
+
+    try {
+      const gameSocket = new WebSocket(wsUrl);
+
+      gameSocket.onopen = () => {
+        console.log('✅ Connecté au jeu remote');
+        GamePage.showProfileAlert(
+          "profile-success",
+          "$ connected to game room",
+          "success"
+        );
+      };
+
+      gameSocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.handleGameMessage(data);
+        } catch (error) {
+          console.error('❌ Erreur parsing message jeu:', error);
+        }
+      };
+
+      gameSocket.onclose = () => {
+        console.log('❌ Connexion jeu fermée');
+        GamePage.showProfileAlert(
+          "profile-alert",
+          "$ game connection lost"
+        );
+      };
+
+      gameSocket.onerror = (error) => {
+        console.error('❌ Erreur WebSocket jeu:', error);
+        GamePage.showProfileAlert(
+          "profile-alert",
+          "$ game connection failed"
+        );
+      };
+
+      // Stocker la socket pour pouvoir l'utiliser dans le jeu
+      (window as any).gameSocket = gameSocket;
+
+    } catch (error) {
+      console.error('❌ Erreur création WebSocket jeu:', error);
+      GamePage.showProfileAlert(
+        "profile-alert",
+        "$ failed to connect to game room"
+      );
+    }
+  }
+
+  // Fonction pour gérer les messages du jeu
+  private handleGameMessage(data: any): void {
+    console.log('🎮 Message jeu reçu:', data.type);
+    
+    switch (data.type) {
+      case 'game_init':
+        console.log('🎮 Initialisation du jeu:', data);
+        break;
+        
+      case 'player_disconnected':
+        console.log('❌ Joueur déconnecté:', data.playerId);
+        GamePage.showProfileAlert(
+          "profile-alert",
+          "$ opponent disconnected"
+        );
+        break;
+        
+      default:
+        console.log('Message jeu non géré:', data);
+        // Transférer le message au script de jeu si nécessaire
+        if ((window as any).handleRemoteGameMessage) {
+          (window as any).handleRemoteGameMessage(data);
+        }
     }
   }
 
@@ -1830,7 +2048,7 @@ export class GamePage {
 
     let scriptSrc = "../../pong/pong.js";
     if (mode === "ai") scriptSrc = "../../pong/pov.js";
-    if (mode === "remote") scriptSrc = "../../pong/pong.js"; //ou jsp quoi
+    if (mode === "remote") scriptSrc = "../../pong/remote-pong.js"; //ou jsp quoi
 
     const script = document.createElement("script");
     script.id = "pong-script";
@@ -2348,6 +2566,15 @@ export class GamePage {
       setTimeout(() => {
         window.router.navigate("/");
       }, 500);
+    }
+  }
+
+  // Méthode pour nettoyer les ressources WebSocket
+  public cleanup(): void {
+    if (this.remoteSocket) {
+      this.remoteSocket.close();
+      this.remoteSocket = null;
+      console.log('🧹 WebSocket remote nettoyée');
     }
   }
 }

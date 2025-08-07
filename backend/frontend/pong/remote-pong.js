@@ -36,7 +36,7 @@ class RemotePongGame {
             playHeight: 3,
             ballSpeed: 0.15,
             ballInitialSpeed: 0.15,
-            scoreLimit: 1,
+            scoreLimit: 3,
             maxSpeed: 0.6,
             accelerationFactor: 1.01,
             minZ: -4.3,
@@ -49,11 +49,105 @@ class RemotePongGame {
     }
 
        async connectToServer() {
-        // À IMPLÉMENTER - connecter aux WebSockets du serveur
+        try {
+            // Récupérer les informations du localStorage (définies par game.ts)
+            const roomId = localStorage.getItem('currentRoomId');
+            const opponentId = localStorage.getItem('opponentId');
+            
+            if (!roomId) {
+                console.error("Pas de roomId trouvé dans localStorage");
+                return;
+            }
+
+            // Utiliser la socket globale créée par game.ts
+            this.socket = window.gameSocket;
+            
+            if (!this.socket) {
+                console.error("Pas de gameSocket trouvée");
+                return;
+            }
+
+            // Gérer les messages WebSocket
+            this.socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    this.handleServerMessage(data);
+                } catch (error) {
+                    console.error("Erreur parsing message:", error);
+                }
+            };
+
+            this.socket.onclose = () => {
+                console.log("Connexion fermée");
+                alert("Connexion perdue avec le serveur");
+            };
+
+            this.socket.onerror = (error) => {
+                console.error("Erreur WebSocket:", error);
+            };
+
+            console.log("✅ Connecté au serveur de jeu");
+            
+        } catch (error) {
+            console.error("Erreur connexion serveur:", error);
+        }
+    }
+
+
+        // NOUVELLE fonction pour gérer les messages du serveur
+    handleServerMessage(data) {
+        console.log("📩 Message reçu:", data.type);
+        
+        switch(data.type) {
+            case 'game_init':
+                // Initialiser le jeu avec les données du serveur
+                this.playerId = data.playerId;
+                this.isPlayer1 = data.playerSide === 'left';
+                this.isMaster = data.playerIndex === 0; // Premier joueur = master
+                this.gameState = data.gameState;
+                
+                // MAINTENANT créer la scène !
+                this.createGameScene();
+                break;
+
+            case 'paddle_movement':
+                this.updateOpponentPaddle(data);
+                break;
+
+            case 'physics_update':
+                if (!this.isMaster) {
+                    this.updateBallFromServer(data);
+                }
+                break;
+
+            case 'goal_scored':
+                this.handleGoal(data);
+                break;
+
+            case 'game_started':
+                this.handleGameStart(data);
+                break;
+
+            case 'player_disconnected':
+                this.handlePlayerDisconnected(data);
+                break;
+
+            case 'visual_effect':
+                this.handleVisualEffect(data);
+                break;
+
+            default:
+                console.log("Message non géré:", data);
+        }
     }
 
   async createGameScene() {
         const canvas = document.getElementById("renderCanvas");
+        if (!canvas) {
+            console.error("Canvas 'renderCanvas' introuvable !");
+            return;
+        }
+        this.canvas = canvas;
         this.engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
         this.scene = new BABYLON.Scene(this.engine);
         
@@ -156,6 +250,7 @@ class RemotePongGame {
         // Attendre que les deux joueurs soient connectés avant de commencer
         if (this.isMaster) {
             setTimeout(async() => {
+                this.sendVisualEffect("countdown", {});
                 await this.countdown();
                 const direction = Math.random() < 0.5 ? -1 : 1;
                 this.scene.ballVelocity.set(
@@ -165,12 +260,18 @@ class RemotePongGame {
                 );
                 this.gameStarted = true;
                 this.startGameTimer();
+                this.sendGameStart();
             }, 2000);
         }
+        await this.loadFont();
+        await this.setupEventListeners();
+        await this.startRenderLoop();
+        
+        console.log("✅ Scène créée et jeu démarré");
     }
 
     // Event Listeners (adapté pour le remote)
-    setupEventListeners() {
+    async setupEventListeners() {
         const keydownHandler = (e) => {
             const key = e.key.toLowerCase();
             this.keys[key] = true;
@@ -192,7 +293,7 @@ class RemotePongGame {
     }
 
     // Boucle de rendu (MODIFIÉE pour le remote)
-    startRenderLoop() {
+    async startRenderLoop() {
         this.engine.runRenderLoop(() => {
             if (!this.scene || !this.scene.ball) return;
             
@@ -202,6 +303,7 @@ class RemotePongGame {
             // Physique - SEULEMENT si je suis le master
             if (this.isMaster && this.gameStarted && !this.isGameOver) {
                 this.updateGamePhysics();
+                this.sendBallUpdate();
             }
             
             this.scene.render();
@@ -209,37 +311,36 @@ class RemotePongGame {
     }
 
     // Contrôles des paddles (NOUVEAU - un paddle par joueur)
-    updatePaddleControls() {
-        const speed = this.GAME_CONFIG.ballSpeed;
-        let moved = false;
-        
-        if (this.isPlayer1) {
-            // Player1 contrôle le paddle GAUCHE
-            if (this.keys["i"] && this.leftPaddle.position.z + speed <= this.GAME_CONFIG.maxZ) {
-                this.leftPaddle.position.z += speed;
-                moved = true;
-            }
-            if (this.keys["k"] && this.leftPaddle.position.z - speed >= this.GAME_CONFIG.minZ) {
-                this.leftPaddle.position.z -= speed;
-                moved = true;
-            }
-        } else {
-            // Player2 contrôle le paddle DROIT  
-            if (this.keys["w"] && this.rightPaddle.position.z + speed <= this.GAME_CONFIG.maxZ) {
-                this.rightPaddle.position.z += speed;
-                moved = true;
-            }
-            if (this.keys["s"] && this.rightPaddle.position.z - speed >= this.GAME_CONFIG.minZ) {
-                this.rightPaddle.position.z -= speed;
-                moved = true;
-            }
+updatePaddleControls() {
+    const speed = this.GAME_CONFIG.ballSpeed;
+    let moved = false;
+    
+    if (this.isPlayer1) {
+        // Player1 (gauche) utilise W et S
+        if (this.keys["i"] && this.leftPaddle.position.z + speed <= this.GAME_CONFIG.maxZ) {
+            this.leftPaddle.position.z += speed;
+            moved = true;
         }
-        
-        // Envoyer les mouvements au serveur
-        if (moved) {
-            this.sendPaddleMovement();
+        if (this.keys["k"] && this.leftPaddle.position.z - speed >= this.GAME_CONFIG.minZ) {
+            this.leftPaddle.position.z -= speed;
+            moved = true;
+        }
+    } else {
+        // Player2 (droite) utilise I et K  
+        if (this.keys["w"] && this.rightPaddle.position.z + speed <= this.GAME_CONFIG.maxZ) {
+            this.rightPaddle.position.z += speed;
+            moved = true;
+        }
+        if (this.keys["s"] && this.rightPaddle.position.z - speed >= this.GAME_CONFIG.minZ) {
+            this.rightPaddle.position.z -= speed;
+            moved = true;
         }
     }
+    // Envoyer les mouvements au serveur
+    if (moved) {
+        this.sendPaddleMovement();
+    }
+}
 
     // Physique du jeu (SEULEMENT pour le master)
     updateGamePhysics() {
@@ -283,6 +384,8 @@ class RemotePongGame {
             this.playLightWave(3, -1);
             velocity.scaleInPlace(this.GAME_CONFIG.accelerationOnHit);
             this.hasCollidedLeft = true;
+
+            this.sendVisualEffect("lightwave", { startIndex: 3, direction: -1 });
         }
 
         // Paddle droit
@@ -297,6 +400,8 @@ class RemotePongGame {
             this.playLightWave(0, 1);
             velocity.scaleInPlace(this.GAME_CONFIG.accelerationOnHit);
             this.hasCollidedRight = true;
+
+            this.sendVisualEffect("lightwave", { startIndex: 0, direction: 1 });
         }
 
         // Gestion des buts
@@ -337,6 +442,8 @@ class RemotePongGame {
             this.socket.send(JSON.stringify({
                 type: "paddle_movement",
                 position: paddle.position.z,
+                playerSide: this.isPlayer1 ? 'left' : 'right',
+                playerId: this.playerId, // AJOUTER cette ligne importante
                 timestamp: Date.now()
             }));
         }
@@ -344,36 +451,65 @@ class RemotePongGame {
 
     // Recevoir mouvement paddle adverse
     updateOpponentPaddle(data) {
-        if (data.fromPlayer !== this.playerId) {
-            const opponentPaddle = this.isPlayer1 ? this.rightPaddle : this.leftPaddle;
-            opponentPaddle.position.z = data.position;
+    
+    // VÉRIFIER que ce n'est PAS notre propre mouvement
+    if (data.fromPlayer !== this.playerId) {
+        
+        // LOGIQUE CORRIGÉE : Si je reçois un mouvement "left", ça vient du joueur gauche
+        if (data.playerSide === 'left' && !this.isPlayer1) {
+            // Je suis Player2 (droite), je reçois un mouvement du Player1 (gauche)
+            this.leftPaddle.position.z = data.position;
+        } 
+        else if (data.playerSide === 'right' && this.isPlayer1) {
+            // Je suis Player1 (gauche), je reçois un mouvement du Player2 (droite)
+            this.rightPaddle.position.z = data.position;
         }
+        
     }
+}
 
     // Envoyer état balle (master seulement)
     sendBallUpdate() {
-        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            this.socket.send(JSON.stringify({
-                type: "physics_update",
-                ball: {
-                    x: this.scene.ball.position.x,
-                    z: this.scene.ball.position.z,
-                    velocityX: this.scene.ballVelocity.x,
-                    velocityZ: this.scene.ballVelocity.z
-                },
-                timestamp: Date.now()
-            }));
-        }
+        if (this.isMaster && this.socket && this.socket.readyState === WebSocket.OPEN) {
+        // Envoyer à chaque frame, pas seulement lors d'événements
+        this.socket.send(JSON.stringify({
+            type: "physics_update",
+            ball: {
+                x: this.scene.ball.position.x,
+                y: this.scene.ball.position.y,
+                z: this.scene.ball.position.z,
+                velocityX: this.scene.ballVelocity.x,
+                velocityY: this.scene.ballVelocity.y,
+                velocityZ: this.scene.ballVelocity.z
+            },
+            gameState: {
+                gameStarted: this.gameStarted,
+                isWaitingAfterGoal: this.isWaitingAfterGoal
+            },
+            timestamp: Date.now()
+        }));
+    }
     }
 
     // Recevoir état balle (non-master seulement)
     updateBallFromServer(data) {
-        if (this.scene && this.scene.ball && data.ball) {
-            this.scene.ball.position.x = data.ball.x;
-            this.scene.ball.position.z = data.ball.z;
-            this.scene.ballVelocity.x = data.ball.velocityX;
-            this.scene.ballVelocity.z = data.ball.velocityZ;
+        if (!this.isMaster && this.scene && this.scene.ball && data.ball) {
+        // Synchroniser position de la balle
+        this.scene.ball.position.x = data.ball.x;
+        this.scene.ball.position.y = data.ball.y || 0.5;
+        this.scene.ball.position.z = data.ball.z;
+        
+        // Synchroniser velocité
+        this.scene.ballVelocity.x = data.ball.velocityX;
+        this.scene.ballVelocity.y = data.ball.velocityY || 0;
+        this.scene.ballVelocity.z = data.ball.velocityZ;
+        
+        // Synchroniser état du jeu
+        if (data.gameState) {
+            this.gameStarted = data.gameState.gameStarted;
+            this.isWaitingAfterGoal = data.gameState.isWaitingAfterGoal;
         }
+    }
     }
 
     // Envoyer goal (master seulement)
@@ -400,6 +536,34 @@ class RemotePongGame {
             }
         }
     }
+
+    sendGameStart() {
+    if (this.isMaster && this.socket && this.socket.readyState === WebSocket.OPEN) {
+        this.socket.send(JSON.stringify({
+            type: "game_started",
+            ballVelocity: {
+                x: this.scene.ballVelocity.x,
+                y: this.scene.ballVelocity.y,
+                z: this.scene.ballVelocity.z
+            },
+            timestamp: Date.now()
+        }));
+    }
+}
+
+handleGameStart(data) {
+    if (!this.isMaster) {
+        this.gameStarted = true;
+        this.startGameTimer();
+        
+        // Synchroniser la velocité initiale de la balle
+        if (data.ballVelocity) {
+            this.scene.ballVelocity.x = data.ballVelocity.x;
+            this.scene.ballVelocity.y = data.ballVelocity.y;
+            this.scene.ballVelocity.z = data.ballVelocity.z;
+        }
+    }
+}
 
     // Fin de partie
     endGame() {
@@ -568,6 +732,32 @@ class RemotePongGame {
         }
     }
 
+    sendVisualEffect(type, data) {
+    if (this.isMaster && this.socket && this.socket.readyState === WebSocket.OPEN) {
+        this.socket.send(JSON.stringify({
+            type: "visual_effect",
+            effectType: type,
+            effectData: data,
+            timestamp: Date.now()
+        }));
+    }
+}
+    handleVisualEffect(data) {
+    if (!this.isMaster) {
+        switch(data.effectType) {
+            case 'lightwave':
+                this.playLightWave(data.effectData.startIndex, data.effectData.direction);
+                break;
+            case 'countdown':
+                this.countdown();
+                break;
+            case 'explosion':
+                this.playExplosionAnimationAtPosition(data.effectData.ballPosition);
+                break;
+        }
+    }
+}
+
     sleep(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
@@ -632,6 +822,16 @@ class RemotePongGame {
     playExplosionAnimation() {
         this.isWaitingAfterGoal = true;
         
+        if (this.isMaster) {
+            this.sendVisualEffect("explosion", {
+                ballPosition: {
+                    x: this.scene.ball.position.x,
+                    y: this.scene.ball.position.y,
+                    z: this.scene.ball.position.z
+                }
+            });
+        }
+        
         const particlesToUse = Math.min(this.scene.explosionSpheres.length, 20);
         for (let i = 0; i < particlesToUse; i++) {
             const sphere = this.scene.explosionSpheres[i];
@@ -658,12 +858,47 @@ class RemotePongGame {
         }
     }
 
+    playExplosionAnimationAtPosition(ballPosition) {
+    this.isWaitingAfterGoal = true;
+    
+    const particlesToUse = Math.min(this.scene.explosionSpheres.length, 20);
+    for (let i = 0; i < particlesToUse; i++) {
+        const sphere = this.scene.explosionSpheres[i];
+        
+        // ✅ Utiliser la position reçue du master
+        sphere.position.set(ballPosition.x, ballPosition.y, ballPosition.z);
+        sphere.isVisible = true;
+        
+        const dir = new BABYLON.Vector3(
+            (Math.random() - 0.5) * 2,
+            Math.random(),
+            (Math.random() - 0.5) * 2
+        ).normalize().scale(0.3 + Math.random() * 0.5);
+        
+        setTimeout(() => {
+            sphere.isVisible = false;
+        }, 800);
+        
+        const animateParticle = () => {
+            if (sphere.isVisible) {
+                sphere.position.addInPlace(dir);
+                dir.scaleInPlace(0.98);
+                requestAnimationFrame(animateParticle);
+            }
+        };
+        animateParticle();
+    }
+}
+
     async resetBallWithDelay() {
         if (!this.scene || !this.scene.ball || !this.scene.ballVelocity) return;
         
         this.scene.ball.position.set(0, 0.5, 0);
         this.scene.ballVelocity.set(0, 0, 0);
         
+        if (this.isMaster) {
+            this.sendVisualEffect("countdown", {});
+        }
         await this.countdown();
         await this.sleep(200);
         

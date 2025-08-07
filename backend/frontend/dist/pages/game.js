@@ -5,11 +5,15 @@ export class GamePage {
         this.currentSection = "tournament";
         this.currentUser = null;
         this.friendsList = [];
+        this.remoteSocket = null;
         verifyToken();
         this.render();
         this.attachEvents();
         this.handleBrowserNavigation();
         window.gamePageInstance = this;
+        window.addEventListener('beforeunload', () => {
+            this.cleanup();
+        });
         const currentPath = window.location.pathname;
         let targetSection = "tournament";
         if (currentPath.startsWith("/game/")) {
@@ -1504,9 +1508,143 @@ export class GamePage {
             }
             if (joinRoomBtn) {
                 joinRoomBtn.addEventListener("click", () => {
-                    GamePage.showProfileAlert("profile-alert", "$ join: feature not implemented yet");
+                    console.log('🖱️ Bouton "join room" cliqué');
+                    this.connectToRemoteMatchmaking();
                 });
             }
+        }
+    }
+    connectToRemoteMatchmaking() {
+        console.log('🔄 connectToRemoteMatchmaking appelée');
+        console.log('📊 État WebSocket actuel:', this.remoteSocket?.readyState);
+        if (this.remoteSocket && this.remoteSocket.readyState === WebSocket.OPEN) {
+            console.log('⚠️ WebSocket déjà connectée, ignorer');
+            return;
+        }
+        if (this.remoteSocket && this.remoteSocket.readyState === WebSocket.CONNECTING) {
+            console.log('⚠️ WebSocket en cours de connexion, ignorer');
+            return;
+        }
+        if (this.remoteSocket) {
+            console.log('🔄 Fermeture WebSocket existante');
+            this.remoteSocket.close();
+        }
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        const wsUrl = `${protocol}//${host}/ws/remote`;
+        try {
+            this.remoteSocket = new WebSocket(wsUrl);
+            this.remoteSocket.onopen = () => {
+                console.log('✅ Connecté au matchmaking remote');
+                GamePage.showProfileAlert("profile-success", "$ searching for opponent...", "success");
+            };
+            this.remoteSocket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('📩 Message reçu:', data);
+                    this.handleRemoteMessage(data);
+                }
+                catch (error) {
+                    console.error('Erreur parsing message WebSocket:', error);
+                }
+            };
+            this.remoteSocket.onclose = () => {
+                console.log('❌ Connexion WebSocket fermée');
+                this.remoteSocket = null;
+            };
+            this.remoteSocket.onerror = (error) => {
+                console.error('❌ Erreur WebSocket:', error);
+                GamePage.showProfileAlert("profile-alert", "$ connection failed - try again");
+            };
+        }
+        catch (error) {
+            console.error('❌ Erreur création WebSocket:', error);
+            GamePage.showProfileAlert("profile-alert", "$ connection error - check network");
+        }
+    }
+    handleRemoteMessage(data) {
+        console.log('📩 Message reçu du serveur remote:', data.type);
+        switch (data.type) {
+            case 'waiting':
+                console.log('⏳ En attente d\'un adversaire...');
+                GamePage.showProfileAlert("profile-success", data.message || "$ waiting for opponent...", "success");
+                break;
+            case 'match_found':
+                console.log('🎮 Match trouvé!', data);
+                GamePage.showProfileAlert("profile-success", "$ match found! starting game...", "success");
+                setTimeout(() => {
+                    this.startRemoteGame(data.roomId, data.opponentId);
+                }, 1500);
+                break;
+            case 'error':
+                console.error('❌ Erreur serveur:', data.message);
+                GamePage.showProfileAlert("profile-alert", `$ error: ${data.message}`);
+                break;
+            default:
+                console.log('Message non géré:', data);
+        }
+    }
+    startRemoteGame(roomId, opponentId) {
+        console.log(`🎮 Démarrage jeu remote - Room: ${roomId}, Opponent: ${opponentId}`);
+        if (this.remoteSocket) {
+            this.remoteSocket.close();
+            this.remoteSocket = null;
+        }
+        localStorage.setItem('currentRoomId', roomId);
+        localStorage.setItem('opponentId', opponentId.toString());
+        this.connectToRemoteGame(roomId);
+        this.launchGame("remote");
+    }
+    connectToRemoteGame(roomId) {
+        console.log(`🔗 Connexion au jeu remote - Room: ${roomId}`);
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        const wsUrl = `${protocol}//${host}/ws/remote/game?roomId=${roomId}`;
+        try {
+            const gameSocket = new WebSocket(wsUrl);
+            gameSocket.onopen = () => {
+                console.log('✅ Connecté au jeu remote');
+                GamePage.showProfileAlert("profile-success", "$ connected to game room", "success");
+            };
+            gameSocket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    this.handleGameMessage(data);
+                }
+                catch (error) {
+                    console.error('❌ Erreur parsing message jeu:', error);
+                }
+            };
+            gameSocket.onclose = () => {
+                console.log('❌ Connexion jeu fermée');
+                GamePage.showProfileAlert("profile-alert", "$ game connection lost");
+            };
+            gameSocket.onerror = (error) => {
+                console.error('❌ Erreur WebSocket jeu:', error);
+                GamePage.showProfileAlert("profile-alert", "$ game connection failed");
+            };
+            window.gameSocket = gameSocket;
+        }
+        catch (error) {
+            console.error('❌ Erreur création WebSocket jeu:', error);
+            GamePage.showProfileAlert("profile-alert", "$ failed to connect to game room");
+        }
+    }
+    handleGameMessage(data) {
+        console.log('🎮 Message jeu reçu:', data.type);
+        switch (data.type) {
+            case 'game_init':
+                console.log('🎮 Initialisation du jeu:', data);
+                break;
+            case 'player_disconnected':
+                console.log('❌ Joueur déconnecté:', data.playerId);
+                GamePage.showProfileAlert("profile-alert", "$ opponent disconnected");
+                break;
+            default:
+                console.log('Message jeu non géré:', data);
+                if (window.handleRemoteGameMessage) {
+                    window.handleRemoteGameMessage(data);
+                }
         }
     }
     async launchGame(mode) {
@@ -1519,7 +1657,7 @@ export class GamePage {
         if (mode === "ai")
             scriptSrc = "../../pong/pov.js";
         if (mode === "remote")
-            scriptSrc = "../../pong/pong.js";
+            scriptSrc = "../../pong/remote-pong.js";
         const script = document.createElement("script");
         script.id = "pong-script";
         script.src = scriptSrc;
@@ -1912,6 +2050,13 @@ export class GamePage {
             setTimeout(() => {
                 window.router.navigate("/");
             }, 500);
+        }
+    }
+    cleanup() {
+        if (this.remoteSocket) {
+            this.remoteSocket.close();
+            this.remoteSocket = null;
+            console.log('🧹 WebSocket remote nettoyée');
         }
     }
 }

@@ -76,9 +76,10 @@ export function setupRemoteSocket(app) {
             if (!waitingPlayer) {
                 waitingPlayer = { connection, userId};
                 connection.socket.send(JSON.stringify({ type: "waiting", message: "En attente d’un autre joueur…" }));
+                console.log("waitingPlayer:", waitingPlayer.userId);
             }
             // if waiting player exists, create a room
-            else {
+            else if (waitingPlayer.userId !== userId) {
                 const roomId = `room-${Date.now()}`;
                 const player1 = waitingPlayer;
                 const player2 = { connection, userId };
@@ -127,11 +128,35 @@ export function setupRemoteGame(app) {
                 gameRooms.set(roomId, {
                     players: new Map(),
                     gameState: {
-                        // État initial du jeu - voir avec Adem
-                        ball: { x: 0, y: 0, velocityX: 0, velocityY: 0 },
-                        paddle1: { y: 0 },
-                        paddle2: { y: 0 },
-                        score: { player1: 0, player2: 0 }
+                        ball: { 
+                            position: { x: 0, y: 0, z: 0 },
+                            velocity: { x: 0, y: 0, z: 0 }
+                        },
+                        paddles: {
+                            left: { 
+                                position: { x: -9.3, y: 0, z: 0 }
+                            },
+                            right: { 
+                                position: { x: 9.3, y: 0, z: 0 }
+                            }
+                        },
+                        score: { left: 0, right: 0 },
+                        gameStatus: {
+                            started: false,
+                            gameOver: false,
+                            waitingAfterGoal: false,
+                            winner: null
+                        },
+                        gameTimer: {
+                            startTime: null,
+                            duration: 0
+                        },
+                        config: {
+                            scoreLimit: 1,
+                            playWidth: 19,
+                            ballSpeed: 0.15,
+                            maxSpeed: 0.6
+                        }
                     },
                     createdAt: Date.now()
                 });
@@ -140,13 +165,16 @@ export function setupRemoteGame(app) {
             const room = gameRooms.get(roomId);
             room.players.set(userId, { connection, userId });
 
-
+            const playerIndex = Array.from(room.players.keys()).indexOf(userId);
+            
             // Envoyer l'état initial du jeu
             connection.socket.send(JSON.stringify({
                 type: "game_init",
                 roomId,
                 gameState: room.gameState,
-                playerId: userId
+                playerId: userId,
+                playerSide: playerIndex === 0 ? 'left' : 'right', // ✅ IMPORTANT
+                playerIndex: playerIndex // ✅ IMPORTANT
             }));
 
             // Écouter les messages du client (mouvements, etc.)
@@ -154,15 +182,37 @@ export function setupRemoteGame(app) {
                 try {
                     const data = JSON.parse(message);
                     
-                    // Diffuser le message à tous les joueurs de la room
-                    room.players.forEach((player, playerId) => {
-                        if (playerId !== userId && player.connection.socket.readyState === 1) {
-                            player.connection.socket.send(JSON.stringify({
-                                ...data,
-                                fromPlayer: userId
-                            }));
-                        }
-                    });
+                    // AJOUTER LE SWITCH ICI
+                    switch(data.type) {
+                        case 'game_started':
+                            // Retransmettre à l'autre joueur de la room
+                            room.players.forEach((player, playerId) => {
+                                if (playerId !== userId && player.connection.socket.readyState === 1) {
+                                    player.connection.socket.send(JSON.stringify(data));
+                                }
+                            });
+                            break;
+
+                        case 'visual_effect':
+                            // Retransmettre aux autres joueurs
+                            room.players.forEach((player, playerId) => {
+                                if (playerId !== userId && player.connection.socket.readyState === 1) {
+                                    player.connection.socket.send(JSON.stringify(data));
+                                }
+                            });
+                            break;
+                            
+                        default:
+                            // Diffuser le message à tous les joueurs de la room (comportement actuel)
+                            room.players.forEach((player, playerId) => {
+                                if (playerId !== userId && player.connection.socket.readyState === 1) {
+                                    player.connection.socket.send(JSON.stringify({
+                                        ...data,
+                                        fromPlayer: userId
+                                    }));
+                                }
+                            });
+                    }
                 } catch (err) {
                     console.error("Erreur parsing message:", err);
                 }
