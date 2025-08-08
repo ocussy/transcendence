@@ -20,7 +20,7 @@ class PoopEasterEgg {
     }
     handleClick() {
         this.clickCount++;
-        if (this.clickCount === 10) {
+        if (this.clickCount === 5) {
             this.triggerPoopAvalanche();
         }
         setTimeout(() => {

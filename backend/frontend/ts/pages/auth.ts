@@ -69,11 +69,8 @@ export async function verifyToken() {
 
       const data = await res.json();
       console.log("✅ Utilisateur connecté :", data.user);
-      // Ici, tu peux éventuellement stocker les infos du user globalement (window.user ou autre)
     } catch (err) {
       console.error("❌ Erreur vérification token :", err);
-      // localStorage.removeItem("token"); // Optionnel
-      // this.router.navigate("/auth"); // Redirection forcée si tu veux
     }
   }
 
@@ -82,7 +79,6 @@ export class AuthPage {
 
   constructor() {
     checkAuthAndRedirect();
-    // verifyToken();
     this.render();
     this.attachEvents();
     this.initializeGoogleAuth();

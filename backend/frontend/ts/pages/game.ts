@@ -29,11 +29,11 @@ interface MatchHistory {
 
 export class GamePage {
   private currentSection: string = "tournament";
-  private currentUser: any = null; // Ajouté pour stocker les données utilisateur
+  private currentUser: any = null;
   private friendsList: any[] = [];
   static currentMatchId: number | null = null;
+  private isGameActive: boolean = false;
 
-  //stats pour tournois
   static currentTournamentId: number | null = null;
   static shouldRecordTournamentMatch: boolean = false;
   static tournamentMatchData: {
@@ -44,16 +44,17 @@ export class GamePage {
   ////////////////////////////
 
   constructor() {
-    verifyToken(); // Vérifie le token JWT à l'initialisation
+    verifyToken();
     this.render();
     this.attachEvents();
     this.handleBrowserNavigation();
 
-    (window as any).gamePageInstance = this; // ✅ AJOUTEZ cette ligne
+    (window as any).gamePageInstance = this;
 
-    // Récupérer la section depuis l'URL AVANT de la définir
+    this.isGameActive = false;
+
     const currentPath = window.location.pathname;
-    let targetSection = "tournament"; // défaut
+    let targetSection = "tournament";
 
     if (currentPath.startsWith("/game/")) {
       const section = currentPath.replace("/game/", "");
@@ -62,10 +63,82 @@ export class GamePage {
       }
     }
 
-    // Afficher la section sans modifier l'URL
     this.showSectionWithoutPush(targetSection);
   }
+  //////////////////////////////////////////////////////////game start lock///////////////////////////////////
+    private enableGameMode(): void {
+    this.isGameActive = true;
+    this.updateUIForGameMode(true);
+  }
 
+  private disableGameMode(): void {
+    this.isGameActive = false;
+    this.updateUIForGameMode(false);
+  }
+
+  private updateUIForGameMode(isActive: boolean): void {
+    const navButtons = document.querySelectorAll('.nav-btn');
+    navButtons.forEach(btn => {
+      const button = btn as HTMLButtonElement;
+      if (isActive) {
+        button.disabled = true;
+        button.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+        button.title = 'Navigation disabled during match';
+      } else {
+        button.disabled = false;
+        button.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+        button.title = '';
+      }
+    });
+
+    const gameButtons = ['local-game-btn', 'ai-game-btn', 'remote-game-btn'];
+    gameButtons.forEach(id => {
+      const button = document.getElementById(id) as HTMLButtonElement;
+      if (button) {
+        if (isActive) {
+          button.disabled = true;
+          button.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+          button.innerHTML = button.innerHTML.replace('$ ', '$ [LOCKED] ');
+        } else {
+          button.disabled = false;
+          button.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+          button.innerHTML = button.innerHTML.replace('$ [LOCKED] ', '$ ');
+        }
+      }
+    });
+
+    const tournamentBtn = document.getElementById('tournament') as HTMLButtonElement;
+    if (tournamentBtn) {
+      if (isActive) {
+        tournamentBtn.disabled = true;
+        tournamentBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        tournamentBtn.textContent = '$ [LOCKED] tournament in progress';
+      } else {
+        tournamentBtn.disabled = false;
+        tournamentBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        tournamentBtn.textContent = '$ initialize-tournament';
+      }
+    }
+
+    const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement;
+    if (logoutBtn) {
+      if (isActive) {
+        logoutBtn.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+        logoutBtn.title = 'Logout disabled during match';
+      } else {
+        logoutBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+        logoutBtn.title = '';
+      }
+    }
+  }
+
+    static forceExitGameMode(): void {
+    const gamePageInstance = (window as any).gamePageInstance;
+    if (gamePageInstance) {
+      gamePageInstance.disableGameMode();
+    }
+  }
+  ///////////////////////////////////////////////game start lock///////////////////////////////////////
   ////////////////////////////////////////////////DASHBOARD////////////////////////////////////////////
   private async loadDashboardData(): Promise<void> {
     try {
@@ -248,78 +321,132 @@ export class GamePage {
     }
   }
 
-  private async loadPerformanceData(): Promise<void> {
-    try {
-      const response = await fetch("/stats/performance", {
-        credentials: "include",
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-
-      const performanceData = data;
-      if (performanceData.length > 0) {
-        this.updatePerformanceChart(performanceData);
-      } else {
-        this.showNoPerformanceData();
-      }
-    } catch (error) {
-      this.showNoPerformanceData();
+//////////////////////////////////////////////////graph//////////////////////////////////////////
+private async loadPerformanceData(): Promise<void> {
+  try {
+    const response = await fetch("/match-history?limit=20", {
+      credentials: "include",
+    });
+    if (!response.ok) throw new Error("Failed to fetch");
+    
+    const matches: MatchHistory[] = await response.json();
+    if (matches.length > 0) {
+      this.updateAdvancedChart(matches);
+    } else {
+      this.showNoData();
     }
+  } catch (error) {
+    this.showNoData();
   }
+}
 
-  private updatePerformanceChart(data: any[]): void {
-    const svg = document.getElementById(
-      "performance-chart",
-    ) as SVGElement | null;
-    const placeholder = document.getElementById("chart-placeholder");
-
-    if (!svg) return;
-
-    if (placeholder) {
-      placeholder.style.display = "none";
+private updateAdvancedChart(matches: MatchHistory[]): void {
+  const svg = document.getElementById("performance-chart");
+  const placeholder = document.getElementById("chart-placeholder");
+  
+  if (!svg || !placeholder) return;
+  
+  placeholder.style.display = "none";
+  
+  // Calcul du score de performance basé sur plusieurs facteurs
+  let cumulativeScore = 50; // Score de départ (50%)
+  const dataPoints: { x: number, y: number, result: string, winRate: number }[] = [];
+  
+  const reversedMatches = matches.reverse();
+  let totalWins = 0;
+  
+  reversedMatches.forEach((match, index) => {
+    // Mise à jour des statistiques
+    if (match.result === "WIN") {
+      totalWins++;
+      cumulativeScore = Math.min(100, cumulativeScore + 8); // +8% pour une victoire
+    } else if (match.result === "LOSS") {
+      cumulativeScore = Math.max(0, cumulativeScore - 5); // -5% pour une défaite
+    } else {
+      cumulativeScore = Math.max(0, cumulativeScore - 1); // -1% pour un draw
     }
-    const maxWinRate = Math.max(...data.map((d) => d.winRate), 100);
-    const points = data
-      .map((d, index) => {
-        const x = 5 + (index * 90) / Math.max(data.length - 1, 1);
-        const y = 95 - (d.winRate / maxWinRate) * 90;
-        return `${x},: MatchHistory[] = await response.json();
+    
+    const winRate = ((totalWins / (index + 1)) * 100);
+    const x = 10 + (index * 80) / Math.max(matches.length - 1, 1);
+    const y = 85 - (cumulativeScore * 0.7); // Inverser l'axe Y et ajuster l'échelle
+    
+    dataPoints.push({ x, y, result: match.result, winRate });
+  });
+  
+  // Création du graphique SVG avancé
+  let svgContent = `
+    <!-- Grille de fond -->
+    <defs>
+      <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+        <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#374151" stroke-width="0.5" opacity="0.3"/>
+      </pattern>
+      <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+        <stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" />
+        <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+      </linearGradient>
+      <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.3" />
+        <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.05" />
+      </linearGradient>
+    </defs>
+    
+    <!-- Grille de fond -->
+    <rect width="100" height="100" fill="url(#grid)" opacity="0.5"/>
+    
+    <!-- Lignes de référence -->
+    <line x1="10" y1="22" x2="90" y2="22" stroke="#10b981" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.6"/>
+    
+    <line x1="10" y1="50" x2="90" y2="50" stroke="#f59e0b" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.6"/>
+    
+    <line x1="10" y1="78" x2="90" y2="78" stroke="#ef4444" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.6"/>
+  `;
+  
+  // Zone sous la courbe (area chart)
+  if (dataPoints.length > 1) {
+    const areaPath = `M ${dataPoints[0].x},85 ` + 
+      dataPoints.map(p => `L ${p.x},${p.y}`).join(' ') +
+      ` L ${dataPoints[dataPoints.length - 1].x},85 Z`;
+    
+    svgContent += `<path d="${areaPath}" fill="url(#areaGradient)" opacity="0.4"/>`;
+  }
+  
+  // Ligne principale du graphique
+  if (dataPoints.length > 1) {
+    const pathData = dataPoints.map((point, index) => {
+      return `${index === 0 ? 'M' : 'L'} ${point.x},${point.y}`;
+    }).join(' ');
+    
+    svgContent += `<path d="${pathData}" fill="none" stroke="url(#lineGradient)" stroke-width="2" stroke-linecap="round"/>`;
+  }
+  svg.innerHTML = svgContent;
+}
 
-      const tbody = document.querySelector("#section-dashboard tbody");
-      if (!tbody) r${y}`;
-      })
-      .join(" ");
-
+// Amélioration de la méthode showNoData pour plus de style
+private showNoData(): void {
+  const placeholder = document.getElementById("chart-placeholder");
+  const svg = document.getElementById("performance-chart");
+  
+  if (placeholder && svg) {
+    placeholder.style.display = "flex";
     svg.innerHTML = `
-      <polyline
-        fill="none"
-        stroke="#3b82f6"
-        stroke-width="0.8"
-        points="${points}"
-      />
-      ${data
-        .map((d, index) => {
-          const x = 5 + (index * 90) / Math.max(data.length - 1, 1);
-          const y = 95 - (d.winRate / maxWinRate) * 90;
-          return `<circle cx="${x}" cy="${y}" r="1" fill="#3b82f6"/>`;
-        })
-        .join("")}
+      <defs>
+        <pattern id="emptyGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#374151" stroke-width="0.5" opacity="0.2"/>
+        </pattern>
+      </defs>
+      <rect width="100" height="100" fill="url(#emptyGrid)"/>
+    `;
+    
+    placeholder.innerHTML = `
+      <div class="text-center text-gray-600">
+        <div class="font-mono text-sm opacity-75">--WAITING FOR DATA--</div>
+        <p class="font-mono text-xs mt-1 opacity-50">Performance analytics will appear here</p>
+      </div>
     `;
   }
-
-  private showNoPerformanceData(): void {
-    const placeholder = document.getElementById("chart-placeholder");
-    if (placeholder) {
-      placeholder.style.display = "flex";
-      placeholder.innerHTML = `
-        <div class="text-center text-gray-600">
-          <div class="font-mono text-sm">--No recent data--</div>
-          <p class="font-mono text-xs mt-1 opacity-70">Play matches to see performance trends</p>
-        </div>
-      `;
-    }
-  }
-
+}
+  ////////////////////////////////////////////////graph////////////////////////////////////////// 
   ////////////////////////////////////////////////FIN DASH////////////////////////////////////////////
 
   ///////////////////////////////////////////////avatar//////////////////////////////////////////////
@@ -340,69 +467,83 @@ export class GamePage {
 
   //////////////////////////////////////////////creation match apeller dans le script///////////////////////////////////////
 
-	static async createMatch(mode: string, score1: number, score2: number, duration: number): Promise<number | null> {
-  console.log("🎯 createMatch called - Processing match result...");
-  
-  try {
-    if (GamePage.currentTournamentId && GamePage.tournamentMatchData) {
+  static async createMatch(mode: string, score1: number, score2: number, duration: number): Promise<number | null> {
+    console.log("🎯 createMatch called - Processing match result...");
+    
+    try {
+      let result = null;
       
-      if (GamePage.shouldRecordTournamentMatch) {
-        console.log("🏆 USER PARTICIPATING - Recording tournament match...");
+      if (GamePage.currentTournamentId && GamePage.tournamentMatchData) {
         
+        if (GamePage.shouldRecordTournamentMatch) {
+          console.log("🏆 USER PARTICIPATING - Recording tournament match...");
+          
+          const response = await fetch("/match", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              mode: mode,
+              score1: score1,
+              score2: score2,
+              duration: duration,
+              player1_name: GamePage.tournamentMatchData!.player_1,
+              player2_name: GamePage.tournamentMatchData!.player_2,
+            }),
+          });
+
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error);
+
+          console.log("✅ Tournament match recorded:", data);
+          GamePage.currentMatchId = data.id;
+          GamePage.showProfileAlert("profile-success", data.message, "success");
+          
+          await GamePage.updateTournamentWithWinner(score1, score2);
+          result = data.id;
+        } 
+        else {
+          console.log("👥 GUEST vs GUEST - No match recording...");
+          GamePage.showProfileAlert("profile-success", "Match terminé (mode spectateur)", "success");
+          await GamePage.updateTournamentWithWinner(score1, score2);
+          result = null;
+        }
+      } 
+      else {
+        console.log("🎮 NORMAL MATCH - Recording...");
         const response = await fetch("/match", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({
-            mode: mode,
-            score1: score1,
-            score2: score2,
-            duration: duration,
-            player1_name: GamePage.tournamentMatchData!.player_1,
-            player2_name: GamePage.tournamentMatchData!.player_2,
-          }),
+          body: JSON.stringify({ mode, score1, score2, duration }),
         });
 
         const data = await response.json();
         if (!response.ok) throw new Error(data.error);
 
-        console.log("✅ Tournament match recorded:", data);
+        console.log("✅ Normal match recorded:", data);
         GamePage.currentMatchId = data.id;
-        GamePage.showProfileAlert("profile-success", data.message, "success");
-        
-        await GamePage.updateTournamentWithWinner(score1, score2);
-        return data.id;
-      } 
-      else {
-        console.log("👥 GUEST vs GUEST - No match recording...");
-        GamePage.showProfileAlert("profile-success", "Match terminé (mode spectateur)", "success");
-        await GamePage.updateTournamentWithWinner(score1, score2);
-        return null;
+        result = data.id;
       }
-    } 
-    else {
-      console.log("🎮 NORMAL MATCH - Recording...");
-      const response = await fetch("/match", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ mode, score1, score2, duration }),
-      });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
+      // const gamePageInstance = (window as any).gamePageInstance;
+      // if (gamePageInstance) {
+      //   gamePageInstance.disableGameMode();
+      // }
 
-      console.log("✅ Normal match recorded:", data);
-      GamePage.currentMatchId = data.id;
-    //  GamePage.showProfileAlert("profile-success", data.message, "success");
-      return data.id;
+      return result;
+    } catch (error) {
+      console.error("❌ Error in createMatch:", error);
+      GamePage.showProfileAlert("profile-alert", String(error));
+      
+      // const gamePageInstance = (window as any).gamePageInstance;
+      // if (gamePageInstance) {
+      //   gamePageInstance.disableGameMode();
+      // }
+      
+      return null;
     }
-  } catch (error) {
-    console.error("❌ Error in createMatch:", error);
-    GamePage.showProfileAlert("profile-alert", String(error));
-    return null;
   }
-}
 
   //////////////////////////////////////////////creation match///////////////////////////////////////
 
@@ -896,14 +1037,10 @@ export class GamePage {
                                     <!-- Message d'attente -->
                                     <div id="chart-placeholder" class="absolute inset-0 flex items-center justify-center">
                                         <div class="text-center text-gray-600">
-                                            <div class="font-mono text-sm">--No data yet--</div>
-                                            <p class="font-mono text-xs mt-1 opacity-70">Play matches to see trends</p>
                                         </div>
                                     </div>
 
                                     <!-- Labels -->
-                                    <div class="absolute bottom-2 left-4 font-mono text-xs text-gray-500">7d ago</div>
-                                    <div class="absolute bottom-2 right-4 font-mono text-xs text-gray-500">today</div>
                                     <div class="absolute top-2 right-4 font-mono text-xs text-blue-400">performance %</div>
                                 </div>
                             </div>
@@ -956,13 +1093,6 @@ export class GamePage {
                                     </tbody>
                                 </table>
                             </div>
-
-                            <!-- View More Button -->
-                            <div class="mt-4 text-center">
-                                <button class="font-mono text-sm text-gray-400 hover:text-blue-400 transition-colors duration-200 border border-gray-700 px-4 py-2 rounded-lg hover:border-blue-500">
-                                    $ load-more --matches
-                                </button>
-                            </div>
                         </div>
                     </div>
 
@@ -993,11 +1123,6 @@ export class GamePage {
                                        class="w-full h-full object-cover"
                                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                   <span class="text-4xl font-mono text-gray-500 hidden">[USER]</span>
-                                </div>
-                                <div class="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-600 transition-colors" id="avatar-edit-btn">
-                                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-                                  </svg>
                                 </div>
                               </div>
 
@@ -1617,6 +1742,15 @@ export class GamePage {
   }
 
   private showSection(sectionName: string): void {
+
+    if (this.isGameActive) {
+      GamePage.showProfileAlert(
+        "profile-alert", 
+        "$ error: navigation locked during match"
+      );
+      return;
+    }
+
     if (this.currentSection === sectionName) {
       return;
     }
@@ -1656,6 +1790,13 @@ export class GamePage {
   ///////////////////////////////////////////game//////////////////////////////////////
 
   private startGame(mode: "local" | "ai" | "remote"): void {
+    if (this.isGameActive) {
+      GamePage.showProfileAlert(
+        "profile-alert", 
+        "$ error: match already in progress"
+      );
+      return;
+    }
     const canvasDiv = document.getElementById("game-canvas")!;
 
     let controlsHTML = "";
@@ -1770,6 +1911,11 @@ export class GamePage {
 
   private async launchGame(mode: "local" | "ai" | "remote"): Promise<void> {
 
+    // this.enableGameMode();
+    if (typeof (window as any).disposeGame === "function") {
+      (window as any).disposeGame();
+    }
+    
     const canvasDiv = document.getElementById("game-canvas")!;
     canvasDiv.innerHTML = `<canvas id="renderCanvas" class="w-full h-full" tabindex="0"></canvas>`;
 
@@ -1965,7 +2111,6 @@ export class GamePage {
         ` creating tournament: ${tournamentName} with players:`,
         players,
       );
-      // POST du tournoi
       const response = await fetch("/tournament", {
         method: "POST",
         headers: {
@@ -2248,7 +2393,6 @@ export class GamePage {
     if (!GamePage.currentTournamentId || !GamePage.tournamentMatchData) return;
 
     try {
-      // 🔥 DÉTERMINER LE GAGNANT BASÉ SUR LES SCORES ET LES NOMS
       const winner = score1 > score2 
         ? GamePage.tournamentMatchData.player_1 
         : GamePage.tournamentMatchData.player_2;
@@ -2272,7 +2416,6 @@ export class GamePage {
       if (response.ok) {
         console.log("Tournament updated:", data);
         
-        // Si le tournoi continue
         if (data.status === "in progress") {
           GamePage.tournamentMatchData = {
             player_1: data.player_1,
@@ -2280,7 +2423,6 @@ export class GamePage {
             status: data.status
           };
           
-          // Vérifier si l'utilisateur connecté participe au prochain match
           GamePage.shouldRecordTournamentMatch = data.player_id !== -1;
           
           GamePage.showProfileAlert(
@@ -2289,13 +2431,11 @@ export class GamePage {
             "success"
           );
 
-          // 🔥 AFFICHER LE PROCHAIN MATCH AUTOMATIQUEMENT
           setTimeout(() => {
             GamePage.showNextTournamentMatch(data);
-          }, 3000); // Attendre 3 secondes pour que le joueur voie le résultat
+          }, 3000);
           
         } 
-        // Si le tournoi est terminé
         else if (data.status === "finished") {
           GamePage.resetTournamentState();
           GamePage.showProfileAlert(
@@ -2344,7 +2484,6 @@ export class GamePage {
   }
 }
 
-// Extend the Window interface to include GamePage
 declare global {
   interface Window {
     GamePage: typeof GamePage;
