@@ -1,8 +1,13 @@
 
-(async function startPongGame() {
+(async function startPongGame(){ 
     let gameStartTime = null;
     let gameEndTime = null;
     let gameDurationSeconds = 0;
+    let engine = null;
+    let scene = null;
+    let advancedTexture = null;
+    let renderLoop = null;
+    let observers = [];
 
     // Start timer when game starts
     function startGameTimer() {
@@ -27,8 +32,9 @@
         }
         return originalCountdown.apply(this, args);
     };
+
 const canvas = document.getElementById("renderCanvas");
-const engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
 // Variables de jeu
 let isGameOver = false;
 let gameStarted = false;
@@ -60,8 +66,7 @@ const GAME_CONFIG = {
 
 const boxes = [];
 const keys = {};
-let scene, leftPaddle, rightPaddle;
-let keydownHandler, keyupHandler, resizeHandler; // Stocker les références
+let leftPaddle, rightPaddle;
 
 // Gestionnaire d'événements optimisé
 function setupEventListeners() {
@@ -380,18 +385,18 @@ function createScene() {
     
     // Caméra
     const camera2 = new BABYLON.ArcRotateCamera(
-  "cam2",
-  Math.PI / 2 + Math.PI,      // alpha : vue en oblique (-45° sur le côté)
-  Math.PI / 3,     // beta  : ≃51° (un peu plus haut qu’avant)
-  20,                // radius : 12 unités (très proche)
-  new BABYLON.Vector3(0, 1, 0), // cible un peu surélevée
-  scene
-);
-camera2.lowerRadius = 8;
-camera2.upperRadius = 20;
-camera2.lowerBeta   = Math.PI / 6;  // 30°
-camera2.upperBeta   = Math.PI / 2;  // 90°
-camera2.detachControl(canvas);
+        "cam2",
+        Math.PI / 2 + Math.PI,      // alpha : vue en oblique (-45° sur le côté)
+        Math.PI / 3,     // beta  : ≃51° (un peu plus haut qu’avant)
+        20,                // radius : 12 unités (très proche)
+        new BABYLON.Vector3(0, 1, 0), // cible un peu surélevée
+        scene
+    );
+    camera2.lowerRadius = 8;
+    camera2.upperRadius = 20;
+    camera2.lowerBeta   = Math.PI / 6;  // 30°
+    camera2.upperBeta   = Math.PI / 2;  // 90°
+    camera2.detachControl(canvas);
 
     const ground = BABYLON.MeshBuilder.CreateGround("ground", {
         width: 20, 
@@ -655,6 +660,8 @@ function startRenderLoop() {
         scene.render();
     });
 }
+
+
 // Initialisation
 async function init() {
     scene = createScene();
@@ -664,6 +671,52 @@ async function init() {
 }
 
 init();     
+ window.disposeGame = function () {
+    console.log("🧹 disposeGame() called — on arrête et on clean");
 
+    try {
+      // stoppe la boucle de rendu
+      if (engine && renderLoop) {
+        engine.stopRenderLoop(renderLoop);
+      }
+
+      // supprime la scène Babylon
+      if (scene) {
+        scene.dispose(true, true);
+        console.log("✅ scene disposed");
+      }
+
+      // supprime l'engine
+      if (engine) {
+        engine.dispose();
+        console.log("✅ engine disposed");
+      }
+
+      // Si tu as des GUI (AdvancedDynamicTexture), par exemple  
+      if (advancedTexture) {
+        advancedTexture.dispose();
+        console.log("✅ GUI disposed");
+      }
+
+      // Si tu as des observers, détache-les
+      observers.forEach(obs => {
+        try { engine.onResizeObservable.remove(obs); }
+        catch(_) {}
+      });
+      observers = [];
+
+      // Optionnel : enlève les écouteurs window.resize ou keydown en stockant des handlers
+      // window.removeEventListener("resize", tonHandlerResize);
+
+    } catch (err) {
+      console.warn("⚠️ Erreur dans disposeGame:", err);
+    }
+
+    // libère les références
+    engine = null;
+    scene = null;
+    renderLoop = null;
+    advancedTexture = null;
+  };
 window.addEventListener("resize", () => engine.resize());
 }) ();

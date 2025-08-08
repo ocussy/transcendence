@@ -6,6 +6,7 @@ export class GamePage {
         this.currentUser = null;
         this.friendsList = [];
         this.remoteSocket = null;
+        this.isGameActive = false;
         verifyToken();
         this.render();
         this.attachEvents();
@@ -13,19 +14,17 @@ export class GamePage {
         window.gamePageInstance = this;
         window.addEventListener('beforeunload', async (event) => {
             try {
-                fetch('/auth/signout', {
-                    method: 'GET',
-                    credentials: 'include',
-                    keepalive: true
-                });
+                navigator.sendBeacon('/logout', JSON.stringify({}));
                 document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
                 document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                this.cleanup();
+                console.log("🚪 Déconnexion automatique lors de la fermeture");
             }
             catch (error) {
-                console.error('Erreur lors du logout automatique:', error);
+                console.error("Erreur lors de la déconnexion:", error);
             }
+            this.cleanup();
         });
+        this.isGameActive = false;
         const currentPath = window.location.pathname;
         let targetSection = "tournament";
         if (currentPath.startsWith("/game/")) {
@@ -35,6 +34,76 @@ export class GamePage {
             }
         }
         this.showSectionWithoutPush(targetSection);
+    }
+    enableGameMode() {
+        this.isGameActive = true;
+        this.updateUIForGameMode(true);
+    }
+    disableGameMode() {
+        this.isGameActive = false;
+        this.updateUIForGameMode(false);
+    }
+    updateUIForGameMode(isActive) {
+        const navButtons = document.querySelectorAll('.nav-btn');
+        navButtons.forEach(btn => {
+            const button = btn;
+            if (isActive) {
+                button.disabled = true;
+                button.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                button.title = 'Navigation disabled during match';
+            }
+            else {
+                button.disabled = false;
+                button.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                button.title = '';
+            }
+        });
+        const gameButtons = ['local-game-btn', 'ai-game-btn', 'remote-game-btn'];
+        gameButtons.forEach(id => {
+            const button = document.getElementById(id);
+            if (button) {
+                if (isActive) {
+                    button.disabled = true;
+                    button.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                    button.innerHTML = button.innerHTML.replace('$ ', '$ [LOCKED] ');
+                }
+                else {
+                    button.disabled = false;
+                    button.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                    button.innerHTML = button.innerHTML.replace('$ [LOCKED] ', '$ ');
+                }
+            }
+        });
+        const tournamentBtn = document.getElementById('tournament');
+        if (tournamentBtn) {
+            if (isActive) {
+                tournamentBtn.disabled = true;
+                tournamentBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                tournamentBtn.textContent = '$ [LOCKED] tournament in progress';
+            }
+            else {
+                tournamentBtn.disabled = false;
+                tournamentBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                tournamentBtn.textContent = '$ initialize-tournament';
+            }
+        }
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            if (isActive) {
+                logoutBtn.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                logoutBtn.title = 'Logout disabled during match';
+            }
+            else {
+                logoutBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+                logoutBtn.title = '';
+            }
+        }
+    }
+    static forceExitGameMode() {
+        const gamePageInstance = window.gamePageInstance;
+        if (gamePageInstance) {
+            gamePageInstance.disableGameMode();
+        }
     }
     async loadDashboardData() {
         try {
@@ -195,69 +264,109 @@ export class GamePage {
     }
     async loadPerformanceData() {
         try {
-            const response = await fetch("/stats/performance", {
+            const response = await fetch("/match-history?limit=20", {
                 credentials: "include",
             });
-            const data = await response.json();
             if (!response.ok)
-                throw new Error(data.error);
-            const performanceData = data;
-            if (performanceData.length > 0) {
-                this.updatePerformanceChart(performanceData);
+                throw new Error("Failed to fetch");
+            const matches = await response.json();
+            if (matches.length > 0) {
+                this.updateAdvancedChart(matches);
             }
             else {
-                this.showNoPerformanceData();
+                this.showNoData();
             }
         }
         catch (error) {
-            this.showNoPerformanceData();
+            this.showNoData();
         }
     }
-    updatePerformanceChart(data) {
+    updateAdvancedChart(matches) {
         const svg = document.getElementById("performance-chart");
         const placeholder = document.getElementById("chart-placeholder");
-        if (!svg)
+        if (!svg || !placeholder)
             return;
-        if (placeholder) {
-            placeholder.style.display = "none";
+        placeholder.style.display = "none";
+        let cumulativeScore = 50;
+        const dataPoints = [];
+        const reversedMatches = matches.reverse();
+        let totalWins = 0;
+        reversedMatches.forEach((match, index) => {
+            if (match.result === "WIN") {
+                totalWins++;
+                cumulativeScore = Math.min(100, cumulativeScore + 8);
+            }
+            else if (match.result === "LOSS") {
+                cumulativeScore = Math.max(0, cumulativeScore - 5);
+            }
+            else {
+                cumulativeScore = Math.max(0, cumulativeScore - 1);
+            }
+            const winRate = ((totalWins / (index + 1)) * 100);
+            const x = 10 + (index * 80) / Math.max(matches.length - 1, 1);
+            const y = 85 - (cumulativeScore * 0.7);
+            dataPoints.push({ x, y, result: match.result, winRate });
+        });
+        let svgContent = `
+    <!-- Grille de fond -->
+    <defs>
+      <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
+        <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#374151" stroke-width="0.5" opacity="0.3"/>
+      </pattern>
+      <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+        <stop offset="50%" style="stop-color:#8b5cf6;stop-opacity:1" />
+        <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+      </linearGradient>
+      <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.3" />
+        <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.05" />
+      </linearGradient>
+    </defs>
+    
+    <!-- Grille de fond -->
+    <rect width="100" height="100" fill="url(#grid)" opacity="0.5"/>
+    
+    <!-- Lignes de référence -->
+    <line x1="10" y1="22" x2="90" y2="22" stroke="#10b981" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.6"/>
+    
+    <line x1="10" y1="50" x2="90" y2="50" stroke="#f59e0b" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.6"/>
+    
+    <line x1="10" y1="78" x2="90" y2="78" stroke="#ef4444" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.6"/>
+  `;
+        if (dataPoints.length > 1) {
+            const areaPath = `M ${dataPoints[0].x},85 ` +
+                dataPoints.map(p => `L ${p.x},${p.y}`).join(' ') +
+                ` L ${dataPoints[dataPoints.length - 1].x},85 Z`;
+            svgContent += `<path d="${areaPath}" fill="url(#areaGradient)" opacity="0.4"/>`;
         }
-        const maxWinRate = Math.max(...data.map((d) => d.winRate), 100);
-        const points = data
-            .map((d, index) => {
-            const x = 5 + (index * 90) / Math.max(data.length - 1, 1);
-            const y = 95 - (d.winRate / maxWinRate) * 90;
-            return `${x},: MatchHistory[] = await response.json();
-
-      const tbody = document.querySelector("#section-dashboard tbody");
-      if (!tbody) r${y}`;
-        })
-            .join(" ");
-        svg.innerHTML = `
-      <polyline
-        fill="none"
-        stroke="#3b82f6"
-        stroke-width="0.8"
-        points="${points}"
-      />
-      ${data
-            .map((d, index) => {
-            const x = 5 + (index * 90) / Math.max(data.length - 1, 1);
-            const y = 95 - (d.winRate / maxWinRate) * 90;
-            return `<circle cx="${x}" cy="${y}" r="1" fill="#3b82f6"/>`;
-        })
-            .join("")}
-    `;
+        if (dataPoints.length > 1) {
+            const pathData = dataPoints.map((point, index) => {
+                return `${index === 0 ? 'M' : 'L'} ${point.x},${point.y}`;
+            }).join(' ');
+            svgContent += `<path d="${pathData}" fill="none" stroke="url(#lineGradient)" stroke-width="2" stroke-linecap="round"/>`;
+        }
+        svg.innerHTML = svgContent;
     }
-    showNoPerformanceData() {
+    showNoData() {
         const placeholder = document.getElementById("chart-placeholder");
-        if (placeholder) {
+        const svg = document.getElementById("performance-chart");
+        if (placeholder && svg) {
             placeholder.style.display = "flex";
+            svg.innerHTML = `
+      <defs>
+        <pattern id="emptyGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#374151" stroke-width="0.5" opacity="0.2"/>
+        </pattern>
+      </defs>
+      <rect width="100" height="100" fill="url(#emptyGrid)"/>
+    `;
             placeholder.innerHTML = `
-        <div class="text-center text-gray-600">
-          <div class="font-mono text-sm">--No recent data--</div>
-          <p class="font-mono text-xs mt-1 opacity-70">Play matches to see performance trends</p>
-        </div>
-      `;
+      <div class="text-center text-gray-600">
+        <div class="font-mono text-sm opacity-75">--WAITING FOR DATA--</div>
+        <p class="font-mono text-xs mt-1 opacity-50">Performance analytics will appear here</p>
+      </div>
+    `;
         }
     }
     extractSeedFromUrl(url) {
@@ -272,48 +381,38 @@ export class GamePage {
         return originalUrl.replace(/seed=([^&]*)/, `seed=${encodeURIComponent(newSeed)}`);
     }
     static async createMatch(mode, score1, score2, duration, player1, player2) {
-        console.log("🎯 createMatch called with:", { mode, score1, score2, duration });
-        console.log("🏆 Tournament state:", {
-            tournamentId: GamePage.currentTournamentId,
-            shouldRecord: GamePage.shouldRecordTournamentMatch,
-            matchData: GamePage.tournamentMatchData
-        });
         try {
+            let result = null;
             if (GamePage.currentTournamentId && GamePage.tournamentMatchData) {
                 if (GamePage.shouldRecordTournamentMatch) {
-                    console.log("🏆 USER PARTICIPATING - Recording tournament match with player names...");
+                    console.log("🏆 USER PARTICIPATING - Recording tournament match...");
                     const response = await fetch("/match", {
                         method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
+                        headers: { "Content-Type": "application/json" },
                         credentials: "include",
                         body: JSON.stringify({
                             mode: mode,
                             score1: score1,
                             score2: score2,
                             duration: duration,
-                            player1: GamePage.tournamentMatchData.player_1,
-                            player2: GamePage.tournamentMatchData.player_2,
+                            player1_name: GamePage.tournamentMatchData.player_1,
+                            player2_name: GamePage.tournamentMatchData.player_2,
                         }),
                     });
                     const data = await response.json();
-                    if (!response.ok) {
+                    if (!response.ok)
                         throw new Error(data.error);
-                    }
-                    console.log("✅ Tournament match recorded for user:", data);
+                    console.log("✅ Tournament match recorded:", data);
                     GamePage.currentMatchId = data.id;
                     GamePage.showProfileAlert("profile-success", data.message, "success");
-                    console.log("🔄 Updating tournament with winner...");
                     await GamePage.updateTournamentWithWinner(score1, score2);
-                    return data.id;
+                    result = data.id;
                 }
                 else {
-                    console.log("👥 GUEST vs GUEST - No match recording, only updating tournament...");
+                    console.log("👥 GUEST vs GUEST - No match recording...");
                     GamePage.showProfileAlert("profile-success", "Match terminé (mode spectateur)", "success");
-                    console.log("🔄 Updating tournament with winner (guest match)...");
                     await GamePage.updateTournamentWithWinner(score1, score2);
-                    return null;
+                    result = null;
                 }
             }
             else {
@@ -321,9 +420,7 @@ export class GamePage {
                 console.log("Mode:", mode, "Score1:", score1, "Score2:", score2, "Duration:", duration, "Player1:", player1, "Player2:", player2);
                 const response = await fetch("/match", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
+                    headers: { "Content-Type": "application/json" },
                     credentials: "include",
                     body: JSON.stringify({
                         mode: mode,
@@ -335,20 +432,25 @@ export class GamePage {
                     }),
                 });
                 const data = await response.json();
-                if (!response.ok) {
+                if (!response.ok)
                     throw new Error(data.error);
-                }
                 console.log("✅ Normal match recorded:", data);
                 GamePage.currentMatchId = data.id;
-                GamePage.showProfileAlert("profile-success", data.message, "success");
-                return data.id;
+                result = data.id;
             }
+            const gamePageInstance = window.gamePageInstance;
+            if (gamePageInstance) {
+                gamePageInstance.disableGameMode();
+            }
+            return result;
         }
         catch (error) {
             console.error("❌ Error in createMatch:", error);
-            GamePage.showProfileAlert("profile-alert", typeof error === "object" && error !== null && "message" in error
-                ? error.message
-                : String(error));
+            GamePage.showProfileAlert("profile-alert", String(error));
+            const gamePageInstance = window.gamePageInstance;
+            if (gamePageInstance) {
+                gamePageInstance.disableGameMode();
+            }
             return null;
         }
     }
@@ -507,8 +609,8 @@ export class GamePage {
             return;
         }
         try {
-            const response = await fetch("/friends/remove", {
-                method: "POST",
+            const response = await fetch("/user", {
+                method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -543,46 +645,39 @@ export class GamePage {
             return;
         }
         container.innerHTML = this.friendsList
-            .map((friend) => {
-            const winRate = friend.games_played > 0
-                ? Math.round((friend.games_won / friend.games_played) * 100)
-                : 0;
-            return `
-          <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-3">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="relative">
-                  <img
-                    src="${friend.avatarUrl}"
-                    alt="${friend.public_login}"
-                    class="w-12 h-12 rounded-full border-2 border-gray-600"
-                    onerror="this.src='https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${friend.public_login}'"
-                  >
-                  <!-- Indicateur de statut en ligne -->
-                  <div class="absolute -bottom-1 -right-1 w-4 h-4 ${friend.online ? "bg-green-500" : "bg-gray-500"} rounded-full border-2 border-gray-800"></div>
-                </div>
-                <div>
-                  <div class="flex items-center gap-2">
-                    <div class="font-mono font-bold text-white text-sm">${friend.public_login}</div>
-                  </div>
-                  <div class="font-mono text-xs text-gray-400">
-                    ${friend.games_played === 0
-                ? "No matches"
-                : `${winRate}% win rate • ${friend.games_played} games`}
-                  </div>
-                </div>
-              </div>
-              <button
-                class="text-red-400 hover:text-red-300 p-2 hover:bg-gray-700 rounded text-sm transition-colors"
-                onclick="if(window.gamePageInstance) window.gamePageInstance.removeFriend('${friend.public_login}')"
-                title="Remove friend"
+            .map((friend) => `
+      <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="relative">
+              <img
+                src="${friend.avatarUrl}"
+                alt="${friend.login}"
+                class="w-12 h-12 rounded-full border-2 border-gray-600"
+                onerror="this.src='https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${friend.login}'"
               >
-                ×
-              </button>
+              <!-- Indicateur de statut en ligne -->
+              <div class="absolute -bottom-1 -right-1 w-4 h-4 ${friend.online ? "bg-green-500" : "bg-gray-500"} rounded-full border-2 border-gray-800"></div>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <div class="font-mono font-bold text-white text-sm">${friend.login}</div>
+              </div>
+              <div class="font-mono text-xs text-gray-400">
+                ${friend.games_played === 0 ? "No matches" : `${friend.games_won}% win rate • ${friend.games_played} games`}
+              </div>
             </div>
           </div>
-        `;
-        })
+          <button
+            class="text-red-400 hover:text-red-300 p-2 hover:bg-gray-700 rounded text-sm transition-colors"
+            onclick="if(window.gamePageInstance) window.gamePageInstance.removeFriend('${friend.login}')"
+            title="Remove friend"
+          >
+            ×
+          </button>
+        </div>
+      </div>
+    `)
             .join("");
     }
     render() {
@@ -790,14 +885,10 @@ export class GamePage {
                                     <!-- Message d'attente -->
                                     <div id="chart-placeholder" class="absolute inset-0 flex items-center justify-center">
                                         <div class="text-center text-gray-600">
-                                            <div class="font-mono text-sm">--No data yet--</div>
-                                            <p class="font-mono text-xs mt-1 opacity-70">Play matches to see trends</p>
                                         </div>
                                     </div>
 
                                     <!-- Labels -->
-                                    <div class="absolute bottom-2 left-4 font-mono text-xs text-gray-500">7d ago</div>
-                                    <div class="absolute bottom-2 right-4 font-mono text-xs text-gray-500">today</div>
                                     <div class="absolute top-2 right-4 font-mono text-xs text-blue-400">performance %</div>
                                 </div>
                             </div>
@@ -850,13 +941,6 @@ export class GamePage {
                                     </tbody>
                                 </table>
                             </div>
-
-                            <!-- View More Button -->
-                            <div class="mt-4 text-center">
-                                <button class="font-mono text-sm text-gray-400 hover:text-blue-400 transition-colors duration-200 border border-gray-700 px-4 py-2 rounded-lg hover:border-blue-500">
-                                    $ load-more --matches
-                                </button>
-                            </div>
                         </div>
                     </div>
 
@@ -887,11 +971,6 @@ export class GamePage {
                                        class="w-full h-full object-cover"
                                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                   <span class="text-4xl font-mono text-gray-500 hidden">[USER]</span>
-                                </div>
-                                <div class="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-600 transition-colors" id="avatar-edit-btn">
-                                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-                                  </svg>
                                 </div>
                               </div>
 
@@ -1397,6 +1476,10 @@ export class GamePage {
         }
     }
     showSection(sectionName) {
+        if (this.isGameActive) {
+            GamePage.showProfileAlert("profile-alert", "$ error: navigation locked during match");
+            return;
+        }
         if (this.currentSection === sectionName) {
             return;
         }
@@ -1426,6 +1509,10 @@ export class GamePage {
         }
     }
     startGame(mode) {
+        if (this.isGameActive) {
+            GamePage.showProfileAlert("profile-alert", "$ error: match already in progress");
+            return;
+        }
         const canvasDiv = document.getElementById("game-canvas");
         let controlsHTML = "";
         if (mode === "local") {
@@ -1663,6 +1750,10 @@ export class GamePage {
         }
     }
     async launchGame(mode) {
+        this.enableGameMode();
+        if (typeof window.disposeGame === "function") {
+            window.disposeGame();
+        }
         const canvasDiv = document.getElementById("game-canvas");
         canvasDiv.innerHTML = `<canvas id="renderCanvas" class="w-full h-full" tabindex="0"></canvas>`;
         const oldScript = document.getElementById("pong-script");
@@ -1833,7 +1924,6 @@ export class GamePage {
                 playerParticipating: data.player_id !== -1,
                 matchData: GamePage.tournamentMatchData
             });
-            GamePage.showProfileAlert("profile-success", data.message, "success");
             const nameInput = document.querySelector('input[placeholder="tournament_name"]');
             if (nameInput)
                 nameInput.value = "";
@@ -1846,40 +1936,42 @@ export class GamePage {
     showTournamentRules(tournamentName, players, tournamentData) {
         const canvasDiv = document.getElementById("game-canvas");
         canvasDiv.innerHTML = `
-      <div class="h-[500px] bg-black text-green-400 p-8 font-mono text-sm flex flex-col justify-center">
-        
-        <div class="max-w-lg mx-auto">
-          
-          <!-- Tournament info -->
-          <div class="mb-8">
-            <div class="text-blue-400">$ tournament "${tournamentName}"</div>
-            <div class="text-gray-400 ml-2">${players.length} players • elimination</div>
-          </div>
+		<div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg p-8 relative overflow-hidden backdrop-blur-sm">
+		<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+		
+		<div class="text-center text-white h-full flex flex-col justify-center">
+			
+			<!-- Tournament header -->
+			<div class="mb-10">
+			<h2 class="font-mono text-3xl font-bold text-yellow-400 mb-4">${tournamentName}</h2>
+			<p class="font-mono text-lg text-gray-400">${players.length} players • elimination tournament</p>
+			</div>
 
-          <!-- Current match -->
-          <div class="mb-8">
-            <div class="text-yellow-400">$ match</div>
-            <div class="ml-2 mt-1">
-              <div class="text-blue-400">${tournamentData.player_1}</div>
-              <div class="text-gray-500">vs</div>
-              <div class="text-red-400">${tournamentData.player_2}</div>
-            </div>
-            ${tournamentData.player_id !== -1 ?
-            '<div class="text-green-400 ml-2 mt-2">you participate</div>' :
-            '<div class="text-gray-500 ml-2 mt-2">spectator mode</div>'}
-          </div>
+			<!-- Current match card -->
+			<div class="bg-gray-800 border border-gray-700 rounded-lg p-8 mb-12 max-w-lg mx-auto">
+			<h3 class="font-mono text-yellow-400 font-bold mb-6 text-xl text-center">current match</h3>
+			<div class="flex items-center justify-center gap-8">
+				<div class="text-center">
+				<div class="font-mono text-2xl font-bold text-blue-400">${tournamentData.player_1}</div>
+				<div class="font-mono text-sm text-gray-400">player 1</div>
+				</div>
+				<div class="font-mono text-2xl text-gray-500">vs</div>
+				<div class="text-center">
+				<div class="font-mono text-2xl font-bold text-red-400">${tournamentData.player_2}</div>
+				<div class="font-mono text-sm text-gray-400">player 2</div>
+				</div>
+			</div>
+			</div>
 
-          <!-- Start -->
-          <div class="text-center">
-            <button id="start-tournament" 
-                    class="border border-green-400 text-green-400 hover:bg-green-400 hover:text-black px-6 py-2 font-mono transition-colors">
-              start
-            </button>
-          </div>
+			<!-- Start button -->
+			<button id="start-tournament" 
+					class="px-12 py-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black font-mono font-bold text-lg rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-yellow-500/30 max-w-sm mx-auto">
+			$ start match
+			</button>
 
-        </div>
-      </div>
-    `;
+		</div>
+		</div>
+	`;
         document.getElementById("start-tournament")?.addEventListener("click", () => {
             this.showTournamentPreMatch(tournamentData);
         });
@@ -1887,36 +1979,72 @@ export class GamePage {
     showTournamentPreMatch(tournamentData) {
         const canvasDiv = document.getElementById("game-canvas");
         canvasDiv.innerHTML = `
-      <div class="h-[500px] bg-black text-green-400 p-8 font-mono flex flex-col justify-center">
-        
-        <div class="text-center max-w-md mx-auto">
-          
-          <!-- Match info -->
-          <div class="mb-12">
-            <div class="text-blue-400 text-xl mb-6">pong</div>
-            <div class="mb-4">
-              <div class="text-blue-400 text-lg">${tournamentData.player_1}</div>
-              <div class="text-gray-500 my-2">vs</div>
-              <div class="text-red-400 text-lg">${tournamentData.player_2}</div>
-            </div>
-          </div>
+		<div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg p-6 relative overflow-hidden backdrop-blur-sm">
+		<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+		
+		<div class="text-white h-full flex items-center justify-center">
+			<div class="text-center max-w-3xl w-full">
+			
+			<!-- Match title -->
+			<h1 class="font-mono text-3xl font-bold text-yellow-400 mb-8">match ready</h1>
+			
+			<!-- Players cards -->
+			<div class="grid grid-cols-3 items-center gap-6 mb-8">
+				
+				<!-- Player 1 -->
+				<div class="bg-gray-800 border border-blue-500 rounded-lg p-4">
+				<div class="w-16 h-16 bg-blue-500/20 border border-blue-500 rounded-full flex items-center justify-center mx-auto mb-3">
+					<span class="font-mono text-lg font-bold text-blue-400">P1</span>
+				</div>
+				<h3 class="font-mono text-lg font-bold text-blue-400 mb-2">${tournamentData.player_1}</h3>
+				<div class="font-mono text-xs text-gray-400">W / S</div>
+				</div>
 
-          <!-- Controls -->
-          <div class="mb-8 text-gray-400 text-xs">
-            <div>W/S • I/K</div>
-          </div>
+				<!-- VS -->
+				<div class="text-center">
+				<div class="font-mono text-3xl font-bold text-white mb-2">VS</div>
+				<div class="w-16 h-1 bg-gradient-to-r from-blue-500 to-red-500 mx-auto"></div>
+				</div>
 
-          <!-- Start button -->
-          <div id="start-button-container">
-            <button id="ready-to-fight" 
-                    class="border border-yellow-400 text-yellow-400 hover:bg-yellow-400 hover:text-black px-8 py-3 font-mono transition-colors">
-              ready
-            </button>
-          </div>
+				<!-- Player 2 -->
+				<div class="bg-gray-800 border border-red-500 rounded-lg p-4">
+				<div class="w-16 h-16 bg-red-500/20 border border-red-500 rounded-full flex items-center justify-center mx-auto mb-3">
+					<span class="font-mono text-lg font-bold text-red-400">P2</span>
+				</div>
+				<h3 class="font-mono text-lg font-bold text-red-400 mb-2">${tournamentData.player_2}</h3>
+				<div class="font-mono text-xs text-gray-400">I / K</div>
+				</div>
 
-        </div>
-      </div>
-    `;
+			</div>
+
+			<!-- Match info -->
+			<div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-6 max-w-sm mx-auto">
+				<div class="grid grid-cols-2 gap-4 text-center font-mono text-sm">
+				<div>
+					<div class="text-yellow-400 font-bold">target</div>
+					<div class="text-white text-lg">7 points</div>
+				</div>
+				<div>
+					<div class="text-yellow-400 font-bold">status</div>
+					<div class="text-white text-lg">
+					${tournamentData.player_id !== -1 ? 'playing' : 'spectating'}
+					</div>
+				</div>
+				</div>
+			</div>
+
+			<!-- Ready button -->
+			<div id="start-button-container">
+				<button id="ready-to-fight" 
+						class="px-8 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-mono font-bold rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/30">
+				$ ready to fight
+				</button>
+			</div>
+
+			</div>
+		</div>
+		</div>
+	`;
         document.getElementById("ready-to-fight")?.addEventListener("click", () => {
             this.startMatchCountdown(tournamentData);
         });
@@ -1927,27 +2055,31 @@ export class GamePage {
         const updateCountdown = () => {
             if (countdown > 0) {
                 canvasDiv.innerHTML = `
-          <div class="h-[500px] bg-black text-green-400 font-mono flex items-center justify-center">
-            <div class="text-center">
-              <div class="text-6xl text-yellow-400 mb-4">${countdown}</div>
-              <div class="text-gray-400">starting...</div>
-            </div>
-          </div>
-        `;
+			<div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg relative overflow-hidden backdrop-blur-sm flex items-center justify-center">
+			<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+			
+			<div class="text-center">
+				<div class="font-mono text-9xl font-bold text-yellow-400 mb-6">${countdown}</div>
+				<div class="font-mono text-2xl text-gray-400">get ready...</div>
+			</div>
+			</div>
+		`;
                 countdown--;
                 setTimeout(updateCountdown, 1000);
             }
             else {
                 canvasDiv.innerHTML = `
-          <div class="h-[500px] bg-black text-green-400 font-mono flex items-center justify-center">
-            <div class="text-center">
-              <div class="text-4xl text-green-400">go</div>
-            </div>
-          </div>
-        `;
+			<div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg relative overflow-hidden backdrop-blur-sm flex items-center justify-center">
+			<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #10b981, transparent);"></div>
+			
+			<div class="text-center">
+				<div class="font-mono text-8xl font-bold text-green-400">FIGHT!</div>
+			</div>
+			</div>
+		`;
                 setTimeout(() => {
                     this.launchGame("local");
-                }, 800);
+                }, 1000);
             }
         };
         updateCountdown();
@@ -1957,35 +2089,46 @@ export class GamePage {
         if (!canvasDiv)
             return;
         canvasDiv.innerHTML = `
-      <div class="h-[500px] bg-black text-green-400 p-8 font-mono flex flex-col justify-center">
-        
-        <div class="text-center max-w-md mx-auto">
-          
-          <!-- Next match -->
-          <div class="mb-8">
-            <div class="text-gray-400 mb-6">match completed</div>
-            <div class="text-blue-400 mb-6">next match</div>
-            <div class="mb-4">
-              <div class="text-blue-400 text-lg">${tournamentData.player_1}</div>
-              <div class="text-gray-500 my-2">vs</div>
-              <div class="text-red-400 text-lg">${tournamentData.player_2}</div>
-            </div>
-            ${tournamentData.player_id !== -1 ?
-            '<div class="text-green-400">you participate</div>' :
-            '<div class="text-gray-500">spectator mode</div>'}
-          </div>
+		<div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg p-8 relative overflow-hidden backdrop-blur-sm">
+		<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #10b981, transparent);"></div>
+		
+		<div class="text-white h-full flex flex-col justify-center">
+			
+			<div class="text-center max-w-2xl mx-auto">
+			
+			<!-- Result notification -->
+			<div class="bg-green-500/10 border border-green-500 rounded-lg p-6 mb-12">
+				<div class="font-mono text-green-400 font-bold text-xl">match completed</div>
+			</div>
 
-          <!-- Continue button -->
-          <div>
-            <button id="start-next-match" 
-                    class="border border-green-400 text-green-400 hover:bg-green-400 hover:text-black px-6 py-2 font-mono transition-colors">
-              continue
-            </button>
-          </div>
+			<!-- Next match info -->
+			<div class="mb-12">
+				<h2 class="font-mono text-3xl font-bold text-blue-400 mb-8">next match</h2>
+				<div class="bg-gray-800 border border-gray-700 rounded-lg p-8">
+				<div class="flex items-center justify-center gap-8">
+					<div class="text-center">
+					<div class="font-mono text-2xl font-bold text-blue-400">${tournamentData.player_1}</div>
+					<div class="font-mono text-sm text-gray-400">player 1</div>
+					</div>
+					<div class="font-mono text-2xl text-gray-500">vs</div>
+					<div class="text-center">
+					<div class="font-mono text-2xl font-bold text-red-400">${tournamentData.player_2}</div>
+					<div class="font-mono text-sm text-gray-400">player 2</div>
+					</div>
+				</div>
+				</div>
+			</div>
 
-        </div>
-      </div>
-    `;
+			<!-- Continue button -->
+			<button id="start-next-match" 
+					class="px-12 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white font-mono font-bold text-lg rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-500/30">
+				$ continue tournament
+			</button>
+
+			</div>
+		</div>
+		</div>
+	`;
         document.getElementById("start-next-match")?.addEventListener("click", () => {
             const gamePageInstance = window.gamePageInstance;
             if (gamePageInstance) {

@@ -28,7 +28,7 @@ class PoopEasterEgg {
   private handleClick(): void {
     this.clickCount++;
 
-    if (this.clickCount === 10) {
+    if (this.clickCount === 5) {
       this.triggerPoopAvalanche();
     }
 
