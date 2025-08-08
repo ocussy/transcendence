@@ -2,7 +2,11 @@
     let gameStartTime = null;
     let gameEndTime = null;
     let gameDurationSeconds = 0;
-
+    let engine = null;
+    let scene = null;
+    let advancedTexture = null;
+    let renderLoop = null;
+    let observers = [];
     // Start timer when game starts
     function startGameTimer() {
         gameStartTime = Date.now();
@@ -20,7 +24,7 @@
 
     // Démarre le timer dès le début du jeu
     startGameTimer();const canvas = document.getElementById("renderCanvas");
-    const engine = new BABYLON.Engine(canvas, true);
+    engine = new BABYLON.Engine(canvas, true);
 
     let ballVelocity = getLinearInitialVelocity(0.3, 20);
     const gravity = -0.003;
@@ -34,7 +38,6 @@
     let fontDataGlobal = null;
     let myText = null;
     let myText2 = null;
-    let scene = null;
     let gameOverText = null;
 
     // Éléments DOM pour l'écran de fin
@@ -572,5 +575,52 @@
     scene.render();
     });
 
+    window.disposeGame = function () {
+    console.log("🧹 disposeGame() called — on arrête et on clean");
+
+    try {
+      // stoppe la boucle de rendu
+      if (engine && renderLoop) {
+        engine.stopRenderLoop(renderLoop);
+      }
+
+      // supprime la scène Babylon
+      if (scene) {
+        scene.dispose(true, true);
+        console.log("✅ scene disposed");
+      }
+
+      // supprime l'engine
+      if (engine) {
+        engine.dispose();
+        console.log("✅ engine disposed");
+      }
+
+      // Si tu as des GUI (AdvancedDynamicTexture), par exemple  
+      if (advancedTexture) {
+        advancedTexture.dispose();
+        console.log("✅ GUI disposed");
+      }
+
+      // Si tu as des observers, détache-les
+      observers.forEach(obs => {
+        try { engine.onResizeObservable.remove(obs); }
+        catch(_) {}
+      });
+      observers = [];
+
+      // Optionnel : enlève les écouteurs window.resize ou keydown en stockant des handlers
+      // window.removeEventListener("resize", tonHandlerResize);
+
+    } catch (err) {
+      console.warn("⚠️ Erreur dans disposeGame:", err);
+    }
+
+    // libère les références
+    engine = null;
+    scene = null;
+    renderLoop = null;
+    advancedTexture = null;
+  };
     window.addEventListener("resize", () => engine.resize());
 })();

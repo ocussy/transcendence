@@ -438,19 +438,11 @@ export class GamePage {
                 GamePage.currentMatchId = data.id;
                 result = data.id;
             }
-            const gamePageInstance = window.gamePageInstance;
-            if (gamePageInstance) {
-                gamePageInstance.disableGameMode();
-            }
             return result;
         }
         catch (error) {
             console.error("❌ Error in createMatch:", error);
             GamePage.showProfileAlert("profile-alert", String(error));
-            const gamePageInstance = window.gamePageInstance;
-            if (gamePageInstance) {
-                gamePageInstance.disableGameMode();
-            }
             return null;
         }
     }
@@ -1750,7 +1742,6 @@ export class GamePage {
         }
     }
     async launchGame(mode) {
-        this.enableGameMode();
         if (typeof window.disposeGame === "function") {
             window.disposeGame();
         }

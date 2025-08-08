@@ -71,7 +71,7 @@ export class GamePage {
       // Nettoyer les WebSockets
       this.cleanup();
     });
-    
+
     this.isGameActive = false;
 
     const currentPath = window.location.pathname;
@@ -554,20 +554,20 @@ private showNoData(): void {
         result = data.id;
       }
 
-      const gamePageInstance = (window as any).gamePageInstance;
-      if (gamePageInstance) {
-        gamePageInstance.disableGameMode();
-      }
+      // const gamePageInstance = (window as any).gamePageInstance;
+      // if (gamePageInstance) {
+      //   gamePageInstance.disableGameMode();
+      // }
 
       return result;
     } catch (error) {
       console.error("❌ Error in createMatch:", error);
       GamePage.showProfileAlert("profile-alert", String(error));
       
-      const gamePageInstance = (window as any).gamePageInstance;
-      if (gamePageInstance) {
-        gamePageInstance.disableGameMode();
-      }
+      // const gamePageInstance = (window as any).gamePageInstance;
+      // if (gamePageInstance) {
+      //   gamePageInstance.disableGameMode();
+      // }
       
       return null;
     }
@@ -2151,7 +2151,7 @@ private showNoData(): void {
 
   private async launchGame(mode: "local" | "ai" | "remote"): Promise<void> {
 
-    this.enableGameMode();
+    // this.enableGameMode();
     if (typeof (window as any).disposeGame === "function") {
       (window as any).disposeGame();
     }
