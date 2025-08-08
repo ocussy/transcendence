@@ -1510,6 +1510,9 @@ export class GamePage {
         }
     }
     async launchGame(mode) {
+        if (typeof window.disposeGame === "function") {
+            window.disposeGame();
+        }
         const canvasDiv = document.getElementById("game-canvas");
         canvasDiv.innerHTML = `<canvas id="renderCanvas" class="w-full h-full" tabindex="0"></canvas>`;
         const oldScript = document.getElementById("pong-script");

@@ -1822,6 +1822,10 @@ export class GamePage {
 
   private async launchGame(mode: "local" | "ai" | "remote"): Promise<void> {
 
+    if (typeof (window as any).disposeGame === "function") {
+      (window as any).disposeGame();
+    }
+    
     const canvasDiv = document.getElementById("game-canvas")!;
     canvasDiv.innerHTML = `<canvas id="renderCanvas" class="w-full h-full" tabindex="0"></canvas>`;
 
