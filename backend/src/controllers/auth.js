@@ -125,9 +125,9 @@ export async function signUpGoogle(req, reply) {
     const avatarUrl = `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${encodeURIComponent(login)}`;
 
     const stmt = db.prepare(
-      "INSERT INTO users (login, email, avatarUrl, auth_provider, alias) VALUES (?, ?, ?, ?, ?)",
+      "INSERT INTO users (login, email, avatarUrl, auth_provider, alias, public_login) VALUES (?, ?, ?, ?, ?, ?)",
     );
-    stmt.run(login, email, avatarUrl, "google", login);
+    stmt.run(login, email, avatarUrl, "google", login, login);
     const user = db.prepare("SELECT * FROM users WHERE login = ?").get(login);
     const tokenJWT = await reply.jwtSign({ id : user.id });
     reply

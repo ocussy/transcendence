@@ -11,8 +11,20 @@ export class GamePage {
         this.attachEvents();
         this.handleBrowserNavigation();
         window.gamePageInstance = this;
-        window.addEventListener('beforeunload', () => {
-            this.cleanup();
+        window.addEventListener('beforeunload', async (event) => {
+            try {
+                fetch('/auth/signout', {
+                    method: 'GET',
+                    credentials: 'include',
+                    keepalive: true
+                });
+                document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                this.cleanup();
+            }
+            catch (error) {
+                console.error('Erreur lors du logout automatique:', error);
+            }
         });
         const currentPath = window.location.pathname;
         let targetSection = "tournament";
@@ -259,7 +271,7 @@ export class GamePage {
             return originalUrl;
         return originalUrl.replace(/seed=([^&]*)/, `seed=${encodeURIComponent(newSeed)}`);
     }
-    static async createMatch(mode, score1, score2, duration) {
+    static async createMatch(mode, score1, score2, duration, player1, player2) {
         console.log("🎯 createMatch called with:", { mode, score1, score2, duration });
         console.log("🏆 Tournament state:", {
             tournamentId: GamePage.currentTournamentId,
@@ -306,6 +318,7 @@ export class GamePage {
             }
             else {
                 console.log("🎮 NORMAL MATCH - Recording without player names...");
+                console.log("Mode:", mode, "Score1:", score1, "Score2:", score2, "Duration:", duration, "Player1:", player1, "Player2:", player2);
                 const response = await fetch("/match", {
                     method: "POST",
                     headers: {
@@ -317,6 +330,8 @@ export class GamePage {
                         score1: score1,
                         score2: score2,
                         duration: duration,
+                        player1: player1,
+                        player2: player2,
                     }),
                 });
                 const data = await response.json();
@@ -1785,11 +1800,6 @@ export class GamePage {
                 }
                 players.push(alias);
             }
-        }
-        const uniqueAliases = new Set(players);
-        if (uniqueAliases.size !== players.length) {
-            GamePage.showProfileAlert("profile-alert", "$ error: all aliases must be unique");
-            return;
         }
         try {
             console.log(` creating tournament: ${tournamentName} with players:`, players);

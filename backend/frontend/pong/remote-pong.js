@@ -21,6 +21,12 @@ class RemotePongGame {
         this.isPlayer1 = false;
         this.isMaster = false;
         this.gameState = null;
+        this.player1Name = null;
+        this.player2Name = null;
+        this.currentUserName = null;
+        // ✅ AJOUTER les logins pour l'enregistrement en BDD
+        this.player1Login = null;
+        this.player2Login = null;
         
         // Variables Babylon.js
         this.canvas = null;
@@ -36,7 +42,7 @@ class RemotePongGame {
             playHeight: 3,
             ballSpeed: 0.15,
             ballInitialSpeed: 0.15,
-            scoreLimit: 3,
+            scoreLimit: 1,
             maxSpeed: 0.6,
             accelerationFactor: 1.01,
             minZ: -4.3,
@@ -99,14 +105,41 @@ class RemotePongGame {
         console.log("📩 Message reçu:", data.type);
         
         switch(data.type) {
-            case 'game_init':
-                // Initialiser le jeu avec les données du serveur
+            case 'waiting_for_opponent':
+                // ✅ PREMIER JOUEUR EN ATTENTE
                 this.playerId = data.playerId;
                 this.isPlayer1 = data.playerSide === 'left';
-                this.isMaster = data.playerIndex === 0; // Premier joueur = master
+                this.isMaster = data.playerIndex === 0;
+                
+                console.log("⏳ En attente du deuxième joueur...", {
+                    playerId: this.playerId,
+                    isPlayer1: this.isPlayer1,
+                    isMaster: this.isMaster
+                });
+                break;
+
+            case 'game_init':
+                // ✅ LES DEUX JOUEURS SONT LÀ - TOUTES LES INFOS SONT COMPLÈTES
+                this.playerId = data.playerId;
+                this.isPlayer1 = data.playerSide === 'left';
+                this.isMaster = data.playerIndex === 0;
                 this.gameState = data.gameState;
                 
-                // MAINTENANT créer la scène !
+                // ✅ RÉCUPÉRER LES LOGINS ET NOMS (MAINTENANT COMPLETS)
+                this.player1Login = data.player1Login;
+                this.player2Login = data.player2Login;
+                this.player1Name = data.player1Name;
+                this.player2Name = data.player2Name;
+                this.currentUserName = data.currentUserName;
+
+                console.log("🎮 Les deux joueurs connectés - Démarrage du jeu:", {
+                    master: this.isMaster,
+                    player1: `${this.player1Name} (${this.player1Login})`,
+                    player2: `${this.player2Name} (${this.player2Login})`,
+                    currentUser: this.currentUserName
+                });
+                
+                // ✅ CRÉER LA SCÈNE IMMÉDIATEMENT
                 this.createGameScene();
                 break;
 
@@ -418,11 +451,14 @@ updatePaddleControls() {
             
             if (goalScored) {
                 this.updateScoreTextMeshes();
+                console.log("But marqué ! Score:", this.scoreLeft, "-", this.scoreRight);
                 this.sendGoalUpdate();
-                
                 // Vérifier la victoire
                 if (this.scoreLeft >= this.GAME_CONFIG.scoreLimit || this.scoreRight >= this.GAME_CONFIG.scoreLimit) {
+                    console.log("player 1 name:", this.player1Name);
+                    console.log("player 2 name:", this.player2Name);
                     this.endGame();
+                    // ✅ SUPPRIMÉ : endGame() s'occupe déjà de l'enregistrement
                     return;
                 }
                 
@@ -556,25 +592,57 @@ handleGameStart(data) {
         this.gameStarted = true;
         this.startGameTimer();
         
-        // Synchroniser la velocité initiale de la balle
-        if (data.ballVelocity) {
+        // ✅ VÉRIFIER que la scène existe avant d'accéder à ballVelocity
+        if (this.scene && this.scene.ballVelocity && data.ballVelocity) {
+            // Synchroniser la velocité initiale de la balle
             this.scene.ballVelocity.x = data.ballVelocity.x;
             this.scene.ballVelocity.y = data.ballVelocity.y;
             this.scene.ballVelocity.z = data.ballVelocity.z;
+        } else {
+            console.log("⚠️ Scene pas encore prête pour handleGameStart, sera synchronisé plus tard");
         }
     }
 }
 
     // Fin de partie
-    endGame() {
+    async endGame() {
         this.isGameOver = true;
         this.scene.ball.isVisible = false;
         const winner = this.scoreLeft >= this.GAME_CONFIG.scoreLimit ? "PLAYER 1" : "PLAYER 2";
-
+        console.log("player 1 name:", this.player1Name);
+        console.log("player 2 name:", this.player2Name);
         this.stopGameTimer();
+        
+        // ✅ SEULEMENT LE MASTER ENREGISTRE LE MATCH
+
+        if (this.isMaster) {
+            console.log("🎯 Master enregistre le match...");
+            await this.saveMatchToDatabase();
+        } else {
+            console.log("👥 Non-master - pas d'enregistrement");
+        }
         
         if (this.fontDataGlobal) {
             this.createVictoryText(winner);
+        }
+    }
+
+    // ✅ FONCTION pour sauvegarder le match (SEULEMENT pour le master)
+    async saveMatchToDatabase() {
+        try {
+            console.log("💾 Enregistrement du match remote...");
+            await GamePage.createMatch("remote", this.scoreLeft, this.scoreRight, this.gameDurationSeconds, this.player1Login, this.player2Login);
+
+        
+        } catch (error) {
+            console.error("❌ Erreur lors de l'enregistrement du match:", error);
+
+            if (GamePage && GamePage.showProfileAlert) {
+                GamePage.showProfileAlert(
+                    "profile-alert",
+                    "❌ Erreur lors de l'enregistrement du match"
+                );
+            }
         }
     }
 

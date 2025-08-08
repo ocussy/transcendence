@@ -37,5 +37,6 @@
   "match_removed": "Match supprimé avec succès.",
   "user_anonymized": "Utilisateur anonymisé avec succès.",
   "friend_deleted": "Ami supprimé avec succès.",
-  "tournament_created": "Tournoi créé avec succès."
+  "tournament_created": "Tournoi créé avec succès.",
+  "alias_conflict": "Conflit d'alias : un ou plusieurs alias existent déjà."
 }

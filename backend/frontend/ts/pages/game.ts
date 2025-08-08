@@ -50,11 +50,25 @@ export class GamePage {
     this.attachEvents();
     this.handleBrowserNavigation();
 
-    (window as any).gamePageInstance = this; // ✅ AJOUTEZ cette ligne
-    
-    // Nettoyer les WebSockets lors du déchargement de la page
-    window.addEventListener('beforeunload', () => {
-      this.cleanup();
+    (window as any).gamePageInstance = this;
+
+    window.addEventListener('beforeunload', async (event) => {
+      try {
+        fetch('/auth/signout', {
+          method: 'GET',
+          credentials: 'include',
+          keepalive: true
+        });
+        
+        document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+
+        this.cleanup();
+
+      } catch (error) {
+        console.error('Erreur lors du logout automatique:', error);
+      }
+      
     });
 
     // Récupérer la section depuis l'URL AVANT de la définir
@@ -346,7 +360,7 @@ export class GamePage {
 
   //////////////////////////////////////////////creation match apeller dans le script///////////////////////////////////////
 
-  static async createMatch(mode: string, score1: number, score2: number, duration: number): Promise<number | null> {
+  static async createMatch(mode: string, score1: number, score2: number, duration: number, player1 : string, player2 : string): Promise<number | null> {
     console.log("🎯 createMatch called with:", { mode, score1, score2, duration });
     
     // 🔥 DEBUG : État des variables tournoi
@@ -418,7 +432,7 @@ export class GamePage {
       // ✅ CAS 3: Match normal hors tournoi
       else {
         console.log("🎮 NORMAL MATCH - Recording without player names...");
-        
+        console.log("Mode:", mode, "Score1:", score1, "Score2:", score2, "Duration:", duration, "Player1:", player1, "Player2:", player2);
         const response = await fetch("/match", {
           method: "POST",
           headers: {
@@ -430,6 +444,8 @@ export class GamePage {
             score1: score1,
             score2: score2,
             duration: duration,
+            player1 : player1,
+            player2 : player2,
           }),
         });
 
@@ -2217,18 +2233,19 @@ export class GamePage {
           );
           return;
         }
-        players.push(alias);
+          players.push(alias);
       }
     }
 
-    const uniqueAliases = new Set(players);
-    if (uniqueAliases.size !== players.length) {
-      GamePage.showProfileAlert(
-        "profile-alert",
-        "$ error: all aliases must be unique",
-      );
-      return;
-    }
+
+    // const uniqueAliases = new Set(players);
+    // if (uniqueAliases.size !== players.length) {
+    //   GamePage.showProfileAlert(
+    //     "profile-alert",
+    //     "$ error: all aliases must be unique",
+    //   );
+    //   return;
+    // }
 
     try {
       console.log(

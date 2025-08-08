@@ -12,6 +12,13 @@ export function createTournament(req, reply) {
     if (uniquePlayers.length !== players.length) {
         return reply.status(400).send({ error: t(req.lang, "unique_players") });
     }
+    //verifier que les alias soient differents des alias des utilisateurs
+    const placeholders = players.map(() => '?').join(',');
+    const existingUsers = db.prepare(`SELECT alias FROM users WHERE alias IN (${placeholders})`).all(...players);
+    console.log("existingUsers : ", existingUsers);
+    if (existingUsers.length > 1) {
+        return reply.status(400).send({ error: t(req.lang, "alias_conflict") });
+    }
 
     const tournament = db.prepare(`
         INSERT INTO tournaments (name, maxPlayers, created_at)
