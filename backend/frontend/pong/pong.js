@@ -74,52 +74,22 @@ let leftPaddle, rightPaddle;
 
 // Gestionnaire d'événements optimisé
 function setupEventListeners() {
-    // ✅ Seulement W, S, I, K et ESC autorisés
-    const gameKeys = ["w", "s", "i", "k","r" , "escape"];
-
     const keydownHandler = (e) => {
         const key = e.key.toLowerCase();
-
-        // Bloquer toutes les touches non autorisées
-        if (!gameKeys.includes(key)) {
-            e.preventDefault();
-            return;
-        }
-
         keys[key] = true;
-
-        // Quitter avec ESC
-        if (key === "escape") {
-            if (typeof window.disposeGame === "function") {
-                window.disposeGame();
-            }
-            console.log("🎮 Jeu quitté par ESC");
+        
+        if (key === "r" && isGameOver) {
+            restartGame();
         }
+        e.preventDefault();
     };
-
     const keyupHandler = (e) => {
-        const key = e.key.toLowerCase();
-
-        if (!gameKeys.includes(key)) {
-            e.preventDefault();
-            return;
-        }
-
-        keys[key] = false;
+        keys[e.key.toLowerCase()] = false;
+        e.preventDefault();
     };
-
-    const resizeHandler = () => engine.resize();
-
     window.addEventListener("keydown", keydownHandler);
     window.addEventListener("keyup", keyupHandler);
-    window.addEventListener("resize", resizeHandler);
-
-    // Stocker les listeners pour pouvoir les retirer proprement
-    window._gameEventListeners = [
-        { type: "keydown", handler: keydownHandler },
-        { type: "keyup", handler: keyupHandler },
-        { type: "resize", handler: resizeHandler }
-    ];
+    window.addEventListener("resize", () => engine.resize());
 }
 
 // Fonction de redémarrage optimisée
@@ -641,7 +611,7 @@ function startRenderLoop() {
                 }
 
                 stopGameTimer();
-                disposeGame();
+                // disposeGame();
                 if (fontDataGlobal) {
                     try {
                         const victoryText = BABYLON.MeshBuilder.CreateText("victoryText", 
