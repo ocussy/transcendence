@@ -273,21 +273,20 @@ export function deleteUser(req, reply) {
     if (!userId) {
       return reply.status(404).send({ error: t(req.lang, "user_not_found") });
     }
+        db.prepare("DELETE FROM friends WHERE user_id = ? OR friend_id = ?").run(userId, userId);
+    reply.send({ message: t(req.lang, "user_deleted") });
 
     db.prepare("UPDATE users SET login = ?, public_login = ?, email = ?, avatarUrl = ?, alias = ?, password = ?, games_played = ?, games_won = ? WHERE id = ?").run(
       `deleted_user`,
       `deleted_user`,
       null,
-      `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=deleted_user`,
+      null,
       `deleted_user`,
       null,
       0,
       0,
       userId
     );
-
-    db.prepare("DELETE FROM friends WHERE user_id = ? OR friend_id = ?").run(userId, userId);
-    reply.send({ message: t(req.lang, "user_deleted") });
   } catch (err) {
     reply.status(500).send({ error: t(req.lang, "server_error") });
   }
