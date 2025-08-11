@@ -1820,38 +1820,38 @@ export class GamePage {
     }
   }
 
-  private async launchGame(mode: "local" | "ai" | "remote"): Promise<void> {
+    private async launchGame(mode: "local" | "ai" | "remote"): Promise<void> {
 
-    if (typeof (window as any).disposeGame === "function") {
-      (window as any).disposeGame();
+      if (typeof (window as any).disposeGame === "function") {
+        (window as any).disposeGame();
+      }
+      
+      const canvasDiv = document.getElementById("game-canvas")!;
+      canvasDiv.innerHTML = `<canvas id="renderCanvas" class="w-full h-full" tabindex="0"></canvas>`;
+
+      const oldScript = document.getElementById("pong-script");
+      if (oldScript) oldScript.remove();
+
+      let scriptSrc = "../../pong/pong.js";
+      if (mode === "ai") scriptSrc = "../../pong/pov.js";
+      if (mode === "remote") scriptSrc = "../../pong/pong.js"; //ou jsp quoi
+
+      const script = document.createElement("script");
+      script.id = "pong-script";
+      script.src = scriptSrc;
+      script.async = true;
+
+      console.log(`Game ${mode} started`);
+      
+      canvasDiv.appendChild(script);
+
+      if (GamePage.currentTournamentId) {
+      console.log("🏆 Tournament game launched:", {
+        tournamentId: GamePage.currentTournamentId,
+        shouldRecord: GamePage.shouldRecordTournamentMatch,
+        matchData: GamePage.tournamentMatchData
+      });
     }
-    
-    const canvasDiv = document.getElementById("game-canvas")!;
-    canvasDiv.innerHTML = `<canvas id="renderCanvas" class="w-full h-full" tabindex="0"></canvas>`;
-
-    const oldScript = document.getElementById("pong-script");
-    if (oldScript) oldScript.remove();
-
-    let scriptSrc = "../../pong/pong.js";
-    if (mode === "ai") scriptSrc = "../../pong/pov.js";
-    if (mode === "remote") scriptSrc = "../../pong/pong.js"; //ou jsp quoi
-
-    const script = document.createElement("script");
-    script.id = "pong-script";
-    script.src = scriptSrc;
-    script.async = true;
-
-    console.log(`Game ${mode} started`);
-    
-    canvasDiv.appendChild(script);
-
-     if (GamePage.currentTournamentId) {
-    console.log("🏆 Tournament game launched:", {
-      tournamentId: GamePage.currentTournamentId,
-      shouldRecord: GamePage.shouldRecordTournamentMatch,
-      matchData: GamePage.tournamentMatchData
-    });
-  }
 }
   
   ///////////////////////////////////////////game//////////////////////////////////////

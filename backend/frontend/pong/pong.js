@@ -8,7 +8,9 @@
     let advancedTexture = null;
     let renderLoop = null;
     let observers = [];
-
+    let gameInterrupted = false;
+    let gameActuallyStarted = false; // ✅ Ajouter cette ligne
+    
     // Start timer when game starts
     function startGameTimer() {
         gameStartTime = Date.now();
@@ -29,6 +31,8 @@
     countdown = async function(...args) {
         if (!gameStarted && !isGameOver && !gameStartTime) {
             startGameTimer();
+            gameActuallyStarted = true; // ✅ Ajouter cette ligne
+            console.log("🎮 Game actually started - timer running");
         }
         return originalCountdown.apply(this, args);
     };
@@ -70,23 +74,54 @@ let leftPaddle, rightPaddle;
 
 // Gestionnaire d'événements optimisé
 function setupEventListeners() {
+    // ✅ Seulement W, S, I, K et ESC autorisés
+    const gameKeys = ["w", "s", "i", "k","r" , "escape"];
+
     const keydownHandler = (e) => {
         const key = e.key.toLowerCase();
-        keys[key] = true;
-        
-        if (key === "r" && isGameOver) {
-            restartGame();
+
+        // Bloquer toutes les touches non autorisées
+        if (!gameKeys.includes(key)) {
+            e.preventDefault();
+            return;
         }
-        e.preventDefault();
+
+        keys[key] = true;
+
+        // Quitter avec ESC
+        if (key === "escape") {
+            if (typeof window.disposeGame === "function") {
+                window.disposeGame();
+            }
+            console.log("🎮 Jeu quitté par ESC");
+        }
     };
+
     const keyupHandler = (e) => {
-        keys[e.key.toLowerCase()] = false;
-        e.preventDefault();
+        const key = e.key.toLowerCase();
+
+        if (!gameKeys.includes(key)) {
+            e.preventDefault();
+            return;
+        }
+
+        keys[key] = false;
     };
+
+    const resizeHandler = () => engine.resize();
+
     window.addEventListener("keydown", keydownHandler);
     window.addEventListener("keyup", keyupHandler);
-    window.addEventListener("resize", () => engine.resize());
+    window.addEventListener("resize", resizeHandler);
+
+    // Stocker les listeners pour pouvoir les retirer proprement
+    window._gameEventListeners = [
+        { type: "keydown", handler: keydownHandler },
+        { type: "keyup", handler: keyupHandler },
+        { type: "resize", handler: resizeHandler }
+    ];
 }
+
 // Fonction de redémarrage optimisée
 function restartGame() {
     // Réinitialiser les variables
@@ -97,6 +132,8 @@ function restartGame() {
     isWaitingAfterGoal = false;
     hasCollidedLeft = false;
     hasCollidedRight = false;
+    gameActuallyStarted = false;
+    gameInterrupted = false; 
     
     // Nettoyer les textes de fin
     if (scene.victoryText) {
@@ -360,41 +397,10 @@ async function countdown() {
     }
 }
 
-// Version alternative plus simple si vous préférez
-async function countdownSimple() {
-    if (boxes.length === 0) return;
-    
-    const delay = 200;
-    const green = new BABYLON.Color3(0.2, 1.0, 0.2);
-    const pink = new BABYLON.Color3(1.0, 0.1, 0.5);
-
-    // Séquence 1-2-3-GO
-    const sequence = [
-        { color: green, intensity: 3, scale: 1.1 },
-        { color: pink, intensity: 2, scale: 1.0 },
-        { color: green, intensity: 3, scale: 1.1 },
-        { color: pink, intensity: 2, scale: 1.0 },
-        { color: green, intensity: 4, scale: 1.2 }, // GO!
-        { color: pink, intensity: 2, scale: 1.0 }
-    ];
-
-    for (const step of sequence) {
-        for (let i = 0; i < boxes.length; i++) {
-            const { box, light, material } = boxes[i];
-            if (box && light && material) {
-                box.scaling.setAll(step.scale);
-                material.emissiveColor = step.color;
-                light.diffuse = step.color;
-                light.intensity = step.intensity;
-            }
-        }
-        await sleep(delay);
-    }
-}
 
 // Fonction resetBallWithDelay corrigée
 async function resetBallWithDelay() {
-    if (!scene || !scene.ball || !scene.ballVelocity) return;
+    if (!window.gameActive || !scene || !scene.ball || !scene.ballVelocity) return;
     
     scene.ball.position.set(0, 0.5, 0);
     scene.ballVelocity.set(0, 0, 0);
@@ -427,7 +433,8 @@ function createScene() {
     // scene.environmentIntensity = 0; // Supprime l'éclairage global de l'environnement
 
     scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
-    
+    window.gameActive = true;
+
     // Caméra
     const camera2 = new BABYLON.ArcRotateCamera(
         "cam2",
@@ -543,7 +550,7 @@ function createScene() {
 
 function startRenderLoop() {
     engine.runRenderLoop(() => {
-        if (!scene || !scene.ball) return;
+        if (!window.gameActive || !scene || !scene.ball) return;
         const ball = scene.ball;
         const velocity = scene.ballVelocity;
         // Fonction pour limiter la vitesse
@@ -574,7 +581,7 @@ function startRenderLoop() {
             scene.render();
             return;
         }
-        // Collisions avec les murs
+        // Collisions avec les murs 
         if (ball.position.z <= GAME_CONFIG.minZ || ball.position.z >= GAME_CONFIG.maxZ) {
             velocity.z *= -1;
         }
@@ -626,9 +633,15 @@ function startRenderLoop() {
                 ball.isVisible = false;
                 const winner = scoreLeft >= GAME_CONFIG.scoreLimit ? "PLAYER 1" : "PLAYER 2";
 
+                if (window.gameActive && gameActuallyStarted && !gameInterrupted) {
+                    GamePage.createMatch("local", scoreLeft, scoreRight, gameDurationSeconds);
+                    console.log("✅ Match recorded:", { scoreLeft, scoreRight, duration: gameDurationSeconds });
+                } else if (gameInterrupted) {
+                    console.log("🚫 Match NOT recorded - game was interrupted");
+                }
+
                 stopGameTimer();
-                GamePage.createMatch("local", scoreLeft, scoreRight, gameDurationSeconds);
-                // GamePage.sendEndMatch(id, scoreLeft, scoreRight);
+                disposeGame();
                 if (fontDataGlobal) {
                     try {
                         const victoryText = BABYLON.MeshBuilder.CreateText("victoryText", 
@@ -706,52 +719,101 @@ async function init() {
 }
 
 init();     
- window.disposeGame = function () {
+window.disposeGame = function () {
     console.log("🧹 disposeGame() called — on arrête et on clean");
+    if (window.gameActive && gameActuallyStarted && !isGameOver) {
+        gameInterrupted = true;
+        console.log("🚫 Game interrupted - will not be recorded");
+    }
+    window.gameActive = false;
 
     try {
-      // stoppe la boucle de rendu
-      if (engine && renderLoop) {
-        engine.stopRenderLoop(renderLoop);
-      }
-
-      // supprime la scène Babylon
-      if (scene) {
-        scene.dispose(true, true);
-        console.log("✅ scene disposed");
-      }
-
-      // supprime l'engine
-      if (engine) {
-        engine.dispose();
-        console.log("✅ engine disposed");
-      }
-
-      // Si tu as des GUI (AdvancedDynamicTexture), par exemple  
-      if (advancedTexture) {
-        advancedTexture.dispose();
-        console.log("✅ GUI disposed");
-      }
-
-      // Si tu as des observers, détache-les
-      observers.forEach(obs => {
-        try { engine.onResizeObservable.remove(obs); }
-        catch(_) {}
-      });
-      observers = [];
-
-      // Optionnel : enlève les écouteurs window.resize ou keydown en stockant des handlers
-      // window.removeEventListener("resize", tonHandlerResize);
-
-    } catch (err) {
-      console.warn("⚠️ Erreur dans disposeGame:", err);
+    // 1. Stoppe la boucle de rendu Babylon
+    if (engine && renderLoop) {
+      engine.stopRenderLoop(renderLoop);
+      console.log("🛑 render loop stopped");
     }
 
-    // libère les références
-    engine = null;
-    scene = null;
-    renderLoop = null;
-    advancedTexture = null;
-  };
+    // 2. Dispose la scène Babylon.js
+    if (scene) {
+      scene.dispose(true, true);
+      console.log("✅ scene disposed");
+    }
+
+    // 3. Dispose l'engine Babylon
+    if (engine) {
+      engine.dispose();
+      console.log("✅ engine disposed");
+    }
+
+    // 4. Dispose les GUI s'ils existent
+    if (advancedTexture) {
+      advancedTexture.dispose();
+      console.log("✅ GUI disposed");
+    }
+
+    // 5. Supprime tous les observers Babylon (resize, beforeRender, etc.)
+    if (engine && engine.onResizeObservable) {
+      observers.forEach(obs => {
+        try {
+          engine.onResizeObservable.remove(obs);
+        } catch (e) {
+          console.warn("⚠️ erreur suppression observer:", e);
+        }
+      });
+      observers = [];
+      console.log("✅ observers cleared");
+    }
+
+    // 6. Supprime les event listeners (keydown, resize, etc.)
+    if (window._gameEventListeners) {
+      window._gameEventListeners.forEach(({ type, handler }) => {
+        window.removeEventListener(type, handler);
+      });
+      window._gameEventListeners = [];
+      console.log("✅ event listeners removed");
+    }
+
+    // 7. Supprime les timers
+    if (window._gameTimeouts) {
+      window._gameTimeouts.forEach(id => clearTimeout(id));
+      window._gameTimeouts = [];
+      console.log("✅ timeouts cleared");
+    }
+    if (window._gameIntervals) {
+      window._gameIntervals.forEach(id => clearInterval(id));
+      window._gameIntervals = [];
+      console.log("✅ intervals cleared");
+    }
+
+    // 8. Réinitialise les variables globales du jeu
+    window.currentGameState = null;
+    window.gameStarted = false;
+    window.gamePaused = false;
+    window.matchId = null;
+    window.players = null;
+    window.ball = null;
+    window.score = { left: 0, right: 0 };
+
+    // 9. Annule les appels en attente à GamePage.createMatch()
+    if (window._createMatchTimeout) {
+      clearTimeout(window._createMatchTimeout);
+      window._createMatchTimeout = null;
+      console.log("✅ pending createMatch() cancelled");
+    }
+
+  } catch (err) {
+    console.warn("⚠️ Erreur dans disposeGame:", err);
+  }
+
+  // 10. Libère les références Babylon
+  engine = null;
+  scene = null;
+  renderLoop = null;
+  advancedTexture = null;
+
+  console.log("🧼 Game fully cleaned up");
+};
+
 window.addEventListener("resize", () => engine.resize());
 }) ();
