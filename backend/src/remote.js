@@ -125,6 +125,7 @@ export async function setupRemoteGame(app) {
 
             // Récupérer ou créer la room
             if (!gameRooms.has(roomId)) {
+                console.log(`Création de la room ${roomId} pour l'utilisateur ${userId}`);
                 gameRooms.set(roomId, {
                     players: new Map(),
                     playerInfo: new Map(),
@@ -162,7 +163,7 @@ export async function setupRemoteGame(app) {
             }
 
             const room = gameRooms.get(roomId);
-
+            console.log(`Connexion de l'utilisateur ${userId} à la room ${roomId}`);
             const currentUser = db.prepare('SELECT id, public_login, alias FROM users WHERE id = ?').get(userId);
             if (!currentUser) {
                 connection.socket.send(JSON.stringify({ type: "error", message: "Utilisateur non trouvé" }));
@@ -184,7 +185,7 @@ export async function setupRemoteGame(app) {
             } else if (!room.rightPlayerId && userId !== room.leftPlayerId) {
                 room.rightPlayerId = userId;
             }
-
+            console.log("Joueur de gauche:", room.leftPlayerId, "Joueur de droite:", room.rightPlayerId);
             const isLeftPlayer = room.leftPlayerId === userId;
             const playerSide = isLeftPlayer ? 'left' : 'right';
             const playerIndex = isLeftPlayer ? 0 : 1;

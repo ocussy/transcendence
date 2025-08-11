@@ -1,3 +1,10 @@
+
+(() => {
+    // Protection : si déjà défini, on sort
+    if (window.RemotePongGame) {
+        console.warn("RemotePongGame déjà défini — réutilisation.");
+        return;
+    }
 class RemotePongGame {
     constructor() {
         // Déplacer toutes les variables globales ici
@@ -648,8 +655,27 @@ handleGameStart(data) {
 
     // Gestion déconnexion
     handlePlayerDisconnected(data) {
-        alert("L'autre joueur s'est déconnecté !");
-        // Optionnel : retourner au menu
+        console.log("👋 Gestion de déconnexion côté RemotePong");
+
+        // Nettoyer proprement les ressources du jeu
+        if (this.engine) {
+            this.engine.stopRenderLoop();
+        }
+
+        if (this.scene) {
+            this.scene.dispose();
+        }
+
+        if (this.engine) {
+            this.engine.dispose();
+        }
+
+        // Transférer le message à game.ts pour qu'il gère l'affichage
+        if (window.handleRemoteGameMessage) {
+            window.handleRemoteGameMessage({
+                type: 'player_disconnected',
+            });
+        }
     }
 
     // Toutes les autres fonctions (identiques à pong.js)
@@ -1030,9 +1056,8 @@ handleGameStart(data) {
         // Le reste se fait après réception du message game_init
     }
 }
+    window.RemotePongGame = RemotePongGame;
+})();
 
-// Démarrer le jeu remote
-const remotePongGame = new RemotePongGame();
-remotePongGame.init();
-
-
+window.remotePongGameInstance = new window.RemotePongGame();
+window.remotePongGameInstance.init();

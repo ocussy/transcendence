@@ -70,20 +70,65 @@ let leftPaddle, rightPaddle;
 
 // Gestionnaire d'événements optimisé
 function setupEventListeners() {
-    keydownHandler = (e) => {
+    const keydownHandler = (e) => {
         const key = e.key.toLowerCase();
         keys[key] = true;
+        
+        if (key === "r" && isGameOver) {
+            restartGame();
+        }
         e.preventDefault();
     };
-    keyupHandler = (e) => {
+    const keyupHandler = (e) => {
         keys[e.key.toLowerCase()] = false;
         e.preventDefault();
     };
-    resizeHandler = () => engine.resize();
-    
     window.addEventListener("keydown", keydownHandler);
     window.addEventListener("keyup", keyupHandler);
-    window.addEventListener("resize", resizeHandler);
+    window.addEventListener("resize", () => engine.resize());
+}
+// Fonction de redémarrage optimisée
+function restartGame() {
+    // Réinitialiser les variables
+    scoreLeft = 0;
+    scoreRight = 0;
+    isGameOver = false;
+    gameStarted = false;
+    isWaitingAfterGoal = false;
+    hasCollidedLeft = false;
+    hasCollidedRight = false;
+    
+    // Nettoyer les textes de fin
+    if (scene.victoryText) {
+        scene.victoryText.dispose();
+        scene.victoryText = null;
+    }
+    if (scene.restartText) {
+        scene.restartText.dispose();
+        scene.restartText = null;
+    }
+    
+    // Repositionner les éléments
+    scene.ball.isVisible = true;
+    scene.ball.position.set(0, 0.5, 0);
+    scene.ballVelocity.set(0, 0, 0);
+    
+    leftPaddle.position.set(GAME_CONFIG.playWidth / 2 - 0.2, 0.5, 0);
+    rightPaddle.position.set(-GAME_CONFIG.playWidth / 2 + 0.2, 0.5, 0);
+    
+    updateScoreTextMeshes();
+    
+    // Démarrer après un délai
+    setTimeout(async() => {
+        await countdown();
+        const direction = Math.random() < 0.5 ? -1 : 1;
+        scene.ballVelocity.set(
+            GAME_CONFIG.ballInitialSpeed * direction,
+            0,
+            (Math.random() - 0.5) * 0.02
+        );
+        gameStarted = true;
+    }, 1000);
 }
 // Chargement des polices optimisé
 async function loadFont() {
@@ -601,32 +646,22 @@ function startRenderLoop() {
                         textMaterial.specularPower = 64;
                         textMaterial.emissiveColor = new BABYLON.Color3(0.1, 0.1, 0.1);
                         victoryText.material = textMaterial;
+                        const restartText = BABYLON.MeshBuilder.CreateText("restartText", 
+                            "PRESS R TO RESTART", fontDataGlobal, {
+                            size: 0.5,
+                            resolution: 32,
+                            depth: 0.2
+                        });
+                        
+                        restartText.position.set(0, 3, 0);
+                        restartText.material = textMaterial;
                         scene.victoryText = victoryText;
+                        scene.restartText = restartText;
                     } catch (error) {
                         console.warn("Erreur création texte victoire:", error);
                     }
                 }
                 scene.render();
-                
-                // Arrêter complètement le script et tout nettoyer
-                setTimeout(() => {
-                    engine.stopRenderLoop();
-                    
-                    // Masquer le canvas
-                    canvas.style.display = 'none';
-                    
-                    // Supprimer tous les event listeners
-                    if (keydownHandler) window.removeEventListener("keydown", keydownHandler);
-                    if (keyupHandler) window.removeEventListener("keyup", keyupHandler);
-                    if (resizeHandler) window.removeEventListener("resize", resizeHandler);
-                    
-                    // Nettoyage complet des ressources
-                    scene.dispose();
-                    engine.dispose();
-                    
-                    console.log("Jeu terminé - Script complètement arrêté");
-                }, 2000);
-                
                 return;
             }
             // Animation d'explosion simplifiée
@@ -670,7 +705,8 @@ async function init() {
     startRenderLoop();
 }
 
-init();     
+init(); 
+    
  window.disposeGame = function () {
     console.log("🧹 disposeGame() called — on arrête et on clean");
 

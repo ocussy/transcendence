@@ -52,6 +52,11 @@ export class GamePage {
 
     (window as any).gamePageInstance = this;
 
+    // Exposer handleGameMessage globalement pour remote-pong.js
+    (window as any).handleRemoteGameMessage = (data: any) => {
+      this.handleGameMessage(data);
+    }
+
         // Nettoyer les WebSockets et déconnecter lors du déchargement de la page
     window.addEventListener('beforeunload', async (event) => {
       // ✅ DÉCONNEXION AUTOMATIQUE lors de la fermeture
@@ -821,41 +826,47 @@ private showNoData(): void {
     }
 
     container.innerHTML = this.friendsList
-      .map(
-        (friend) => `
-      <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-3">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="relative">
-              <img
-                src="${friend.avatarUrl}"
-                alt="${friend.login}"
-                class="w-12 h-12 rounded-full border-2 border-gray-600"
-                onerror="this.src='https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${friend.login}'"
+      .map((friend) => {
+        const winRate =
+          friend.games_played > 0
+            ? Math.round((friend.games_won / friend.games_played) * 100)
+            : 0;
+        return `
+          <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="relative">
+                  <img
+                    src="${friend.avatarUrl}"
+                    alt="${friend.public_login}"
+                    class="w-12 h-12 rounded-full border-2 border-gray-600"
+                    onerror="this.src='https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${friend.public_login}'"
+                  >
+                  <!-- Indicateur de statut en ligne -->
+                  <div class="absolute -bottom-1 -right-1 w-4 h-4 ${friend.online ? "bg-green-500" : "bg-gray-500"} rounded-full border-2 border-gray-800"></div>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <div class="font-mono font-bold text-white text-sm">${friend.public_login}</div>
+                  </div>
+                  <div class="font-mono text-xs text-gray-400">
+                    ${friend.games_played === 0
+                      ? "No matches"
+                      : `${winRate}% win rate • ${friend.games_played} games`}
+                  </div>
+                </div>
+              </div>
+              <button
+                class="text-red-400 hover:text-red-300 p-2 hover:bg-gray-700 rounded text-sm transition-colors"
+                onclick="if(window.gamePageInstance) window.gamePageInstance.removeFriend('${friend.public_login}')"
+                title="Remove friend"
               >
-              <!-- Indicateur de statut en ligne -->
-              <div class="absolute -bottom-1 -right-1 w-4 h-4 ${friend.online ? "bg-green-500" : "bg-gray-500"} rounded-full border-2 border-gray-800"></div>
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <div class="font-mono font-bold text-white text-sm">${friend.login}</div>
-              </div>
-              <div class="font-mono text-xs text-gray-400">
-                ${friend.games_played === 0 ? "No matches" : `${friend.games_won}% win rate • ${friend.games_played} games`}
-              </div>
+                ×
+              </button>
             </div>
           </div>
-          <button
-            class="text-red-400 hover:text-red-300 p-2 hover:bg-gray-700 rounded text-sm transition-colors"
-            onclick="if(window.gamePageInstance) window.gamePageInstance.removeFriend('${friend.login}')"
-            title="Remove friend"
-          >
-            ×
-          </button>
-        </div>
-      </div>
-    `,
-      )
+        `;
+      })
       .join("");
   }
 
@@ -2040,6 +2051,8 @@ private showNoData(): void {
         );
         break;
 
+        
+
       default:
         console.log('Message non géré:', data);
     }
@@ -2101,6 +2114,10 @@ private showNoData(): void {
           "profile-alert",
           "$ game connection lost"
         );
+        if ((window as any).currentGame) {
+          (window as any).currentGame.destroy();
+          (window as any).currentGame = null;
+        }
       };
 
       gameSocket.onerror = (error) => {
@@ -2136,16 +2153,90 @@ private showNoData(): void {
         console.log('❌ Joueur déconnecté:', data.playerId);
         GamePage.showProfileAlert(
           "profile-alert",
-          "$ opponent disconnected"
+          "$ opponent disconnected !!!!!"
         );
+        
+        // Afficher l'interface de déconnexion
+        const canvasDiv = document.getElementById("game-canvas")!;
+        canvasDiv.innerHTML = `
+          <div class="w-full h-full flex items-center justify-center bg-black border border-gray-700 rounded-lg">
+            <div class="text-center text-white p-8">
+              <div class="text-6xl mb-6 text-red-400">⚠️</div>
+              <h2 class="font-mono text-2xl font-bold text-red-400 mb-4">CONNECTION LOST</h2>
+              <p class="font-mono text-gray-400 mb-8">Your opponent has disconnected</p>
+              
+              <div class="space-y-4">
+                <button id="back-to-menu" class="w-full px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-mono font-bold rounded-lg transition-colors">
+                  $ back to menu
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+
+         
+        document.getElementById('back-to-menu')?.addEventListener('click', () => {
+          this.showRemoteMenu();
+        });
+        
+        // Nettoyer les ressources du jeu
+        if (typeof (window as any).disposeGame === "function") {
+          (window as any).disposeGame();
+        }
+        
+        // Fermer la WebSocket du jeu
+        if ((window as any).gameSocket) {
+          (window as any).gameSocket.close();
+          (window as any).gameSocket = null;
+        }
+        
         break;
         
       default:
         console.log('Message jeu non géré:', data);
         // Transférer le message au script de jeu si nécessaire
         if ((window as any).handleRemoteGameMessage) {
-          (window as any).handleRemoteGameMessage(data);
+            (window as any).handleRemoteGameMessage(data);
         }
+    }
+  }
+
+  // Méthode pour afficher le menu remote
+  private showRemoteMenu(): void {
+    const canvasDiv = document.getElementById("game-canvas")!;
+    canvasDiv.innerHTML = `
+      <div class="text-center text-gray-500">
+        <div class="text-6xl mb-4 font-mono">[PONG]</div>
+        <p class="font-mono mb-6">pong.exe ready</p>
+        <p class="font-mono text-green-400 mb-8">remote mode selected ᯤ</p>
+
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-md mx-auto mb-6">
+          <div class="space-y-4">
+            <button id="create-room" class="w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white font-mono font-bold rounded-lg transition-colors">
+              $--create room
+            </button>
+            <button id="join-room" class="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white font-mono font-bold rounded-lg transition-colors">
+              $--join room
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Réattacher les event listeners
+    const createRoomBtn = document.getElementById("create-room");
+    const joinRoomBtn = document.getElementById("join-room");
+
+    if (createRoomBtn) {
+      createRoomBtn.addEventListener("click", () => {
+        this.connectToRemoteMatchmaking();
+      });
+    }
+
+    if (joinRoomBtn) {
+      joinRoomBtn.addEventListener("click", () => {
+        this.connectToRemoteMatchmaking();
+      });
     }
   }
 
