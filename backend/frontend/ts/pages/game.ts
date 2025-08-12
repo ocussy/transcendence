@@ -30,6 +30,8 @@ export class GamePage {
   private remoteSocket: WebSocket | null = null; // Ajout pour la WebSocket remote
   static currentMatchId: number | null = null;
   private isGameActive: boolean = false;
+  private hasGameEnded: boolean = false;
+  private pendingGameInit: any = null; // Stockage temporaire pour game_init
 
   static currentTournamentId: number | null = null;
   static shouldRecordTournamentMatch: boolean = false;
@@ -48,10 +50,21 @@ export class GamePage {
 
     (window as any).gamePageInstance = this;
 
-    // Exposer handleGameMessage globalement pour remote-pong.js
+    // Exposer handleRemoteGameMessage globalement pour remote-pong.js
     (window as any).handleRemoteGameMessage = (data: any) => {
       if (data && data.isRemote) {
-        this.handleGameMessage(data);
+        // Traiter directement les messages de remote-pong.js
+        this.handleRemoteGameMessage(data);
+        
+        // Si on a un pendingGameInit, l'envoyer maintenant
+        // if (this.pendingGameInit) {
+        //   console.log("✅ Envoi du pendingGameInit maintenant que remote-pong.js est prêt");
+        //   (window as any).handleRemoteGameMessage({
+        //     ...this.pendingGameInit,
+        //     isRemote: true,
+        //   });
+        //   this.pendingGameInit = null; // Nettoyer
+        // }
       }
     }
 
@@ -2037,7 +2050,7 @@ private showNoData(): void {
         
         // Démarrer le jeu remote avec roomId
         setTimeout(() => {
-          this.startRemoteGame(data.roomId, data.opponentId);
+          this.connectToRemoteGame(data.roomId, data.opponentId);
         }, 1500);
         break;
 
@@ -2057,28 +2070,33 @@ private showNoData(): void {
   }
 
   // Fonction pour démarrer le jeu remote avec roomId
-  private startRemoteGame(roomId: string, opponentId: number): void {
-    console.log(`🎮 Démarrage jeu remote - Room: ${roomId}, Opponent: ${opponentId}`);
+  // private startRemoteGame(roomId: string, opponentId: number): void {
+  //   console.log(`🎮 Démarrage jeu remote - Room: ${roomId}, Opponent: ${opponentId}`);
     
-    // Fermer la connexion matchmaking
+  //   // Fermer la connexion matchmaking
+  //   if (this.remoteSocket) {
+  //     this.remoteSocket.close();
+  //     this.remoteSocket = null;
+  //   }
+
+  //   // Stocker les informations du jeu
+  //   localStorage.setItem('currentRoomId', roomId);
+  //   localStorage.setItem('opponentId', opponentId.toString());
+
+  //   // Créer une nouvelle WebSocket pour le jeu remote
+  //   this.connectToRemoteGame(roomId);
+    
+  //   // Lancer le jeu remote
+  //   this.launchGame("remote");
+  // }
+
+  // Fonction pour se connecter au jeu remote via WebSocket
+  private async connectToRemoteGame(roomId: string, opponentId : number): Promise<void> {
     if (this.remoteSocket) {
       this.remoteSocket.close();
       this.remoteSocket = null;
     }
 
-    // Stocker les informations du jeu
-    localStorage.setItem('currentRoomId', roomId);
-    localStorage.setItem('opponentId', opponentId.toString());
-
-    // Créer une nouvelle WebSocket pour le jeu remote
-    this.connectToRemoteGame(roomId);
-    
-    // Lancer le jeu remote
-    this.launchGame("remote");
-  }
-
-  // Fonction pour se connecter au jeu remote via WebSocket
-  private connectToRemoteGame(roomId: string): void {
     console.log(`🔗 Connexion au jeu remote - Room: ${roomId}`);
     
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -2097,37 +2115,10 @@ private showNoData(): void {
         );
       };
 
-      gameSocket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          this.handleGameMessage(data);
-        } catch (error) {
-          console.error('❌ Erreur parsing message jeu:', error);
-        }
-      };
-
-      gameSocket.onclose = () => {
-        console.log('❌ Connexion jeu fermée');
-        GamePage.showProfileAlert(
-          "profile-alert",
-          "$ game connection lost"
-        );
-        if ((window as any).currentGame) {
-          (window as any).currentGame.destroy();
-          (window as any).currentGame = null;
-        }
-      };
-
-      gameSocket.onerror = (error) => {
-        console.error('❌ Erreur WebSocket jeu:', error);
-        GamePage.showProfileAlert(
-          "profile-alert",
-          "$ game connection failed"
-        );
-      };
-
+      await this.launchGame("remote");
       // Stocker la socket pour pouvoir l'utiliser dans le jeu
       (window as any).gameSocket = gameSocket;
+    
 
     } catch (error) {
       console.error('❌ Erreur création WebSocket jeu:', error);
@@ -2138,16 +2129,92 @@ private showNoData(): void {
     }
   }
 
-  // Fonction pour gérer les messages du jeu
-  private handleGameMessage(data: any): void {
-    console.log('🎮 Message jeu reçu:', data.type);
+  // Méthode pour traiter les messages de remote-pong.js (évite la récursion)
+  private handleRemoteGameMessage(data: any): void {
+    console.log('🎮 Message remote reçu:', data.type);
     
     switch (data.type) {
-      case 'game_init':
-        console.log('🎮 Initialisation du jeu:', data);
-        break;
+      // case 'game_init':
+      //   console.log('🎮 game_init reçu de remote-pong.js - traitement direct');
+      //   // game_init est maintenant traité directement ici
+      //   break;
+        
+        case 'game_ended':
+          this.hasGameEnded = true;
+          if ((window as any).gameSocket) {
+            (window as any).gameSocket.close();
+            (window as any).gameSocket = null;
+          }
+          GamePage.showProfileAlert(
+            "profile-success",
+            "$ game ended",
+            "success"
+          );
+          
+          // Afficher l'interface de fin de partie
+          const gameCanvasDiv = document.getElementById("game-canvas")!;
+          
+          // Récupérer les données du jeu depuis remote-pong.js ou les variables globales
+          const currentGame = (window as any).remotePongGameInstance;
+          console.log("currentGame", currentGame);
+          const player1Name = currentGame?.player1Name || 'Player 1';
+          const player2Name = currentGame?.player2Name || 'Player 2';
+          const scoreLeft = currentGame?.scoreLeft || 0;
+          const scoreRight = currentGame?.scoreRight || 0;
+          
+          gameCanvasDiv.innerHTML = `
+            <div class="w-full h-full flex items-center justify-center bg-black border border-gray-700 rounded-lg">
+              <div class="text-center text-white p-8">
+                <div class="text-6xl mb-6 text-green-400">🏆</div>
+                <h2 class="font-mono text-3xl font-bold text-green-400 mb-6">GAME OVER</h2>
+                
+                <div class="mb-8 space-y-4">
+                  <div class="flex justify-between items-center bg-gray-800 p-4 rounded-lg">
+                    <div class="text-left">
+                      <div class="text-lg font-bold text-blue-400">${player1Name}</div>
+                      <div class="text-sm text-gray-400">Left Side</div>
+                    </div>
+                    <div class="text-4xl font-bold text-blue-400">${scoreLeft}</div>
+                  </div>
+                  
+                  <div class="flex justify-between items-center bg-gray-800 p-4 rounded-lg">
+                    <div class="text-left">
+                      <div class="text-lg font-bold text-red-400">${player2Name}</div>
+                      <div class="text-sm text-gray-400">Right Side</div>
+                    </div>
+                    <div class="text-4xl font-bold text-red-400">${scoreRight}</div>
+                  </div>
+                </div>
+                
+                <div class="mb-6">
+                  <div class="text-xl font-bold text-yellow-400">
+                    ${scoreLeft > scoreRight ? 
+                      `🏆 ${player1Name} Wins!` : 
+                      scoreRight > scoreLeft ? 
+                      `🏆 ${player2Name} Wins!` : 
+                      '🤝 It\'s a Tie!'}
+                  </div>
+                </div>
+                
+                <div class="space-y-4">
+                  <button id="back-to-menu-game-ended" class="w-full px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-mono font-bold rounded-lg transition-colors">
+                    $ back to menu
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+  
+          document.getElementById('back-to-menu-game-ended')?.addEventListener('click', () => {
+            this.showRemoteMenu();
+          });
+          break;
         
       case 'player_disconnected':
+        if (this.hasGameEnded) {
+          // Si la partie s'est terminée proprement, ignorer les déconnexions tardives
+          break;
+        }
         console.log('❌ Joueur déconnecté:', data.playerId);
         GamePage.showProfileAlert(
           "profile-alert",
@@ -2164,7 +2231,7 @@ private showNoData(): void {
               <p class="font-mono text-gray-400 mb-8">Your opponent has disconnected</p>
               
               <div class="space-y-4">
-                <button id="back-to-menu" class="w-full px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-mono font-bold rounded-lg transition-colors">
+                <button id="back-to-menu" class="w-full px-6 py-3 bg-green-500 hover:bg-600 text-white font-mono font-bold rounded-lg transition-colors">
                   $ back to menu
                 </button>
               </div>
@@ -2172,7 +2239,6 @@ private showNoData(): void {
           </div>
         `;
 
-         
         document.getElementById('back-to-menu')?.addEventListener('click', () => {
           this.showRemoteMenu();
         });
@@ -2187,15 +2253,10 @@ private showNoData(): void {
           (window as any).gameSocket.close();
           (window as any).gameSocket = null;
         }
-        
         break;
         
       default:
-        console.log('Message jeu non géré:', data);
-        // Transférer le message au script de jeu si nécessaire
-        if ((window as any).handleRemoteGameMessage) {
-            (window as any).handleRemoteGameMessage(data);
-        }
+        console.log('Message remote non géré:', data);
     }
   }
 
@@ -2240,7 +2301,7 @@ private showNoData(): void {
 
   private async launchGame(mode: "local" | "ai" | "remote"): Promise<void> {
 
-    // this.enableGameMode();
+    this.hasGameEnded = false;
     if (typeof (window as any).disposeGame === "function") {
       (window as any).disposeGame();
     }
@@ -2258,9 +2319,16 @@ private showNoData(): void {
     const script = document.createElement("script");
     script.id = "pong-script";
     script.src = scriptSrc;
-    script.async = true;
+    script.async = false; // Important : pas async pour remote-pong.js
 
     console.log(`Game ${mode} started`);
+    
+    // Pour remote-pong.js, attendre que le script soit chargé
+    if (mode === "remote") {
+      script.onload = () => {
+        console.log("✅ remote-pong.js chargé, prêt à recevoir game_init");
+      };
+    }
     
     canvasDiv.appendChild(script);
 

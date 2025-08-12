@@ -64,13 +64,13 @@ class RemotePongGame {
        async connectToServer() {
         try {
             // Récupérer les informations du localStorage (définies par game.ts)
-            const roomId = localStorage.getItem('currentRoomId');
-            const opponentId = localStorage.getItem('opponentId');
+            // const roomId = localStorage.getItem('currentRoomId');
+            // const opponentId = localStorage.getItem('opponentId');
             
-            if (!roomId) {
-                console.error("Pas de roomId trouvé dans localStorage");
-                return;
-            }
+            // if (!roomId) {
+            //     console.error("Pas de roomId trouvé dans localStorage");
+            //     return;
+            // }
 
             // Utiliser la socket globale créée par game.ts
             this.socket = window.gameSocket;
@@ -81,19 +81,20 @@ class RemotePongGame {
             }
 
             // Gérer les messages WebSocket
+            // Dans connectToServer()
             this.socket.onmessage = (event) => {
+                
                 try {
                     const data = JSON.parse(event.data);
                     data.isRemote = true; // Indiquer que c'est un message du remote
                     this.handleServerMessage(data);
                 } catch (error) {
-                    console.error("Erreur parsing message:", error);
+                    console.error("❌ Erreur parsing message:", error);
                 }
             };
 
             this.socket.onclose = () => {
                 console.log("Connexion fermée");
-                alert("Connexion perdue avec le serveur");
             };
 
             this.socket.onerror = (error) => {
@@ -110,14 +111,14 @@ class RemotePongGame {
 
         // NOUVELLE fonction pour gérer les messages du serveur
     handleServerMessage(data) {
-        console.log("📩 Message reçu:", data.type);
-        
+        console.log("📩 Message jeu remote pong reçu:", data.type);
         switch(data.type) {
             case 'waiting_for_opponent':
                 // ✅ PREMIER JOUEUR EN ATTENTE
                 this.playerId = data.playerId;
                 this.isPlayer1 = data.playerSide === 'left';
                 this.isMaster = data.playerIndex === 0;
+                this.isLeftPlayer = data.isLeftPlayer;
                 
                 console.log("⏳ En attente du deuxième joueur...", {
                     playerId: this.playerId,
@@ -132,6 +133,7 @@ class RemotePongGame {
                 this.isPlayer1 = data.playerSide === 'left';
                 this.isMaster = data.playerIndex === 0;
                 this.gameState = data.gameState;
+                this.isLeftPlayer = data.isLeftPlayer;
                 
                 // ✅ RÉCUPÉRER LES LOGINS ET NOMS (MAINTENANT COMPLETS)
                 this.player1Login = data.player1Login;
@@ -142,6 +144,7 @@ class RemotePongGame {
 
                 console.log("🎮 Les deux joueurs connectés - Démarrage du jeu:", {
                     master: this.isMaster,
+                    isLeftPlayer : this.isLeftPlayer,
                     player1: `${this.player1Name} (${this.player1Login})`,
                     player2: `${this.player2Name} (${this.player2Login})`,
                     currentUser: this.currentUserName
@@ -352,165 +355,164 @@ class RemotePongGame {
     }
 
     // Contrôles des paddles (NOUVEAU - un paddle par joueur)
-updatePaddleControls() {
-    const speed = this.GAME_CONFIG.ballSpeed;
-    let moved = false;
-    
-    if (this.isPlayer1) {
-        // Player1 (gauche) utilise W et S
-        if (this.keys["i"] && this.leftPaddle.position.z + speed <= this.GAME_CONFIG.maxZ) {
-            this.leftPaddle.position.z += speed;
-            moved = true;
-        }
-        if (this.keys["k"] && this.leftPaddle.position.z - speed >= this.GAME_CONFIG.minZ) {
-            this.leftPaddle.position.z -= speed;
-            moved = true;
-        }
-    } else {
-        // Player2 (droite) utilise I et K  
-        if (this.keys["w"] && this.rightPaddle.position.z + speed <= this.GAME_CONFIG.maxZ) {
-            this.rightPaddle.position.z += speed;
-            moved = true;
-        }
-        if (this.keys["s"] && this.rightPaddle.position.z - speed >= this.GAME_CONFIG.minZ) {
-            this.rightPaddle.position.z -= speed;
-            moved = true;
-        }
-    }
-    // Envoyer les mouvements au serveur
-    if (moved) {
-        this.sendPaddleMovement();
-    }
-}
-
-    // Physique du jeu (SEULEMENT pour le master)
-    updateGamePhysics() {
-        const ball = this.scene.ball;
-        const velocity = this.scene.ballVelocity;
+    updatePaddleControls() {
+        const speed = this.GAME_CONFIG.ballSpeed;
+        let moved = false;
         
-        // Fonction pour limiter la vitesse
-        const clampVelocity = () => {
-            const speed = velocity.length();
-            if (speed > this.GAME_CONFIG.maxSpeed) {
-                velocity.scaleInPlace(this.GAME_CONFIG.maxSpeed / speed);
+        if (this.isLeftPlayer) {
+            // Player1 (gauche) utilise W et S
+            if (this.keys["w"] && this.rightPaddle.position.z + speed <= this.GAME_CONFIG.maxZ) {
+                this.rightPaddle.position.z += speed;
+                moved = true;
             }
-        };
-
-        // Mouvement de la balle
-        ball.position.addInPlace(velocity);
-
-        // Collisions avec les murs
-        if (ball.position.z <= this.GAME_CONFIG.minZ || ball.position.z >= this.GAME_CONFIG.maxZ) {
-            velocity.z *= -1;
-        }
-
-        // Reset des flags de collision
-        if (ball.position.x < this.leftPaddle.position.x - 1) {
-            this.hasCollidedLeft = false;
-        }
-        if (ball.position.x > this.rightPaddle.position.x + 1) {
-            this.hasCollidedRight = false;
-        }
-
-        // Collisions avec les paddles
-        // Paddle gauche
-        if (velocity.x > 0 && !this.hasCollidedLeft &&
-            Math.abs(ball.position.x - this.leftPaddle.position.x) < this.GAME_CONFIG.paddleHalfWidth + this.GAME_CONFIG.ballRadius &&
-            Math.abs(ball.position.z - this.leftPaddle.position.z) < this.GAME_CONFIG.paddleHalfDepth) {
-            
-            velocity.x = -Math.abs(velocity.x) * this.GAME_CONFIG.accelerationFactor;
-            const offset = ball.position.z - this.leftPaddle.position.z;
-            velocity.z = offset * 0.1;
-            clampVelocity();
-            this.playLightWave(3, -1);
-            velocity.scaleInPlace(this.GAME_CONFIG.accelerationOnHit);
-            this.hasCollidedLeft = true;
-
-            this.sendVisualEffect("lightwave", { startIndex: 3, direction: -1 });
-        }
-
-        // Paddle droit
-        if (velocity.x < 0 && !this.hasCollidedRight &&
-            Math.abs(ball.position.x - this.rightPaddle.position.x) < this.GAME_CONFIG.paddleHalfWidth + this.GAME_CONFIG.ballRadius &&
-            Math.abs(ball.position.z - this.rightPaddle.position.z) < this.GAME_CONFIG.paddleHalfDepth) {
-            
-            velocity.x = Math.abs(velocity.x) * this.GAME_CONFIG.accelerationFactor;
-            const offset = ball.position.z - this.rightPaddle.position.z;
-            velocity.z = offset * 0.1;
-            clampVelocity();
-            this.playLightWave(0, 1);
-            velocity.scaleInPlace(this.GAME_CONFIG.accelerationOnHit);
-            this.hasCollidedRight = true;
-
-            this.sendVisualEffect("lightwave", { startIndex: 0, direction: 1 });
-        }
-
-        // Gestion des buts
-        if (!this.isWaitingAfterGoal && Math.abs(ball.position.x) > this.GAME_CONFIG.playWidth / 2 + 1) {
-            let goalScored = false;
-            
-            if (ball.position.x > 0) {
-                this.scoreLeft++;
-                goalScored = true;
-            } else {
-                this.scoreRight++;
-                goalScored = true;
+            if (this.keys["s"] && this.rightPaddle.position.z - speed >= this.GAME_CONFIG.minZ) {
+                this.rightPaddle.position.z -= speed;
+                moved = true;
             }
+        } else {
+            // Player2 (droite) utilise I et K  
+            if (this.keys["i"] && this.leftPaddle.position.z + speed <= this.GAME_CONFIG.maxZ) {
+                this.leftPaddle.position.z += speed;
+                moved = true;
+            }
+            if (this.keys["k"] && this.leftPaddle.position.z - speed >= this.GAME_CONFIG.minZ) {
+                this.leftPaddle.position.z -= speed;
+                moved = true;
+            }
+        }
+        // Envoyer les mouvements au serveur
+        if (moved) {
+            this.sendPaddleMovement();
+        }
+    }
+    
+        // Physique du jeu (SEULEMENT pour le master)
+        updateGamePhysics() {
+            const ball = this.scene.ball;
+            const velocity = this.scene.ballVelocity;
             
-            if (goalScored) {
-                this.updateScoreTextMeshes();
-                console.log("But marqué ! Score:", this.scoreLeft, "-", this.scoreRight);
-                this.sendGoalUpdate();
-                // Vérifier la victoire
-                if (this.scoreLeft >= this.GAME_CONFIG.scoreLimit || this.scoreRight >= this.GAME_CONFIG.scoreLimit) {
-                    console.log("player 1 name:", this.player1Name);
-                    console.log("player 2 name:", this.player2Name);
-                    this.endGame();
-                    // ✅ SUPPRIMÉ : endGame() s'occupe déjà de l'enregistrement
-                    return;
+            // Fonction pour limiter la vitesse
+            const clampVelocity = () => {
+                const speed = velocity.length();
+                if (speed > this.GAME_CONFIG.maxSpeed) {
+                    velocity.scaleInPlace(this.GAME_CONFIG.maxSpeed / speed);
+                }
+            };
+    
+            // Mouvement de la balle
+            ball.position.addInPlace(velocity);
+    
+            // Collisions avec les murs
+            if (ball.position.z <= this.GAME_CONFIG.minZ || ball.position.z >= this.GAME_CONFIG.maxZ) {
+                velocity.z *= -1;
+            }
+    
+            // Reset des flags de collision
+            if (ball.position.x < this.leftPaddle.position.x - 1) {
+                this.hasCollidedLeft = false;
+            }
+            if (ball.position.x > this.rightPaddle.position.x + 1) {
+                this.hasCollidedRight = false;
+            }
+    
+            // Collisions avec les paddles
+            // Paddle gauche
+            if (velocity.x > 0 && !this.hasCollidedLeft &&
+                Math.abs(ball.position.x - this.leftPaddle.position.x) < this.GAME_CONFIG.paddleHalfWidth + this.GAME_CONFIG.ballRadius &&
+                Math.abs(ball.position.z - this.leftPaddle.position.z) < this.GAME_CONFIG.paddleHalfDepth) {
+                
+                velocity.x = -Math.abs(velocity.x) * this.GAME_CONFIG.accelerationFactor;
+                const offset = ball.position.z - this.leftPaddle.position.z;
+                velocity.z = offset * 0.1;
+                clampVelocity();
+                this.playLightWave(3, -1);
+                velocity.scaleInPlace(this.GAME_CONFIG.accelerationOnHit);
+                this.hasCollidedLeft = true;
+    
+                this.sendVisualEffect("lightwave", { startIndex: 3, direction: -1 });
+            }
+    
+            // Paddle droit
+            if (velocity.x < 0 && !this.hasCollidedRight &&
+                Math.abs(ball.position.x - this.rightPaddle.position.x) < this.GAME_CONFIG.paddleHalfWidth + this.GAME_CONFIG.ballRadius &&
+                Math.abs(ball.position.z - this.rightPaddle.position.z) < this.GAME_CONFIG.paddleHalfDepth) {
+                
+                velocity.x = Math.abs(velocity.x) * this.GAME_CONFIG.accelerationFactor;
+                const offset = ball.position.z - this.rightPaddle.position.z;
+                velocity.z = offset * 0.1;
+                clampVelocity();
+                this.playLightWave(0, 1);
+                velocity.scaleInPlace(this.GAME_CONFIG.accelerationOnHit);
+                this.hasCollidedRight = true;
+    
+                this.sendVisualEffect("lightwave", { startIndex: 0, direction: 1 });
+            }
+    
+            // Gestion des buts
+            if (!this.isWaitingAfterGoal && Math.abs(ball.position.x) > this.GAME_CONFIG.playWidth / 2 + 1) {
+                let goalScored = false;
+                
+                if (ball.position.x > 0) {
+                    this.scoreLeft++;
+                    goalScored = true;
+                } else {
+                    this.scoreRight++;
+                    goalScored = true;
                 }
                 
-                this.playExplosionAnimation();
-                this.resetBallWithDelay();
+                if (goalScored) {
+                    this.updateScoreTextMeshes();
+                    console.log("But marqué ! Score:", this.scoreLeft, "-", this.scoreRight);
+                    this.sendGoalUpdate();
+                    // Vérifier la victoire
+                    if (this.scoreLeft >= this.GAME_CONFIG.scoreLimit || this.scoreRight >= this.GAME_CONFIG.scoreLimit) {
+                        console.log("player 1 name:", this.player1Name);
+                        console.log("player 2 name:", this.player2Name);
+                        this.endGame();
+                        // ✅ SUPPRIMÉ : endGame() s'occupe déjà de l'enregistrement
+                        return;
+                    }
+                    
+                    this.playExplosionAnimation();
+                    this.resetBallWithDelay();
+                }
+            }
+            
+            // Envoyer l'état de la balle aux autres joueurs
+            this.sendBallUpdate();
+        }
+    
+        // Envoyer mouvement paddle
+        sendPaddleMovement() {
+            if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                const paddle = this.isLeftPlayer ? this.rightPaddle : this.leftPaddle;
+                this.socket.send(JSON.stringify({
+                    type: "paddle_movement",
+                    position: paddle.position.z,
+                    playerSide: this.isLeftPlayer ? 'left' : 'right',
+                    playerId: this.playerId,
+                    fromPlayer : this.playerId,
+                    timestamp: Date.now()
+                }));
             }
         }
-        
-        // Envoyer l'état de la balle aux autres joueurs
-        this.sendBallUpdate();
-    }
-
-    // Envoyer mouvement paddle
-    sendPaddleMovement() {
-        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-            const paddle = this.isPlayer1 ? this.leftPaddle : this.rightPaddle;
-            this.socket.send(JSON.stringify({
-                type: "paddle_movement",
-                position: paddle.position.z,
-                playerSide: this.isPlayer1 ? 'left' : 'right',
-                playerId: this.playerId, // AJOUTER cette ligne importante
-                timestamp: Date.now()
-            }));
-        }
-    }
-
-    // Recevoir mouvement paddle adverse
-    updateOpponentPaddle(data) {
     
-    // VÉRIFIER que ce n'est PAS notre propre mouvement
-    if (data.fromPlayer !== this.playerId) {
-        
-        // LOGIQUE CORRIGÉE : Si je reçois un mouvement "left", ça vient du joueur gauche
-        if (data.playerSide === 'left' && !this.isPlayer1) {
-            // Je suis Player2 (droite), je reçois un mouvement du Player1 (gauche)
-            this.leftPaddle.position.z = data.position;
-        } 
-        else if (data.playerSide === 'right' && this.isPlayer1) {
-            // Je suis Player1 (gauche), je reçois un mouvement du Player2 (droite)
-            this.rightPaddle.position.z = data.position;
+        // Recevoir mouvement paddle adverse
+        updateOpponentPaddle(data) {
+        // VÉRIFIER que ce n'est PAS notre propre mouvement
+        if (data.fromPlayer !== this.playerId) {
+            // console.log("data position : ", data.position);
+            // LOGIQUE CORRIGÉE : Si je reçois un mouvement "left", ça vient du joueur gauche
+            if (data.playerSide === 'left' && !this.isPlayer1) {
+                // Je suis Player2 (droite), je reçois un mouvement du Player1 (gauche)
+                this.rightPaddle.position.z = data.position;
+            } 
+            else if (data.playerSide === 'right' && this.isPlayer1) {
+                // Je suis Player1 (gauche), je reçois un mouvement du Player2 (droite)
+                this.leftPaddle.position.z = data.position;
+            }
         }
-        
     }
-}
 
     // Envoyer état balle (master seulement)
     sendBallUpdate() {
@@ -620,19 +622,22 @@ handleGameStart(data) {
         console.log("player 1 name:", this.player1Name);
         console.log("player 2 name:", this.player2Name);
         this.stopGameTimer();
-        
-        // ✅ SEULEMENT LE MASTER ENREGISTRE LE MATCH
+
+        if (this.fontDataGlobal) {
+            this.createVictoryText(winner);
+        }
 
         if (this.isMaster) {
             console.log("🎯 Master enregistre le match...");
             await this.saveMatchToDatabase();
+            await this.sendGameEnd();
+            return ;
         } else {
             console.log("👥 Non-master - pas d'enregistrement");
+            await this.sendGameEnd();
+            return ;
         }
         
-        if (this.fontDataGlobal) {
-            this.createVictoryText(winner);
-        }
     }
 
     // ✅ FONCTION pour sauvegarder le match (SEULEMENT pour le master)
@@ -654,6 +659,25 @@ handleGameStart(data) {
         }
     }
 
+    async sendGameEnd() {
+        if (this.engine) {
+            this.engine.stopRenderLoop();
+        }
+
+        if (this.scene) {
+            this.scene.dispose();
+        }
+
+        if (this.engine) {
+            this.engine.dispose();
+        }
+        console.log("🎮 Match terminé");
+            window.handleRemoteGameMessage({
+                type: 'game_ended',
+                isRemote: true,
+            });
+    }
+
     // Gestion déconnexion
     handlePlayerDisconnected(data) {
         console.log("👋 Gestion de déconnexion côté RemotePong");
@@ -671,11 +695,20 @@ handleGameStart(data) {
             this.engine.dispose();
         }
 
+        console.log("isGameOver:", this.isGameOver);    
+        if (this.isGameOver) {
+            this.sendGameEnd();
+            return ;
+        }
         // Transférer le message à game.ts pour qu'il gère l'affichage
         if (window.handleRemoteGameMessage) {
+            if (!this.isGameOver) {
             window.handleRemoteGameMessage({
+                ...(data || {}),
                 type: 'player_disconnected',
+                isRemote: true,
             });
+        }
         }
     }
 
