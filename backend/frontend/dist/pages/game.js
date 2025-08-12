@@ -541,7 +541,7 @@ export class GamePage {
         const displayName = document.getElementById("profile-display-name");
         const displayEmail = document.getElementById("profile-display-email");
         if (displayName)
-            displayName.textContent = this.currentUser.login;
+            displayName.textContent = this.currentUser.public_login;
         if (displayEmail)
             displayEmail.textContent = this.currentUser.email;
     }
@@ -1599,11 +1599,7 @@ export class GamePage {
           <div class="text-6xl mb-4 font-mono">[PONG]</div>
           <p class="font-mono mb-6">pong.exe ready</p>
           <p class="font-mono text-green-400 mb-8">remote mode selected ᯤ</p>
-
-          <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-md mx-auto mb-6">
             <div class="space-y-4">
-              <button id="create-room" class="w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white font-mono font-bold rounded-lg transition-colors">
-                $--create room
               </button>
               <button id="join-room" class="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white font-mono font-bold rounded-lg transition-colors">
                 $--join room
@@ -1624,13 +1620,7 @@ export class GamePage {
             }
         }
         else if (mode === "remote") {
-            const createRoomBtn = document.getElementById("create-room");
             const joinRoomBtn = document.getElementById("join-room");
-            if (createRoomBtn) {
-                createRoomBtn.addEventListener("click", () => {
-                    GamePage.showProfileAlert("profile-alert", "$ create: feature not implemented yet");
-                });
-            }
             if (joinRoomBtn) {
                 joinRoomBtn.addEventListener("click", () => {
                     console.log('🖱️ Bouton "join room" cliqué');
@@ -2264,8 +2254,8 @@ export class GamePage {
             '• Stats → reset to 0',
             '• Friends → removed',
             '',
-            '⚠️ This action is IRREVERSIBLE.',
-            '⚠️ You will be immediately logged out.'
+            'This action is IRREVERSIBLE.',
+            'You will be immediately logged out.'
         ], 'DELETE FOREVER', 'red');
         if (!confirmed) {
             GamePage.showProfileAlert("profile-alert", "$ account deletion cancelled");
@@ -2308,6 +2298,15 @@ export class GamePage {
         finally {
             btn.textContent = "$ delete account";
             btn.disabled = false;
+        }
+        try {
+            await fetch("/auth/signout", {
+                method: "GET",
+                credentials: "include",
+            });
+        }
+        catch (err) {
+            console.log("Logout call failed, but account deleted");
         }
     }
     showConfirmationPopup(type, title, description, bulletPoints, confirmText, color) {

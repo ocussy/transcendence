@@ -700,7 +700,7 @@ private showNoData(): void {
     const displayName = document.getElementById("profile-display-name");
     const displayEmail = document.getElementById("profile-display-email");
 
-    if (displayName) displayName.textContent = this.currentUser.login;
+    if (displayName) displayName.textContent = this.currentUser.public_login;
     if (displayEmail) displayEmail.textContent = this.currentUser.email;
   }
 
@@ -1920,11 +1920,7 @@ private showNoData(): void {
           <div class="text-6xl mb-4 font-mono">[PONG]</div>
           <p class="font-mono mb-6">pong.exe ready</p>
           <p class="font-mono text-green-400 mb-8">remote mode selected ᯤ</p>
-
-          <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-md mx-auto mb-6">
             <div class="space-y-4">
-              <button id="create-room" class="w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white font-mono font-bold rounded-lg transition-colors">
-                $--create room
               </button>
               <button id="join-room" class="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white font-mono font-bold rounded-lg transition-colors">
                 $--join room
@@ -1946,17 +1942,7 @@ private showNoData(): void {
         });
       }
     } else if (mode === "remote") {
-      const createRoomBtn = document.getElementById("create-room");
       const joinRoomBtn = document.getElementById("join-room");
-
-      if (createRoomBtn) {
-        createRoomBtn.addEventListener("click", () => {
-          GamePage.showProfileAlert(
-            "profile-alert",
-            "$ create: feature not implemented yet",
-          );
-        });
-      }
 
       if (joinRoomBtn) {
         joinRoomBtn.addEventListener("click", () => {
@@ -2770,7 +2756,7 @@ private showNoData(): void {
         "Content-Type": "application/json",
       },
       credentials: "include",
-      body: JSON.stringify({})  // ← Ajout d'un body JSON (même vide)
+      body: JSON.stringify({})
     });
 
     const data = await response.json();
@@ -2813,8 +2799,8 @@ private showNoData(): void {
       '• Stats → reset to 0',
       '• Friends → removed',
       '',
-      '⚠️ This action is IRREVERSIBLE.',
-      '⚠️ You will be immediately logged out.'
+      'This action is IRREVERSIBLE.',
+      'You will be immediately logged out.'
     ],
     'DELETE FOREVER',
     'red'
@@ -2839,7 +2825,7 @@ private showNoData(): void {
         "Content-Type": "application/json",
       },
       credentials: "include",
-      body: JSON.stringify({})  // ← Ajout d'un body JSON (même vide)
+      body: JSON.stringify({}) 
     });
 
     const data = await response.json();
@@ -2872,6 +2858,14 @@ private showNoData(): void {
     btn.textContent = "$ delete account";
     btn.disabled = false;
   }
+  try {
+  await fetch("/auth/signout", {
+    method: "GET",
+    credentials: "include",
+  });
+} catch (err) {
+  console.log("Logout call failed, but account deleted");
+}
 }
 
 private showConfirmationPopup(
@@ -2883,7 +2877,6 @@ private showConfirmationPopup(
   color: 'amber' | 'red'
 ): Promise<boolean> {
   return new Promise((resolve) => {
-    // Supprimer tout popup existant
     const existingPopup = document.getElementById("confirmation-popup");
     if (existingPopup) {
       existingPopup.remove();
@@ -2970,15 +2963,12 @@ private showConfirmationPopup(
 
     document.body.appendChild(popup);
 
-    // Références aux éléments
     const input = document.getElementById("confirmation-input") as HTMLInputElement;
     const confirmBtn = document.getElementById("confirm-action") as HTMLButtonElement;
     const cancelBtn = document.getElementById("cancel-confirmation") as HTMLButtonElement;
 
-    // Focus automatique sur l'input
     setTimeout(() => input.focus(), 100);
 
-    // Validation en temps réel
     const validateInput = () => {
       const isValid = input.value.trim() === confirmText;
       if (isValid) {
@@ -2992,7 +2982,6 @@ private showConfirmationPopup(
       }
     };
 
-    // Event listeners
     input.addEventListener('input', validateInput);
     
     input.addEventListener('keypress', (e) => {
@@ -3014,7 +3003,6 @@ private showConfirmationPopup(
       resolve(false);
     });
 
-    // Fermer avec Escape
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         popup.remove();
@@ -3024,7 +3012,6 @@ private showConfirmationPopup(
     };
     document.addEventListener('keydown', handleEscape);
 
-    // Fermer en cliquant à l'extérieur
     popup.addEventListener('click', (e) => {
       if (e.target === popup) {
         popup.remove();
