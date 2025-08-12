@@ -264,7 +264,7 @@ export function anonymizeUser(req, reply) {
 
 
 export function deleteUser(req, reply) {
-  userId = req.user.id;
+  const userId = req.user.id;
   if (!userId) {
     return reply.status(404).send({ error: t(req.lang, "user_not_found") });
   }

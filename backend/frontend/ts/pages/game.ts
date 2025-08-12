@@ -1,11 +1,7 @@
+
 import { socket } from "./auth.js";
 import { tryConnectWebSocketIfAuthenticated } from "./auth.js";
 import { verifyToken } from "./auth.js";
-// import { getCookieLanguage, setLanguage } from "./auth.js";
-
-
-// setLanguage(getCookieLanguage());
-//interface pour le dashboard
 interface MatchStats {
   totalGames: number;
   totalWins: number;
@@ -54,7 +50,9 @@ export class GamePage {
 
     // Exposer handleGameMessage globalement pour remote-pong.js
     (window as any).handleRemoteGameMessage = (data: any) => {
-      this.handleGameMessage(data);
+      if (data && data.isRemote) {
+        this.handleGameMessage(data);
+      }
     }
 
         // Nettoyer les WebSockets et déconnecter lors du déchargement de la page

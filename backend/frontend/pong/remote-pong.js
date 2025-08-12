@@ -84,6 +84,7 @@ class RemotePongGame {
             this.socket.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
+                    data.isRemote = true; // Indiquer que c'est un message du remote
                     this.handleServerMessage(data);
                 } catch (error) {
                     console.error("Erreur parsing message:", error);

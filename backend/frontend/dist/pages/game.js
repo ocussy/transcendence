@@ -13,7 +13,9 @@ export class GamePage {
         this.handleBrowserNavigation();
         window.gamePageInstance = this;
         window.handleRemoteGameMessage = (data) => {
-            this.handleGameMessage(data);
+            if (data && data.isRemote) {
+                this.handleGameMessage(data);
+            }
         };
         window.addEventListener('beforeunload', async (event) => {
             try {
