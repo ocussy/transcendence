@@ -9,16 +9,22 @@
     let renderLoop = null;
     let observers = [];
     let gameInterrupted = false;
-    let gameActuallyStarted = false; // ✅ Ajouter cette ligne
+    let gameActuallyStarted = false; 
+    let autoDisposeTimeout = null;
     
-    // Start timer when game starts
+      const mode = window.gameMode || "local";
+
+    // if (mode === "local") {
+    //   console.log("Mode local activé");
+    // } else {
+    //   console.log("Mode tournoi activé");
+    // }
     function startGameTimer() {
         gameStartTime = Date.now();
         gameEndTime = null;
         gameDurationSeconds = 0;
     }
 
-    // Stop timer and calculate duration
     function stopGameTimer() {
         if (gameStartTime) {
             gameEndTime = Date.now();
@@ -26,12 +32,11 @@
         }
     }
 
-    // Patch: start timer when ball is launched for the first time
     const originalCountdown = countdown;
     countdown = async function(...args) {
         if (!gameStarted && !isGameOver && !gameStartTime) {
             startGameTimer();
-            gameActuallyStarted = true; // ✅ Ajouter cette ligne
+            gameActuallyStarted = true; 
             console.log("🎮 Game actually started - timer running");
         }
         return originalCountdown.apply(this, args);
@@ -39,7 +44,6 @@
 
 const canvas = document.getElementById("renderCanvas");
 engine = new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
-// Variables de jeu
 let isGameOver = false;
 let gameStarted = false;
 let isWaitingAfterGoal = false;
@@ -51,15 +55,14 @@ let fontDataGlobal = null;
 let myText = null;
 let myText2 = null;
 
-// Constantes optimisées
 const GAME_CONFIG = {
     playWidth: 19,
     playHeight: 3,
     ballSpeed: 0.15,
-    ballInitialSpeed: 0.15, // Réduit pour plus de stabilité
+    ballInitialSpeed: 0.15,
     scoreLimit: 1,
-    maxSpeed: 0.6, // Réduit pour éviter les bugs
-    accelerationFactor: 1.01, // Réduit l'accélération
+    maxSpeed: 0.6,
+    accelerationFactor: 1.01,
     minZ: -4.3,
     maxZ: 4.3,
     ballRadius: 0.15,
@@ -72,29 +75,40 @@ const boxes = [];
 const keys = {};
 let leftPaddle, rightPaddle;
 
-// Gestionnaire d'événements optimisé
 function setupEventListeners() {
     const keydownHandler = (e) => {
+        const target = e.target;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+            return;  
+        }
+
         const key = e.key.toLowerCase();
         keys[key] = true;
-        
-        if (key === "r" && isGameOver) {
+
+        if (key === "r" && isGameOver && mode === "local") {
             restartGame();
         }
         e.preventDefault();
     };
+
     const keyupHandler = (e) => {
         keys[e.key.toLowerCase()] = false;
         e.preventDefault();
     };
+
     window.addEventListener("keydown", keydownHandler);
     window.addEventListener("keyup", keyupHandler);
     window.addEventListener("resize", () => engine.resize());
 }
 
-// Fonction de redémarrage optimisée
+
 function restartGame() {
-    // Réinitialiser les variables
+    if (autoDisposeTimeout) {
+        clearTimeout(autoDisposeTimeout);
+        autoDisposeTimeout = null;
+        console.log("🔄 Auto-dispose timeout cancelled - game restarting");
+    }
+
     scoreLeft = 0;
     scoreRight = 0;
     isGameOver = false;
@@ -105,7 +119,6 @@ function restartGame() {
     gameActuallyStarted = false;
     gameInterrupted = false; 
     
-    // Nettoyer les textes de fin
     if (scene.victoryText) {
         scene.victoryText.dispose();
         scene.victoryText = null;
@@ -115,7 +128,6 @@ function restartGame() {
         scene.restartText = null;
     }
     
-    // Repositionner les éléments
     scene.ball.isVisible = true;
     scene.ball.position.set(0, 0.5, 0);
     scene.ballVelocity.set(0, 0, 0);
@@ -125,7 +137,6 @@ function restartGame() {
     
     updateScoreTextMeshes();
     
-    // Démarrer après un délai
     setTimeout(async() => {
         await countdown();
         const direction = Math.random() < 0.5 ? -1 : 1;
@@ -137,7 +148,7 @@ function restartGame() {
         gameStarted = true;
     }, 1000);
 }
-// Chargement des polices optimisé
+
 async function loadFont() {
     try {
         const response = await fetch("https://assets.babylonjs.com/fonts/Droid Sans_Regular.json");
@@ -161,7 +172,6 @@ function createInitialScoreText() {
             resolution: 32,
             depth: 0.5
         });
-        // Matériau simple pour les scores
         const scoreMaterial = new BABYLON.PBRMaterial("scoreMat", scene);
         scoreMaterial.metallic = 1.0;
         scoreMaterial.roughness = 0.1; // Plus petit = plus brillant
@@ -182,10 +192,9 @@ function createInitialScoreText() {
 function updateScoreTextMeshes() {
     if (!fontDataGlobal || !myText || !myText2) return;
     try {
-        // Dispose des anciens textes
         myText.dispose();
         myText2.dispose();
-        // Créer les nouveaux
+
         myText = BABYLON.MeshBuilder.CreateText("myText", scoreLeft.toString(), fontDataGlobal, {
             size: 5,
             resolution: 32,
@@ -213,7 +222,6 @@ function updateScoreTextMeshes() {
 }
 
 function createLights(scene) {
-    // Éclairage principal
     const colors = [
         new BABYLON.Color3(1.0, 0.1, 0.5),
         new BABYLON.Color3(1.0, 0.1, 0.5),
@@ -239,7 +247,6 @@ function createLights(scene) {
         box.material = material;
 
         box.position = positions[i];
-        // box.rotation = rotation;
 
         const pointLight = new BABYLON.RectAreaLight(`pointLight${i}`, new BABYLON.Vector3(0, 0, 0), 6, 6, scene);
         pointLight.parent = box;
@@ -288,12 +295,10 @@ async function resetBallWithDelay() {
     isWaitingAfterGoal = false;
 }
 
-// Fonction sleep manquante
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Fonction countdown améliorée
 async function countdown() {
     if (boxes.length === 0) return; // Sécurité si les boxes ne sont pas encore créées
     
@@ -304,12 +309,10 @@ async function countdown() {
     const highlightIntensity = 4;
 
     try {
-        // Phase 1: Allumer progressivement chaque box en vert
         for (let i = 0; i < boxes.length; i++) {
             const { box, light, material } = boxes[i];
             
             if (box && light && material) {
-                // Effet de mise en surbrillance
                 box.scaling.setAll(1.1);
                 material.emissiveColor = green;
                 light.diffuse = green;
@@ -317,7 +320,6 @@ async function countdown() {
 
                 await sleep(delay);
 
-                // Retour à l'état normal mais en rose
                 box.scaling.setAll(1.0);
                 material.emissiveColor = pink;
                 light.diffuse = pink;
@@ -325,7 +327,6 @@ async function countdown() {
             }
         }
 
-        // Phase 2: Flash final - tout en vert
         for (let i = 0; i < boxes.length; i++) {
             const { box, light, material } = boxes[i];
             if (box && light && material) {
@@ -338,7 +339,6 @@ async function countdown() {
 
         await sleep(delay);
 
-        // Phase 3: Retour final - tout en rose
         for (let i = 0; i < boxes.length; i++) {
             const { box, light, material } = boxes[i];
             if (box && light && material) {
@@ -354,7 +354,6 @@ async function countdown() {
     } catch (error) {
         console.warn("Erreur dans countdown:", error);
         
-        // En cas d'erreur, remettre tout en état normal
         for (let i = 0; i < boxes.length; i++) {
             const { box, light, material } = boxes[i];
             if (box && light && material) {
@@ -368,20 +367,16 @@ async function countdown() {
 }
 
 
-// Fonction resetBallWithDelay corrigée
 async function resetBallWithDelay() {
     if (!window.gameActive || !scene || !scene.ball || !scene.ballVelocity) return;
     
     scene.ball.position.set(0, 0.5, 0);
     scene.ballVelocity.set(0, 0, 0);
     
-    // Lancer le countdown
     await countdown();
     
-    // Attendre un peu plus après le countdown
     await sleep(200);
     
-    // Relancer la balle
     const direction = Math.random() < 0.5 ? -1 : 1;
     scene.ballVelocity.set(
         GAME_CONFIG.ballInitialSpeed * direction,
@@ -394,18 +389,15 @@ async function resetBallWithDelay() {
 
 function createScene() {
     const scene = new BABYLON.Scene(engine);
-    // Ajouter une texture environnementale pour les reflets PBR
     const hdrTexture = BABYLON.CubeTexture.CreateFromPrefilteredData(
         "https://playground.babylonjs.com/textures/environment.env",
         scene
     );
     scene.environmentTexture = hdrTexture;
-    // scene.environmentIntensity = 0; // Supprime l'éclairage global de l'environnement
 
     scene.clearColor = new BABYLON.Color4(0, 0, 0, 1);
     window.gameActive = true;
 
-    // Caméra
     const camera2 = new BABYLON.ArcRotateCamera(
         "cam2",
         Math.PI / 2 + Math.PI,      // alpha : vue en oblique (-45° sur le côté)
@@ -428,7 +420,6 @@ function createScene() {
     const mirrorMat = new BABYLON.PBRMaterial("mirror", scene);
     mirrorMat.metallic = 1.0;
     mirrorMat.roughness = 0.1;
-    // mirrorMat.environmentTexture = null;
     mirrorMat.environmentTexture = hdrTexture; // ou scene.environmentTexture
     mirrorMat.albedoColor = new BABYLON.Color3(0, 0, 0);
     ground.material = mirrorMat;
@@ -447,7 +438,6 @@ function createScene() {
     rightPaddle = BABYLON.MeshBuilder.CreateBox("rightPaddle", paddleOptions, scene);
     rightPaddle.position.set(-GAME_CONFIG.playWidth / 2 + 0.2, 0.5, 0);
     
-    // Matériaux des raquettes
     const rightMaterial = new BABYLON.PBRMaterial("rightPaddleMat", scene);
     rightMaterial.metallic = 1.0;
     rightMaterial.roughness = 0.2;
@@ -462,7 +452,6 @@ function createScene() {
     leftMaterial.emissiveColor = new BABYLON.Color3(1, 0.1, 0.1);
     leftPaddle.material = leftMaterial;
     
-    // Balle
     const ball = BABYLON.MeshBuilder.CreateSphere("ball", { diameter: 0.3 }, scene);
     ball.position.set(0, 0.5, 0);
 
@@ -474,7 +463,6 @@ function createScene() {
     
     countdown();
 
-    // Particules d'explosion simplifiées
     scene.explosionSpheres = [];
     for (let i = 0; i < 500; i++) {
         const sphere = BABYLON.MeshBuilder.CreateSphere(`particle${i}`, {
@@ -492,19 +480,15 @@ function createScene() {
     
     
     const reflectionProbe = new BABYLON.ReflectionProbe("probe", 512, scene);
-    // On veut refléter uniquement les boxes (leurs émissives + la lumière)
     boxes.forEach(({ box }) => reflectionProbe.renderList.push(box));
 
-    // 4. Branche le probe sur le matériau du sol
     mirrorMat.reflectionTexture  = reflectionProbe.cubeTexture;
     mirrorMat.reflectivityColor  = new BABYLON.Color3(1, 1, 1); // intensité des reflets
     mirrorMat.useMicroSurfaceFromReflectivityMapAlpha = false;
 
-    // 5. Ajuste l’intensité si c’est trop fort
     mirrorMat.reflectivityFresnelParameters = new BABYLON.FresnelParameters();
     mirrorMat.reflectivityFresnelParameters.power = 1;
     
-    // Démarrage du jeu après chargement
     setTimeout(async() => {
         await countdown();
         const direction = Math.random() < 0.5 ? -1 : 1;
@@ -523,14 +507,12 @@ function startRenderLoop() {
         if (!window.gameActive || !scene || !scene.ball) return;
         const ball = scene.ball;
         const velocity = scene.ballVelocity;
-        // Fonction pour limiter la vitesse
         function clampVelocity() {
             const speed = velocity.length();
             if (speed > GAME_CONFIG.maxSpeed) {
                 velocity.scaleInPlace(GAME_CONFIG.maxSpeed / speed);
             }
         }
-        // Contrôles des raquettes
         if (keys["i"] && leftPaddle.position.z + GAME_CONFIG.ballSpeed <= GAME_CONFIG.maxZ) {
             leftPaddle.position.z += GAME_CONFIG.ballSpeed;
         }
@@ -543,7 +525,6 @@ function startRenderLoop() {
         if (keys["s"] && rightPaddle.position.z - GAME_CONFIG.ballSpeed >= GAME_CONFIG.minZ) {
             rightPaddle.position.z -= GAME_CONFIG.ballSpeed;
         }
-        // Mouvement de la balle
         if (gameStarted && !isGameOver) {
             ball.position.addInPlace(velocity);
         }
@@ -551,19 +532,15 @@ function startRenderLoop() {
             scene.render();
             return;
         }
-        // Collisions avec les murs 
         if (ball.position.z <= GAME_CONFIG.minZ || ball.position.z >= GAME_CONFIG.maxZ) {
             velocity.z *= -1;
         }
-        // Reset des flags de collision
         if (ball.position.x < leftPaddle.position.x - 1) {
             hasCollidedLeft = false;
         }
         if (ball.position.x > rightPaddle.position.x + 1) {
             hasCollidedRight = false;
         }
-        // Collisions avec les raquettes
-        // Raquette gauche
         if (velocity.x > 0 && !hasCollidedLeft &&
             Math.abs(ball.position.x - leftPaddle.position.x) < GAME_CONFIG.paddleHalfWidth + GAME_CONFIG.ballRadius &&
             Math.abs(ball.position.z - leftPaddle.position.z) < GAME_CONFIG.paddleHalfDepth) {
@@ -576,7 +553,6 @@ function startRenderLoop() {
             velocity.scaleInPlace(GAME_CONFIG.accelerationOnHit);
             hasCollidedLeft = true;
         }
-        // Raquette droite
         if (velocity.x < 0 && !hasCollidedRight &&
             Math.abs(ball.position.x - rightPaddle.position.x) < GAME_CONFIG.paddleHalfWidth + GAME_CONFIG.ballRadius &&
             Math.abs(ball.position.z - rightPaddle.position.z) < GAME_CONFIG.paddleHalfDepth) {
@@ -589,7 +565,6 @@ function startRenderLoop() {
             velocity.scaleInPlace(GAME_CONFIG.accelerationOnHit);
             hasCollidedRight = true;
         }
-        // Gestion des buts
         if (!isWaitingAfterGoal && Math.abs(ball.position.x) > GAME_CONFIG.playWidth / 2 + 1) {
             if (ball.position.x > 0) {
                 scoreLeft++;
@@ -597,60 +572,67 @@ function startRenderLoop() {
                 scoreRight++;
             }
             updateScoreTextMeshes();
-            // Vérifier la victoire
             if (scoreLeft >= GAME_CONFIG.scoreLimit || scoreRight >= GAME_CONFIG.scoreLimit) {
-                isGameOver = true;
-                ball.isVisible = false;
-                const winner = scoreLeft >= GAME_CONFIG.scoreLimit ? "PLAYER 1" : "PLAYER 2";
+    isGameOver = true;
+    ball.isVisible = false;
+    const winner = scoreLeft >= GAME_CONFIG.scoreLimit ? "PLAYER 1" : "PLAYER 2";
 
-                if (window.gameActive && gameActuallyStarted && !gameInterrupted) {
-                    GamePage.createMatch("local", scoreLeft, scoreRight, gameDurationSeconds);
-                    console.log("✅ Match recorded:", { scoreLeft, scoreRight, duration: gameDurationSeconds });
-                } else if (gameInterrupted) {
-                    console.log("🚫 Match NOT recorded - game was interrupted");
-                }
+    if (window.gameActive && gameActuallyStarted && !gameInterrupted) {
+        GamePage.createMatch("local", scoreLeft, scoreRight, gameDurationSeconds);
+        console.log("✅ Match recorded:", { scoreLeft, scoreRight, duration: gameDurationSeconds });
+    } else if (gameInterrupted) {
+        console.log("🚫 Match NOT recorded - game was interrupted");
+    }
 
-                stopGameTimer();
-                // disposeGame();
-                if (fontDataGlobal) {
-                    try {
-                        const victoryText = BABYLON.MeshBuilder.CreateText("victoryText", 
-                            winner + " WON !", fontDataGlobal, {
-                            size: 1,
-                            resolution: 32,
-                            depth: 0.5
-                        });
-                        
-                        victoryText.position.set(0, 4.5, 2);
-                        
-                        const textMaterial = new BABYLON.StandardMaterial("victoryMat", scene);
-                        textMaterial.diffuseColor = new BABYLON.Color3(0.1, 0.1, 0.1);
-                        textMaterial.specularColor = new BABYLON.Color3(1, 1, 1);
-                        textMaterial.specularPower = 64;
-                        textMaterial.emissiveColor = new BABYLON.Color3(0.1, 0.1, 0.1);
-                        victoryText.material = textMaterial;
-                        const restartText = BABYLON.MeshBuilder.CreateText("restartText", 
-                            "PRESS R TO RESTART", fontDataGlobal, {
-                            size: 0.5,
-                            resolution: 32,
-                            depth: 0.2
-                        });
-                        
-                        restartText.position.set(0, 3, 0);
-                        restartText.material = textMaterial;
-                        scene.victoryText = victoryText;
-                        scene.restartText = restartText;
-                    } catch (error) {
-                        console.warn("Erreur création texte victoire:", error);
-                    }
-                }
-                setTimeout(() => {
-                    window.disposeGame();
-                }, 3000);
-                scene.render();
-                return;
-            }
-            // Animation d'explosion simplifiée
+    stopGameTimer();
+    
+    if (fontDataGlobal) {
+        try {
+            const victoryText = BABYLON.MeshBuilder.CreateText("victoryText", 
+                winner + " WON !", fontDataGlobal, {
+                size: 1,
+                resolution: 32,
+                depth: 0.5
+            });
+            
+            victoryText.position.set(0, 4.5, 2);
+            
+            const textMaterial = new BABYLON.StandardMaterial("victoryMat", scene);
+            textMaterial.diffuseColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+            textMaterial.specularColor = new BABYLON.Color3(1, 1, 1);
+            textMaterial.specularPower = 64;
+            textMaterial.emissiveColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+            victoryText.material = textMaterial;
+            
+           if (mode === "local"){  
+            const restartText = BABYLON.MeshBuilder.CreateText("restartText", 
+                "PRESS R TO RESTART (3s)", fontDataGlobal, {
+                size: 0.5,
+                resolution: 32,
+                depth: 0.2
+            });
+            
+            restartText.position.set(0, 3, 0);
+            restartText.material = textMaterial;
+            scene.victoryText = victoryText;
+            scene.restartText = restartText;
+        }
+        } catch (error) {
+            console.warn("Erreur création texte victoire:", error);
+        }
+    }
+    
+        if ( mode === "local" ){    
+            autoDisposeTimeout = setTimeout(() => {
+            console.log("⏰ 3 seconds elapsed - auto-disposing game");
+            window.disposeGame();
+            location.reload();
+            }, 3000);
+        }
+    
+    scene.render();
+    return;
+}
             isWaitingAfterGoal = true;
             
             const particlesToUse = Math.min(scene.explosionSpheres.length, 20);
@@ -663,7 +645,6 @@ function startRenderLoop() {
                     Math.random(),
                     (Math.random() - 0.5) * 2
                 ).normalize().scale(0.3 + Math.random() * 0.5);
-                // Animation simple
                 setTimeout(() => {
                     sphere.isVisible = false;
                 }, 800);
@@ -683,7 +664,6 @@ function startRenderLoop() {
 }
 
 
-// Initialisation
 async function init() {
     scene = createScene();
     setupEventListeners();
@@ -691,9 +671,16 @@ async function init() {
     startRenderLoop();
 }
 
-init();     
+init();
+
 window.disposeGame = function () {
     console.log("🧹 disposeGame() called — on arrête et on clean");
+
+    if (autoDisposeTimeout) {
+        clearTimeout(autoDisposeTimeout);
+        autoDisposeTimeout = null;
+    }
+
     if (window.gameActive && gameActuallyStarted && !isGameOver) {
         gameInterrupted = true;
         console.log("🚫 Game interrupted - will not be recorded");
@@ -701,31 +688,26 @@ window.disposeGame = function () {
     window.gameActive = false;
 
     try {
-    // 1. Stoppe la boucle de rendu Babylon
     if (engine && renderLoop) {
       engine.stopRenderLoop(renderLoop);
       console.log("🛑 render loop stopped");
     }
 
-    // 2. Dispose la scène Babylon.js
     if (scene) {
       scene.dispose(true, true);
       console.log("✅ scene disposed");
     }
 
-    // 3. Dispose l'engine Babylon
     if (engine) {
       engine.dispose();
       console.log("✅ engine disposed");
     }
     this.scene = ''
-    // 4. Dispose les GUI s'ils existent
     if (advancedTexture) {
       advancedTexture.dispose();
       console.log("✅ GUI disposed");
     }
 
-    // 5. Supprime tous les observers Babylon (resize, beforeRender, etc.)
     if (engine && engine.onResizeObservable) {
       observers.forEach(obs => {
         try {
@@ -738,7 +720,6 @@ window.disposeGame = function () {
       console.log("✅ observers cleared");
     }
 
-    // 6. Supprime les event listeners (keydown, resize, etc.)
     if (window._gameEventListeners) {
       window._gameEventListeners.forEach(({ type, handler }) => {
         window.removeEventListener(type, handler);
@@ -747,7 +728,6 @@ window.disposeGame = function () {
       console.log("✅ event listeners removed");
     }
 
-    // 7. Supprime les timers
     if (window._gameTimeouts) {
       window._gameTimeouts.forEach(id => clearTimeout(id));
       window._gameTimeouts = [];
@@ -759,7 +739,6 @@ window.disposeGame = function () {
       console.log("✅ intervals cleared");
     }
 
-    // 8. Réinitialise les variables globales du jeu
     window.currentGameState = null;
     window.gameStarted = false;
     window.gamePaused = false;
@@ -768,7 +747,6 @@ window.disposeGame = function () {
     window.ball = null;
     window.score = { left: 0, right: 0 };
 
-    // 9. Annule les appels en attente à GamePage.createMatch()
     if (window._createMatchTimeout) {
       clearTimeout(window._createMatchTimeout);
       window._createMatchTimeout = null;
@@ -779,7 +757,6 @@ window.disposeGame = function () {
     console.warn("⚠️ Erreur dans disposeGame:", err);
   }
 
-  // 10. Libère les références Babylon
   engine = null;
   scene = null;
   renderLoop = null;

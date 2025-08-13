@@ -521,7 +521,7 @@ private showNoData(): void {
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify({
-              mode: mode,
+              mode: "tournament",
               score1: score1,
               score2: score2,
               duration: duration,
@@ -2317,40 +2317,40 @@ private showNoData(): void {
     }
   }
 
-  private async launchGame(mode: "local" | "ai" | "remote"): Promise<void> {
+private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promise<void> {
+  this.hasGameEnded = false;
+  if (typeof (window as any).disposeGame === "function") {
+    (window as any).disposeGame();
+  }
 
-    this.hasGameEnded = false;
-    if (typeof (window as any).disposeGame === "function") {
-      (window as any).disposeGame();
-    }
-    
-    const canvasDiv = document.getElementById("game-canvas")!;
-    canvasDiv.innerHTML = `<canvas id="renderCanvas" class="w-full h-full" tabindex="0"></canvas>`;
+  const canvasDiv = document.getElementById("game-canvas")!;
+  canvasDiv.innerHTML = `<canvas id="renderCanvas" class="w-full h-full" tabindex="0"></canvas>`;
 
-    const oldScript = document.getElementById("pong-script");
-    if (oldScript) 
-		  oldScript.remove();
-    let scriptSrc = "../../pong/pong.js";
-    if (mode === "ai") scriptSrc = "../../pong/pov.js";
-    if (mode === "remote") scriptSrc = "../../pong/remote-pong.js"; //ou jsp quoi
+  const oldScript = document.getElementById("pong-script");
+  if (oldScript) oldScript.remove();
 
-    const script = document.createElement("script");
-    script.id = "pong-script";
-    script.src = scriptSrc;
-    script.async = false; // Important : pas async pour remote-pong.js
+  let scriptSrc = "../../pong/pong.js";
+  if (mode === "ai") scriptSrc = "../../pong/pov.js";
+  if (mode === "remote") scriptSrc = "../../pong/remote-pong.js";
 
-    console.log(`Game ${mode} started`);
-    
-    // Pour remote-pong.js, attendre que le script soit chargé
-    if (mode === "remote") {
-      script.onload = () => {
-        console.log("✅ remote-pong.js chargé, prêt à recevoir game_init");
-      };
-    }
-    
-    canvasDiv.appendChild(script);
+  // 🔹 On transmet le mode au script via window
+  (window as any).gameMode = mode;
+  const script = document.createElement("script");
+  script.id = "pong-script";
+  script.src = scriptSrc + "?t=" + Date.now(); // éviter le cache
+  script.async = false;
 
-     if (GamePage.currentTournamentId) {
+  console.log(`Game ${mode} started`);
+
+  if (mode === "remote") {
+    script.onload = () => {
+      console.log("✅ remote-pong.js chargé");
+    };
+  }
+
+  canvasDiv.appendChild(script);
+
+  if (GamePage.currentTournamentId) {
     console.log("🏆 Tournament game launched:", {
       tournamentId: GamePage.currentTournamentId,
       shouldRecord: GamePage.shouldRecordTournamentMatch,
@@ -2358,6 +2358,7 @@ private showNoData(): void {
     });
   }
 }
+
   
   ///////////////////////////////////////////game//////////////////////////////////////
 
@@ -2740,7 +2741,7 @@ private showNoData(): void {
 		`;
 		
 		setTimeout(() => {
-			this.launchGame("local");
+			this.launchGame("tournament");
 		}, 1000);
 		}
 	};

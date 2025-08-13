@@ -400,7 +400,7 @@ export class GamePage {
                         headers: { "Content-Type": "application/json" },
                         credentials: "include",
                         body: JSON.stringify({
-                            mode: mode,
+                            mode: "tournament",
                             score1: score1,
                             score2: score2,
                             duration: duration,
@@ -1884,14 +1884,15 @@ export class GamePage {
             scriptSrc = "../../pong/pov.js";
         if (mode === "remote")
             scriptSrc = "../../pong/remote-pong.js";
+        window.gameMode = mode;
         const script = document.createElement("script");
         script.id = "pong-script";
-        script.src = scriptSrc;
+        script.src = scriptSrc + "?t=" + Date.now();
         script.async = false;
         console.log(`Game ${mode} started`);
         if (mode === "remote") {
             script.onload = () => {
-                console.log("✅ remote-pong.js chargé, prêt à recevoir game_init");
+                console.log("✅ remote-pong.js chargé");
             };
         }
         canvasDiv.appendChild(script);
@@ -2203,7 +2204,7 @@ export class GamePage {
 			</div>
 		`;
                 setTimeout(() => {
-                    this.launchGame("local");
+                    this.launchGame("tournament");
                 }, 1000);
             }
         };
