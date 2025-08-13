@@ -185,6 +185,37 @@ class RemotePongGame {
         }
     }
 
+    dispose() {
+        console.log("🧹 Nettoyage RemotePongGame...");
+        
+        // Arrêter le moteur de rendu
+        if (this.engine) {
+            this.engine.stopRenderLoop();
+        }
+        
+        // Supprimer les event listeners
+        this.removeEventListeners();
+        
+        // Fermer la connexion WebSocket
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            this.socket.close();
+        }
+        
+        // Disposer la scène
+        if (this.scene) {
+            this.scene.dispose();
+            this.scene = null;
+        }
+        
+        // Disposer le moteur
+        if (this.engine) {
+            this.engine.dispose();
+            this.engine = null;
+        }
+        
+        console.log("✅ RemotePongGame nettoyé");
+    }
+
   async createGameScene() {
         const canvas = document.getElementById("renderCanvas");
         if (!canvas) {
@@ -315,25 +346,52 @@ class RemotePongGame {
     }
 
     // Event Listeners (adapté pour le remote)
-    async setupEventListeners() {
-        const keydownHandler = (e) => {
+ async setupEventListeners() {
+        // Stocker les références pour pouvoir les supprimer plus tard
+        this.keydownHandler = (e) => {
             const key = e.key.toLowerCase();
             this.keys[key] = true;
-            
+
             if (key === "r" && this.isGameOver) {
                 this.restartGame();
             }
             e.preventDefault();
         };
-        
-        const keyupHandler = (e) => {
+
+        this.keyupHandler = (e) => {
             this.keys[e.key.toLowerCase()] = false;
             e.preventDefault();
         };
+
+        this.resizeHandler = () => {
+            if (this.engine) {
+                this.engine.resize();
+            }
+        };
+
+        window.addEventListener("keydown", this.keydownHandler);
+        window.addEventListener("keyup", this.keyupHandler);
+        window.addEventListener("resize", this.resizeHandler);
+    }
+
+      removeEventListeners() {
+        if (this.keydownHandler) {
+            window.removeEventListener("keydown", this.keydownHandler);
+            this.keydownHandler = null;
+        }
         
-        window.addEventListener("keydown", keydownHandler);
-        window.addEventListener("keyup", keyupHandler);
-        window.addEventListener("resize", () => this.engine.resize());
+        if (this.keyupHandler) {
+            window.removeEventListener("keyup", this.keyupHandler);
+            this.keyupHandler = null;
+        }
+        
+        if (this.resizeHandler) {
+            window.removeEventListener("resize", this.resizeHandler);
+            this.resizeHandler = null;
+        }
+        
+        // Réinitialiser l'état des touches
+        this.keys = {};
     }
 
     // Boucle de rendu (MODIFIÉE pour le remote)
@@ -614,30 +672,30 @@ handleGameStart(data) {
     }
 }
 
-    // Fin de partie
-    async endGame() {
+        // Fin de partie
+  async endGame() {
         this.isGameOver = true;
-        this.scene.ball.isVisible = false;
+        if (this.scene && this.scene.ball) {
+            this.scene.ball.isVisible = false;
+        }
         const winner = this.scoreLeft >= this.GAME_CONFIG.scoreLimit ? "PLAYER 1" : "PLAYER 2";
-        console.log("player 1 name:", this.player1Name);
-        console.log("player 2 name:", this.player2Name);
+        
         this.stopGameTimer();
-
+        
         if (this.fontDataGlobal) {
             this.createVictoryText(winner);
         }
-
+        
         if (this.isMaster) {
             console.log("🎯 Master enregistre le match...");
             await this.saveMatchToDatabase();
-            await this.sendGameEnd();
-            return ;
         } else {
             console.log("👥 Non-master - pas d'enregistrement");
-            await this.sendGameEnd();
-            return ;
         }
         
+        // ✅ NETTOYER ET DISPOSE à la fin
+        await this.sendGameEnd();
+        this.dispose();
     }
 
     // ✅ FONCTION pour sauvegarder le match (SEULEMENT pour le master)
@@ -682,6 +740,10 @@ handleGameStart(data) {
     handlePlayerDisconnected(data) {
         console.log("👋 Gestion de déconnexion côté RemotePong");
 
+         this.removeEventListeners();
+    
+        // Nettoyer proprement les ressources du jeu
+        this.dispose();
         // Nettoyer proprement les ressources du jeu
         if (this.engine) {
             this.engine.stopRenderLoop();
@@ -1090,6 +1152,19 @@ handleGameStart(data) {
         // Le reste se fait après réception du message game_init
     }
 }
+    window.disposeGame = function () {
+        console.log("🧹 disposeGame() global called");
+
+        // Si une instance existe, utiliser sa méthode dispose
+        if (window.remotePongGameInstance) {
+            window.remotePongGameInstance.dispose();
+            window.remotePongGameInstance = null;
+        }
+
+        // Nettoyage global supplémentaire si nécessaire
+        window.gameActive = false;
+        console.log("🧼 Global game cleanup completed");
+};
     window.RemotePongGame = RemotePongGame;
 })();
 

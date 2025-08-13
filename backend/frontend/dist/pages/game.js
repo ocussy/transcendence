@@ -18,6 +18,15 @@ export class GamePage {
                 this.handleRemoteGameMessage(data);
             }
         };
+        window.enableGameMode = () => {
+            this.enableGameMode();
+        };
+        window.disableGameMode = () => {
+            this.disableGameMode();
+        };
+        window.startGame = () => {
+            this.startGame("local");
+        };
         window.addEventListener('beforeunload', async (event) => {
             try {
                 navigator.sendBeacon('/logout', JSON.stringify({}));
@@ -446,14 +455,12 @@ export class GamePage {
                 GamePage.currentMatchId = data.id;
                 result = data.id;
             }
-            console.log("codadsasdaucou");
             const gamePageInstance = window.gamePageInstance;
             if (gamePageInstance && GamePage.tournamentMatchData && GamePage.tournamentMatchData.status === "finished") {
                 gamePageInstance.disableGameMode();
             }
             else if (gamePageInstance && !GamePage.tournamentMatchData) {
                 gamePageInstance.disableGameMode();
-                console.log("coucou2");
             }
             return result;
         }
@@ -1886,6 +1893,10 @@ export class GamePage {
     }
     async launchGame(mode) {
         this.hasGameEnded = false;
+        if (typeof window.disposeGame === "function") {
+            window.disposeGame();
+        }
+        this.hasGameEnded = false;
         this.enableGameMode();
         if (typeof window.disposeGame === "function") {
             window.disposeGame();
@@ -1900,14 +1911,15 @@ export class GamePage {
             scriptSrc = "../../pong/pov.js";
         if (mode === "remote")
             scriptSrc = "../../pong/remote-pong.js";
+        window.gameMode = mode;
         const script = document.createElement("script");
         script.id = "pong-script";
-        script.src = scriptSrc;
+        script.src = scriptSrc + "?t=" + Date.now();
         script.async = false;
         console.log(`Game ${mode} started`);
         if (mode === "remote") {
             script.onload = () => {
-                console.log("✅ remote-pong.js chargé, prêt à recevoir game_init");
+                console.log("✅ remote-pong.js chargé");
             };
         }
         canvasDiv.appendChild(script);
@@ -2219,7 +2231,7 @@ export class GamePage {
 			</div>
 		`;
                 setTimeout(() => {
-                    this.launchGame("local");
+                    this.launchGame("tournament");
                 }, 1000);
             }
         };

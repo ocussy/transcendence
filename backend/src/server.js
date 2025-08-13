@@ -29,10 +29,10 @@ const key = fs.readFileSync(path.join(__dirname, "../certs/server.key"));
 const cert = fs.readFileSync(path.join(__dirname, "../certs/server.cert"));
 
 export const app = fastify({
-  // https: {
-  //   key,
-  //   cert,
-  // },
+  https: {
+    key,
+    cert,
+  },
 });
 
 seedDatabase(db);

@@ -33,7 +33,7 @@
 
     let scoreLeft = 0;
     let scoreRight = 0;
-    const SCORE_LIMIT = 5;
+    const SCORE_LIMIT = 1;
     let gameEnded = false;
     let fontDataGlobal = null;
     let myText = null;

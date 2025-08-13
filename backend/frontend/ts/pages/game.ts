@@ -56,6 +56,16 @@ export class GamePage {
         this.handleRemoteGameMessage(data);
       }
     }
+    (window as any).enableGameMode = () => {
+      this.enableGameMode();
+    };
+
+    (window as any).disableGameMode = () => {
+      this.disableGameMode();
+    };
+    (window as any).startGame = () => {
+      this.startGame("local");
+    };
 
         // Nettoyer les WebSockets et déconnecter lors du déchargement de la page
     window.addEventListener('beforeunload', async (event) => {
@@ -92,12 +102,12 @@ export class GamePage {
     this.showSectionWithoutPush(targetSection);
   }
   //////////////////////////////////////////////////////////game start lock///////////////////////////////////
-    private enableGameMode(): void {
+    public enableGameMode(): void {
     this.isGameActive = true;
     this.updateUIForGameMode(true);
   }
 
-  private disableGameMode(): void {
+  public disableGameMode(): void {
     this.isGameActive = false;
     this.updateUIForGameMode(false);
   }
@@ -559,7 +569,6 @@ private showNoData(): void {
         GamePage.currentMatchId = data.id;
         result = data.id;
       }
-        console.log("codadsasdaucou");
       
       const gamePageInstance = (window as any).gamePageInstance;
       if (gamePageInstance && GamePage.tournamentMatchData && GamePage.tournamentMatchData.status === "finished") {
@@ -567,7 +576,6 @@ private showNoData(): void {
       }
       else if (gamePageInstance && !GamePage.tournamentMatchData) {
         gamePageInstance.disableGameMode();
-        console.log("coucou2");
       }
 
       return result;
@@ -1864,7 +1872,7 @@ private showNoData(): void {
 
   ///////////////////////////////////////////game//////////////////////////////////////
 
-  private startGame(mode: "local" | "ai" | "remote"): void {
+  public startGame(mode: "local" | "ai" | "remote"): void {
     if (this.isGameActive) {
       GamePage.showProfileAlert(
         "profile-alert", 
@@ -2292,7 +2300,11 @@ private showNoData(): void {
     }
   }
 
-  private async launchGame(mode: "local" | "ai" | "remote"): Promise<void> {
+private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promise<void> {
+  this.hasGameEnded = false;
+  if (typeof (window as any).disposeGame === "function") {
+    (window as any).disposeGame();
+  }
 
     this.hasGameEnded = false;
     this.enableGameMode();
@@ -2303,30 +2315,31 @@ private showNoData(): void {
     const canvasDiv = document.getElementById("game-canvas")!;
     canvasDiv.innerHTML = `<canvas id="renderCanvas" class="w-full h-full" tabindex="0"></canvas>`;
 
-    const oldScript = document.getElementById("pong-script");
-    if (oldScript) 
-		  oldScript.remove();
-    let scriptSrc = "../../pong/pong.js";
-    if (mode === "ai") scriptSrc = "../../pong/pov.js";
-    if (mode === "remote") scriptSrc = "../../pong/remote-pong.js"; //ou jsp quoi
+  const oldScript = document.getElementById("pong-script");
+  if (oldScript) oldScript.remove();
 
-    const script = document.createElement("script");
-    script.id = "pong-script";
-    script.src = scriptSrc;
-    script.async = false; // Important : pas async pour remote-pong.js
+  let scriptSrc = "../../pong/pong.js";
+  if (mode === "ai") scriptSrc = "../../pong/pov.js";
+  if (mode === "remote") scriptSrc = "../../pong/remote-pong.js";
 
-    console.log(`Game ${mode} started`);
-    
-    // Pour remote-pong.js, attendre que le script soit chargé
-    if (mode === "remote") {
-      script.onload = () => {
-        console.log("✅ remote-pong.js chargé, prêt à recevoir game_init");
-      };
-    }
-    
-    canvasDiv.appendChild(script);
+  // 🔹 On transmet le mode au script via window
+  (window as any).gameMode = mode;
+  const script = document.createElement("script");
+  script.id = "pong-script";
+  script.src = scriptSrc + "?t=" + Date.now(); // éviter le cache
+  script.async = false;
 
-     if (GamePage.currentTournamentId) {
+  console.log(`Game ${mode} started`);
+
+  if (mode === "remote") {
+    script.onload = () => {
+      console.log("✅ remote-pong.js chargé");
+    };
+  }
+
+  canvasDiv.appendChild(script);
+
+  if (GamePage.currentTournamentId) {
     console.log("🏆 Tournament game launched:", {
       tournamentId: GamePage.currentTournamentId,
       shouldRecord: GamePage.shouldRecordTournamentMatch,
@@ -2334,6 +2347,7 @@ private showNoData(): void {
     });
   }
 }
+
   
   ///////////////////////////////////////////game//////////////////////////////////////
 
@@ -2706,7 +2720,7 @@ private showNoData(): void {
 		`;
 		
 		setTimeout(() => {
-			this.launchGame("local");
+			this.launchGame("tournament");
 		}, 1000);
 		}
 	};
