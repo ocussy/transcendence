@@ -66,6 +66,9 @@ export class GamePage {
     (window as any).startGame = () => {
       this.startGame("local");
     };
+        (window as any).startGameAI = () => {
+      this.startGame("ai");
+    };
 
         // Nettoyer les WebSockets et déconnecter lors du déchargement de la page
     window.addEventListener('beforeunload', async (event) => {
@@ -1873,13 +1876,14 @@ private showNoData(): void {
   ///////////////////////////////////////////game//////////////////////////////////////
 
   public startGame(mode: "local" | "ai" | "remote"): void {
-    if (this.isGameActive) {
-      GamePage.showProfileAlert(
-        "profile-alert", 
-        "$ error: match already in progress"
-      );
-      return;
-    }
+    // if (this.isGameActive) {
+    //   GamePage.showProfileAlert(
+    //     "profile-alert", 
+    //     "$ error: match already in progress"
+    //   );
+    //   return;
+    // }
+    this.disableGameMode();
     const canvasDiv = document.getElementById("game-canvas")!;
 
     let controlsHTML = "";
@@ -2833,12 +2837,14 @@ private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promis
           
         } 
         else if (data.status === "finished") {
-          GamePage.resetTournamentState();
           GamePage.showProfileAlert(
             "profile-success", 
             `🏆 TOURNAMENT CHAMPION: ${data.player_1}! 🎉`, 
             "success"
           );
+          setTimeout(() => {
+            GamePage.resetTournamentState();
+          }, 3000);
         }
       }
     } catch (error) {
@@ -2851,9 +2857,44 @@ private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promis
   }
 
     static resetTournamentState(): void {
+    
     GamePage.currentTournamentId = null;
     GamePage.shouldRecordTournamentMatch = false;
     GamePage.tournamentMatchData = null;
+    
+    // Rediriger vers la page d'accueil à la fin du tournoi
+    const gamePageInstance = (window as any).gamePageInstance;
+    if (gamePageInstance) {
+      gamePageInstance.goToHomePage();
+    } else {
+      // Fallback si l'instance n'est pas disponible
+      if (window.router) {
+        window.router.navigate("/");
+      } else {
+        window.location.href = "/";
+      }
+    }
+  }
+
+  // Méthode pour retourner à la page d'accueil
+  public goToHomePage(): void {
+    // Nettoyer les ressources du jeu si nécessaire
+    if (typeof (window as any).disposeGame === "function") {
+      (window as any).disposeGame();
+    }
+    
+    // Désactiver le mode jeu
+    this.disableGameMode();
+    
+    // Nettoyer les WebSockets
+    this.cleanup();
+    
+    // Rediriger vers la page d'accueil
+    if (window.router) {
+      window.router.navigate("/");
+    } else {
+      window.location.href = "/";
+    }
   }
   ///////////////////////////////////////////tournois//////////////////////////////////////
   ///////////////////////////////////////////GDPR/////////////////////////////////////////

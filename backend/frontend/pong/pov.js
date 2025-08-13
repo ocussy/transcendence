@@ -7,6 +7,7 @@
     let advancedTexture = null;
     let renderLoop = null;
     let observers = [];
+    let autoDisposeTimeout = null;
     // Start timer when game starts
     function startGameTimer() {
         gameStartTime = Date.now();
@@ -119,10 +120,10 @@
     true // inverser Y pour corriger l'orientation
     );
 
-    // 3. Dessine le texte "R pour rejouer" en dessous
+    // 3. Dessine le texte "R pour rejouer (3s)" en dessous
     const smallFontStyle = "24px Orbitron";
     dynamicTexture.drawText(
-    "R pour rejouer",
+    "R pour rejouer (3s)",
     null, // null pour centrer automatiquement horizontalement
     dtHeight / 2 + 80, // En dessous du texte principal
     smallFontStyle,
@@ -236,13 +237,37 @@
     gameEnded = true;
     showGameOver("Vous avez gagné!");
     stopGameTimer();
-    GamePage.createMatch("ia", scoreLeft, scoreRight, gameDurationSeconds);
+    setTimeout(async () => {
+        await GamePage.createMatch("ia", scoreLeft, scoreRight, gameDurationSeconds);
+        console.log("✅ Match recorded:", { scoreLeft, scoreRight, duration: gameDurationSeconds });
+        window.enableGameMode();
+      }, 0);
+    
+    // Auto-dispose timeout de 3 secondes
+    autoDisposeTimeout = setTimeout(() => {
+        console.log("⏰ 3 seconds elapsed - auto-disposing game");
+        window.disposeGame();
+        window.startGameAI();
+    }, 3000);
+    
     return true;
     } else if (scoreRight >= SCORE_LIMIT) {
     gameEnded = true;
     showGameOver("L'IA a gagné!");
     stopGameTimer();
-    GamePage.createMatch("ia", scoreLeft, scoreRight, gameDurationSeconds);
+    setTimeout(async () => {
+        await GamePage.createMatch("ia", scoreLeft, scoreRight, gameDurationSeconds);
+        console.log("✅ Match recorded:", { scoreLeft, scoreRight, duration: gameDurationSeconds });
+      window.enableGameMode();
+      }, 0);
+    
+    // Auto-dispose timeout de 3 secondes
+    autoDisposeTimeout = setTimeout(() => {
+        console.log("⏰ 3 seconds elapsed - auto-disposing game");
+        window.disposeGame();
+        window.startGameAI();
+    }, 3000);
+    
     return true;
     }
     return false;
@@ -250,6 +275,12 @@
 
 
     function restartGame() {
+    if (autoDisposeTimeout) {
+        clearTimeout(autoDisposeTimeout);
+        autoDisposeTimeout = null;
+        console.log("🔄 Auto-dispose timeout cancelled - game restarting");
+    }
+
     // Reset des scores
     scoreLeft = 0;
     scoreRight = 0;
@@ -265,6 +296,9 @@
     // Reset de la balle
     ball.position = new BABYLON.Vector3(0, tunnelHeight / 2, 0);
     ballVelocity =  getLinearInitialVelocity(0.3, 20);
+
+    // Redémarrer le timer après le restart
+    startGameTimer();
 
     // Cacher l'écran de fin
     // gameOverScreen.style.display = 'none';
@@ -578,34 +612,49 @@
     window.disposeGame = function () {
     console.log("🧹 disposeGame() called — on arrête et on clean");
 
+    if (autoDisposeTimeout) {
+      clearTimeout(autoDisposeTimeout);
+      autoDisposeTimeout = null;
+    }
+
+    // Clear scores
+    scoreLeft = 0;
+    scoreRight = 0;
+    gameEnded = false;
+
+    // Remove mouse listener for paddle control
+    if (scene && scene.onPointerMove) {
+      scene.onPointerMove = null;
+    }
+
     try {
       // stoppe la boucle de rendu
       if (engine && renderLoop) {
-        engine.stopRenderLoop(renderLoop);
+      engine.stopRenderLoop(renderLoop);
       }
 
       // supprime la scène Babylon
       if (scene) {
-        scene.dispose(true, true);
-        console.log("✅ scene disposed");
+      scene.dispose(true, true);
+      console.log("✅ scene disposed");
       }
 
       // supprime l'engine
       if (engine) {
-        engine.dispose();
-        console.log("✅ engine disposed");
+      engine.dispose();
+      console.log("✅ engine disposed");
       }
 
       // Si tu as des GUI (AdvancedDynamicTexture), par exemple  
       if (advancedTexture) {
-        advancedTexture.dispose();
-        console.log("✅ GUI disposed");
+      advancedTexture.dispose();
+      console.log("✅ GUI disposed");
       }
 
       // Si tu as des observers, détache-les
       observers.forEach(obs => {
-        try { engine.onResizeObservable.remove(obs); }
-        catch(_) {}
+      try { engine.onResizeObservable.remove(obs); }
+      catch(_) {}
       });
       observers = [];
 

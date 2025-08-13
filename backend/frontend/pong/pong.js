@@ -595,13 +595,16 @@ function startRenderLoop() {
     isGameOver = true;
     ball.isVisible = false;
     const winner = scoreLeft >= GAME_CONFIG.scoreLimit ? "PLAYER 1" : "PLAYER 2";
-
     stopGameTimer();
     console.log("gameactuallyStarted", gameActuallyStarted);
     console.log("gameInterrupted", gameInterrupted);
     if (window.gameActive && gameActuallyStarted && !gameInterrupted) {
-        GamePage.createMatch("local", scoreLeft, scoreRight, gameDurationSeconds);
-        console.log("✅ Match recorded:", { scoreLeft, scoreRight, duration: gameDurationSeconds });
+        // Appel asynchrone pour éviter le blocage de l'UI
+        setTimeout(async () => {
+            await GamePage.createMatch("local", scoreLeft, scoreRight, gameDurationSeconds);
+            console.log("✅ Match recorded:", { scoreLeft, scoreRight, duration: gameDurationSeconds });
+            window.enableGameMode();
+        }, 0);
     } else if (gameInterrupted) {
         console.log("🚫 Match NOT recorded - game was interrupted");
     }
@@ -648,7 +651,7 @@ function startRenderLoop() {
             console.log("⏰ 3 seconds elapsed - auto-disposing game");
             window.disposeGame();
             window.startGame();
-            },window.enableGameMode, 3000);
+            }, 3000);
         }
     
     scene.render();

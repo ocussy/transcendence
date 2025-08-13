@@ -27,6 +27,9 @@ export class GamePage {
         window.startGame = () => {
             this.startGame("local");
         };
+        window.startGameAI = () => {
+            this.startGame("ai");
+        };
         window.addEventListener('beforeunload', async (event) => {
             try {
                 navigator.sendBeacon('/logout', JSON.stringify({}));
@@ -1565,10 +1568,7 @@ export class GamePage {
         }
     }
     startGame(mode) {
-        if (this.isGameActive) {
-            GamePage.showProfileAlert("profile-alert", "$ error: match already in progress");
-            return;
-        }
+        this.disableGameMode();
         const canvasDiv = document.getElementById("game-canvas");
         let controlsHTML = "";
         if (mode === "local") {
@@ -2324,8 +2324,10 @@ export class GamePage {
                     }, 3000);
                 }
                 else if (data.status === "finished") {
-                    GamePage.resetTournamentState();
                     GamePage.showProfileAlert("profile-success", `🏆 TOURNAMENT CHAMPION: ${data.player_1}! 🎉`, "success");
+                    setTimeout(() => {
+                        GamePage.resetTournamentState();
+                    }, 3000);
                 }
             }
         }
@@ -2338,6 +2340,31 @@ export class GamePage {
         GamePage.currentTournamentId = null;
         GamePage.shouldRecordTournamentMatch = false;
         GamePage.tournamentMatchData = null;
+        const gamePageInstance = window.gamePageInstance;
+        if (gamePageInstance) {
+            gamePageInstance.goToHomePage();
+        }
+        else {
+            if (window.router) {
+                window.router.navigate("/");
+            }
+            else {
+                window.location.href = "/";
+            }
+        }
+    }
+    goToHomePage() {
+        if (typeof window.disposeGame === "function") {
+            window.disposeGame();
+        }
+        this.disableGameMode();
+        this.cleanup();
+        if (window.router) {
+            window.router.navigate("/");
+        }
+        else {
+            window.location.href = "/";
+        }
     }
     async anonymizeAccount() {
         const confirmed = await this.showConfirmationPopup('anonymize', '$ data --anonymize', 'This will anonymize your public display:', [
