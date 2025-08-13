@@ -29,10 +29,10 @@ const key = fs.readFileSync(path.join(__dirname, "../certs/server.key"));
 const cert = fs.readFileSync(path.join(__dirname, "../certs/server.cert"));
 
 export const app = fastify({
-  https: {
-    key,
-    cert,
-  },
+  // https: {
+  //   key,
+  //   cert,
+  // },
 });
 
 seedDatabase(db);
@@ -109,14 +109,9 @@ app.decorate("authenticate", async (request, reply) => {
 
 app.addHook("preHandler", async (req, reply) => {
   try {
-    if (req.cookies?.token) {
-      await req.jwtVerify();
-      const userRow = db.prepare('SELECT lang FROM users WHERE id = ?').get(req.user.id);
-      req.lang = userRow?.lang || 'en';
-    } else {
       req.lang = 'en';
     }
-  } catch (err) {
+  catch (err) {
     console.error("JWT verification failed:", err);
     req.lang = 'en';
   }

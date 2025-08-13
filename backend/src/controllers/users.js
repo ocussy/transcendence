@@ -42,7 +42,7 @@ export async function buildUpdateQuery(table, updates, whereClause, whereArgs) {
 export async function getUser(req, reply) {
   try {
     const id = req.user.id;
-    const user = db.prepare('SELECT login, public_login, email, avatarUrl, alias, auth_provider, lang, secure_auth, games_played, games_won FROM users WHERE id = ?').get(id);
+    const user = db.prepare('SELECT login, public_login, email, avatarUrl, alias, auth_provider, secure_auth, games_played, games_won FROM users WHERE id = ?').get(id);
     if (!user) {
       return reply.status(404).send({ error: t(req.lang, "user_not_found") });
     }
@@ -70,10 +70,10 @@ export async function getFriendsUser(req, reply) {
 }
 
 async function verifData(req, reply) {
-  const { login, email, avatarUrl, lang, password, secure_auth, friend, alias } = req.body;
+  const { login, email, avatarUrl, password, secure_auth, friend, alias } = req.body;
 
   // verifier si j'ai besoin de cette verif
-  if (!email && !avatarUrl && !lang && !password && secure_auth === undefined && !login && !friend && !alias) {
+  if (!email && !avatarUrl && !password && secure_auth === undefined && !login && !friend && !alias) {
     return reply.status(400).send({
       error: t(req.lang, "no_fields_to_update"),
     });
@@ -133,7 +133,7 @@ export async function updateUser(req, reply) {
   const id = req.user.id;
   if (error) return error;
 
-  const { login, email, avatarUrl, lang, password, secure_auth, friend, alias, public_login } =
+  const { login, email, avatarUrl, password, secure_auth, friend, alias, public_login } =
     req.body;
 
   const updates = [];
@@ -155,10 +155,6 @@ export async function updateUser(req, reply) {
   if (avatarUrl) {
     updates.push("avatarUrl = ?");
     values.push(avatarUrl);
-  }
-  if (lang) {
-    updates.push("lang = ?");
-    values.push(lang);
   }
   if (password) {
     const hashedPassword = await bcrypt.hash(password, 10);

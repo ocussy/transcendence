@@ -8,7 +8,6 @@ export class GamePage {
         this.remoteSocket = null;
         this.isGameActive = false;
         this.hasGameEnded = false;
-        this.pendingGameInit = null;
         verifyToken();
         this.render();
         this.attachEvents();
@@ -72,12 +71,12 @@ export class GamePage {
                 if (isActive) {
                     button.disabled = true;
                     button.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
-                    button.innerHTML = button.innerHTML.replace('$ ', '$ [LOCKED] ');
+                    button.innerHTML = button.innerHTML.replace('$ ', ' [LOCKED] ');
                 }
                 else {
                     button.disabled = false;
                     button.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
-                    button.innerHTML = button.innerHTML.replace('$ [LOCKED] ', '$ ');
+                    button.innerHTML = button.innerHTML.replace(' [LOCKED] ', '$ ');
                 }
             }
         });
@@ -109,7 +108,7 @@ export class GamePage {
     static forceExitGameMode() {
         const gamePageInstance = window.gamePageInstance;
         if (gamePageInstance) {
-            gamePageInstance.disableGameMode();
+            window.gamePageInstance?.disableGameMode();
         }
     }
     async loadDashboardData() {
@@ -400,7 +399,7 @@ export class GamePage {
                         headers: { "Content-Type": "application/json" },
                         credentials: "include",
                         body: JSON.stringify({
-                            mode: mode,
+                            mode: "tournament",
                             score1: score1,
                             score2: score2,
                             duration: duration,
@@ -447,11 +446,24 @@ export class GamePage {
                 GamePage.currentMatchId = data.id;
                 result = data.id;
             }
+            console.log("codadsasdaucou");
+            const gamePageInstance = window.gamePageInstance;
+            if (gamePageInstance && GamePage.tournamentMatchData && GamePage.tournamentMatchData.status === "finished") {
+                gamePageInstance.disableGameMode();
+            }
+            else if (gamePageInstance && !GamePage.tournamentMatchData) {
+                gamePageInstance.disableGameMode();
+                console.log("coucou2");
+            }
             return result;
         }
         catch (error) {
             console.error("❌ Error in createMatch:", error);
             GamePage.showProfileAlert("profile-alert", String(error));
+            const gamePageInstance = window.gamePageInstance;
+            if (gamePageInstance) {
+                gamePageInstance.disableGameMode();
+            }
             return null;
         }
     }
@@ -1638,6 +1650,7 @@ export class GamePage {
             if (joinRoomBtn) {
                 joinRoomBtn.addEventListener("click", () => {
                     console.log('🖱️ Bouton "join room" cliqué');
+                    this.enableGameMode();
                     this.connectToRemoteMatchmaking();
                 });
             }
@@ -1696,7 +1709,7 @@ export class GamePage {
         switch (data.type) {
             case 'waiting':
                 console.log('⏳ En attente d\'un adversaire...');
-                GamePage.showProfileAlert("profile-success", data.message || "$ waiting for opponent...", "success");
+                GamePage.showProfileAlert("profile-success", "$ waiting for opponent...", "success");
                 break;
             case 'match_found':
                 console.log('🎮 Match trouvé!', data);
@@ -1746,6 +1759,7 @@ export class GamePage {
                     window.gameSocket = null;
                 }
                 GamePage.showProfileAlert("profile-success", "$ game ended", "success");
+                this.disableGameMode();
                 const gameCanvasDiv = document.getElementById("game-canvas");
                 const currentGame = window.remotePongGameInstance;
                 console.log("currentGame", currentGame);
@@ -1796,7 +1810,7 @@ export class GamePage {
             </div>
           `;
                 document.getElementById('back-to-menu-game-ended')?.addEventListener('click', () => {
-                    this.showRemoteMenu();
+                    this.startGame("remote");
                 });
                 break;
             case 'player_disconnected':
@@ -1805,6 +1819,7 @@ export class GamePage {
                 }
                 console.log('❌ Joueur déconnecté:', data.playerId);
                 GamePage.showProfileAlert("profile-alert", "$ opponent disconnected !!!!!");
+                this.disableGameMode();
                 const canvasDiv = document.getElementById("game-canvas");
                 canvasDiv.innerHTML = `
           <div class="w-full h-full flex items-center justify-center bg-black border border-gray-700 rounded-lg">
@@ -1871,6 +1886,7 @@ export class GamePage {
     }
     async launchGame(mode) {
         this.hasGameEnded = false;
+        this.enableGameMode();
         if (typeof window.disposeGame === "function") {
             window.disposeGame();
         }

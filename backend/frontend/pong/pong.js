@@ -603,6 +603,7 @@ function startRenderLoop() {
                 ball.isVisible = false;
                 const winner = scoreLeft >= GAME_CONFIG.scoreLimit ? "PLAYER 1" : "PLAYER 2";
 
+                stopGameTimer();
                 if (window.gameActive && gameActuallyStarted && !gameInterrupted) {
                     GamePage.createMatch("local", scoreLeft, scoreRight, gameDurationSeconds);
                     console.log("✅ Match recorded:", { scoreLeft, scoreRight, duration: gameDurationSeconds });
@@ -610,8 +611,7 @@ function startRenderLoop() {
                     console.log("🚫 Match NOT recorded - game was interrupted");
                 }
 
-                stopGameTimer();
-                // disposeGame();
+                disposeGame();
                 if (fontDataGlobal) {
                     try {
                         const victoryText = BABYLON.MeshBuilder.CreateText("victoryText", 

@@ -112,11 +112,15 @@ export async function signUpGoogle(req, reply) {
       return reply.status(400).send({ error: "Invalid Google token" });
     }
 
-    if (await emailExist(email)) {
-      return signIn(req, reply);
-    }
-
     const login = name.replace(/\s+/g, "").toLowerCase();
+    if (await emailExist(email)) {
+      const user = db.prepare(`SELECT * FROM users WHERE email = ?`).get(email);
+      if (user && user.login !== login) {
+        return reply.status(400).send({ error: t(req.lang, "user_exists") });
+      }
+      return signIn(req, reply);
+      }
+
     if (await loginExist(login)) {
       return reply
         .status(400)
@@ -133,13 +137,6 @@ export async function signUpGoogle(req, reply) {
     reply
       .setCookie("token", tokenJWT, {
       httpOnly: true,
-      secure: false,
-      sameSite: "Lax",
-      path: "/",
-      maxAge: 60 * 60, // 1 hour
-      })
-      .setCookie("lang", user.lang, {
-      httpOnly: false,
       secure: false,
       sameSite: "Lax",
       path: "/",
@@ -193,13 +190,6 @@ export async function signIn(req, reply) {
       reply
         .setCookie("token", tokenJWT,{
           httpOnly: true,
-          secure: false,
-          sameSite: "Lax",
-          path: "/",
-          maxAge: 60 * 60, // 1 hour
-        })
-        .setCookie("lang", user.lang, {
-          httpOnly: false,
           secure: false,
           sameSite: "Lax",
           path: "/",
@@ -264,13 +254,6 @@ export async function signIn(req, reply) {
         path: "/",
         maxAge: 60 * 60, // 1 hour
       })
-      .setCookie("lang", user.lang, {
-        httpOnly: false,
-        secure: false,
-        sameSite: "Lax",
-        path: "/",
-        maxAge: 60 * 60, // 1 hour
-      })
         .code(200)
         .send({ login: user.login });
     }
@@ -289,12 +272,6 @@ export async function signOut(req, reply) {
         secure: false,
         sameSite: "Lax",
       })
-      .clearCookie("lang", user.lang, {
-        httpOnly: false,
-        secure: false,
-        sameSite: "Lax",
-        path: "/",
-      })
       .code(200)
       .send({ message: "Successfully signed out" });
   } catch (err) {
@@ -306,7 +283,7 @@ export async function sendOtpVerificationEmail(user, reply) {
   try {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     const mailOptions = {
-      from: `"Tunisienne en chaleur" <test@openjavascript.info>`,
+      from: `"2FA transcendance" <test@openjavascript.info>`,
       to: user.email,
       subject: "Your 2FA Code",
       text: `Your 2FA code is: ${code}. It is valid for 5 minutes.`,
@@ -375,13 +352,6 @@ export async function verify2FA(req, reply) {
       sameSite: "Lax",
       path: "/",
       maxAge: 60 * 60, // 1 hour
-      })
-      .setCookie("lang", user.lang, {
-        httpOnly: false,
-        secure: false,
-        sameSite: "Lax",
-        path: "/",
-        maxAge: 60 * 60, // 1 hour
       })
       .code(200)
       .send({ jwtToken, message: t(req.lang, "2fa_success") });

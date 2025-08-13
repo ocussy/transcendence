@@ -80,7 +80,7 @@ export function setupRemoteSocket(app) {
             // if no waiting player, set this one as waiting
             if (!waitingPlayer) {
                 waitingPlayer = { connection, userId};
-                connection.socket.send(JSON.stringify({ type: "waiting", message: "En attente d’un autre joueur…" }));
+                connection.socket.send(JSON.stringify({ type: "waiting"}));
                 console.log("waitingPlayer:", waitingPlayer.userId);
             }
             // if waiting player exists, create a room

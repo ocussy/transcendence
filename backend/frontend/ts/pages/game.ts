@@ -31,7 +31,6 @@ export class GamePage {
   static currentMatchId: number | null = null;
   private isGameActive: boolean = false;
   private hasGameEnded: boolean = false;
-  private pendingGameInit: any = null; // Stockage temporaire pour game_init
 
   static currentTournamentId: number | null = null;
   static shouldRecordTournamentMatch: boolean = false;
@@ -55,16 +54,6 @@ export class GamePage {
       if (data && data.isRemote) {
         // Traiter directement les messages de remote-pong.js
         this.handleRemoteGameMessage(data);
-        
-        // Si on a un pendingGameInit, l'envoyer maintenant
-        // if (this.pendingGameInit) {
-        //   console.log("✅ Envoi du pendingGameInit maintenant que remote-pong.js est prêt");
-        //   (window as any).handleRemoteGameMessage({
-        //     ...this.pendingGameInit,
-        //     isRemote: true,
-        //   });
-        //   this.pendingGameInit = null; // Nettoyer
-        // }
       }
     }
 
@@ -135,11 +124,11 @@ export class GamePage {
         if (isActive) {
           button.disabled = true;
           button.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
-          button.innerHTML = button.innerHTML.replace('$ ', '$ [LOCKED] ');
+          button.innerHTML = button.innerHTML.replace('$ ', ' [LOCKED] ');
         } else {
           button.disabled = false;
           button.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
-          button.innerHTML = button.innerHTML.replace('$ [LOCKED] ', '$ ');
+          button.innerHTML = button.innerHTML.replace(' [LOCKED] ', '$ ');
         }
       }
     });
@@ -172,7 +161,7 @@ export class GamePage {
     static forceExitGameMode(): void {
     const gamePageInstance = (window as any).gamePageInstance;
     if (gamePageInstance) {
-      gamePageInstance.disableGameMode();
+      (window as any).gamePageInstance?.disableGameMode();
     }
   }
   ///////////////////////////////////////////////game start lock///////////////////////////////////////
@@ -512,7 +501,6 @@ private showNoData(): void {
       let result = null;
       
       if (GamePage.currentTournamentId && GamePage.tournamentMatchData) {
-        
         if (GamePage.shouldRecordTournamentMatch) {
           console.log("🏆 USER PARTICIPATING - Recording tournament match...");
           
@@ -521,7 +509,7 @@ private showNoData(): void {
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify({
-              mode: mode,
+              mode: "tournament",
               score1: score1,
               score2: score2,
               duration: duration,
@@ -571,21 +559,26 @@ private showNoData(): void {
         GamePage.currentMatchId = data.id;
         result = data.id;
       }
-
-      // const gamePageInstance = (window as any).gamePageInstance;
-      // if (gamePageInstance) {
-      //   gamePageInstance.disableGameMode();
-      // }
+        console.log("codadsasdaucou");
+      
+      const gamePageInstance = (window as any).gamePageInstance;
+      if (gamePageInstance && GamePage.tournamentMatchData && GamePage.tournamentMatchData.status === "finished") {
+        gamePageInstance.disableGameMode();
+      }
+      else if (gamePageInstance && !GamePage.tournamentMatchData) {
+        gamePageInstance.disableGameMode();
+        console.log("coucou2");
+      }
 
       return result;
     } catch (error) {
       console.error("❌ Error in createMatch:", error);
       GamePage.showProfileAlert("profile-alert", String(error));
       
-      // const gamePageInstance = (window as any).gamePageInstance;
-      // if (gamePageInstance) {
-      //   gamePageInstance.disableGameMode();
-      // }
+      const gamePageInstance = (window as any).gamePageInstance;
+      if (gamePageInstance) {
+        gamePageInstance.disableGameMode();
+      }
       
       return null;
     }
@@ -1969,6 +1962,7 @@ private showNoData(): void {
       if (joinRoomBtn) {
         joinRoomBtn.addEventListener("click", () => {
           console.log('🖱️ Bouton "join room" cliqué');
+          this.enableGameMode();
           this.connectToRemoteMatchmaking();
         });
       }
@@ -2053,7 +2047,7 @@ private showNoData(): void {
         console.log('⏳ En attente d\'un adversaire...');
         GamePage.showProfileAlert(
           "profile-success",
-          data.message || "$ waiting for opponent...",
+          "$ waiting for opponent...",
           "success"
         );
         break;
@@ -2087,26 +2081,6 @@ private showNoData(): void {
     }
   }
 
-  // Fonction pour démarrer le jeu remote avec roomId
-  // private startRemoteGame(roomId: string, opponentId: number): void {
-  //   console.log(`🎮 Démarrage jeu remote - Room: ${roomId}, Opponent: ${opponentId}`);
-    
-  //   // Fermer la connexion matchmaking
-  //   if (this.remoteSocket) {
-  //     this.remoteSocket.close();
-  //     this.remoteSocket = null;
-  //   }
-
-  //   // Stocker les informations du jeu
-  //   localStorage.setItem('currentRoomId', roomId);
-  //   localStorage.setItem('opponentId', opponentId.toString());
-
-  //   // Créer une nouvelle WebSocket pour le jeu remote
-  //   this.connectToRemoteGame(roomId);
-    
-  //   // Lancer le jeu remote
-  //   this.launchGame("remote");
-  // }
 
   // Fonction pour se connecter au jeu remote via WebSocket
   private async connectToRemoteGame(roomId: string, opponentId : number): Promise<void> {
@@ -2169,6 +2143,7 @@ private showNoData(): void {
             "success"
           );
           
+          this.disableGameMode();
           // Afficher l'interface de fin de partie
           const gameCanvasDiv = document.getElementById("game-canvas")!;
           
@@ -2224,7 +2199,7 @@ private showNoData(): void {
           `;
   
           document.getElementById('back-to-menu-game-ended')?.addEventListener('click', () => {
-            this.showRemoteMenu();
+            this.startGame("remote");
           });
           break;
         
@@ -2238,7 +2213,7 @@ private showNoData(): void {
           "profile-alert",
           "$ opponent disconnected !!!!!"
         );
-        
+        this.disableGameMode();
         // Afficher l'interface de déconnexion
         const canvasDiv = document.getElementById("game-canvas")!;
         canvasDiv.innerHTML = `
@@ -2320,6 +2295,7 @@ private showNoData(): void {
   private async launchGame(mode: "local" | "ai" | "remote"): Promise<void> {
 
     this.hasGameEnded = false;
+    this.enableGameMode();
     if (typeof (window as any).disposeGame === "function") {
       (window as any).disposeGame();
     }
@@ -2511,16 +2487,6 @@ private showNoData(): void {
           players.push(alias);
       }
     }
-
-
-    // const uniqueAliases = new Set(players);
-    // if (uniqueAliases.size !== players.length) {
-    //   GamePage.showProfileAlert(
-    //     "profile-alert",
-    //     "$ error: all aliases must be unique",
-    //   );
-    //   return;
-    // }
 
     try {
       console.log(
