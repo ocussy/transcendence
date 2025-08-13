@@ -76,6 +76,15 @@ const keys = {};
 let leftPaddle, rightPaddle;
 
 function setupEventListeners() {
+    // Initialise le tableau si inexistant
+    window._gameEventListeners = [];
+
+    function addListener(target, type, handler) {
+        target.addEventListener(type, handler);
+        window._gameEventListeners.push({ target, type, handler });
+    }
+
+    // Handler keydown
     const keydownHandler = (e) => {
         const target = e.target;
         if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
@@ -91,15 +100,23 @@ function setupEventListeners() {
         e.preventDefault();
     };
 
+    // Handler keyup
     const keyupHandler = (e) => {
         keys[e.key.toLowerCase()] = false;
         e.preventDefault();
     };
 
-    window.addEventListener("keydown", keydownHandler);
-    window.addEventListener("keyup", keyupHandler);
-    window.addEventListener("resize", () => engine.resize());
+    // Handler resize
+    const resizeHandler = () => {
+        if (engine) engine.resize();
+    };
+
+    // Ajout avec stockage
+    addListener(window, "keydown", keydownHandler);
+    addListener(window, "keyup", keyupHandler);
+    addListener(window, "resize", resizeHandler);
 }
+
 
 
 function restartGame() {
@@ -631,7 +648,7 @@ function startRenderLoop() {
             console.log("⏰ 3 seconds elapsed - auto-disposing game");
             window.disposeGame();
             window.startGame();
-            }, 3000);
+            },window.enableGameMode, 3000);
         }
     
     scene.render();
@@ -725,11 +742,11 @@ window.disposeGame = function () {
     }
 
     if (window._gameEventListeners) {
-      window._gameEventListeners.forEach(({ type, handler }) => {
-        window.removeEventListener(type, handler);
-      });
-      window._gameEventListeners = [];
-      console.log("✅ event listeners removed");
+        window._gameEventListeners.forEach(({ target, type, handler }) => {
+            target.removeEventListener(type, handler);
+        });
+        window._gameEventListeners = [];
+        console.log("✅ event listeners removed");
     }
 
     if (window._gameTimeouts) {
