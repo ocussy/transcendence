@@ -304,11 +304,13 @@ export class GamePage {
   private getModeClass(mode: string): string {
     switch (mode?.toLowerCase()) {
       case "remote":
-        return "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30";
-      case "ai":
+        return "bg-pink-500/20 text-pink-400 border border-pink-500/30";
+      case "ia":
         return "bg-purple-500/20 text-purple-400 border border-purple-500/30";
       case "local":
         return "bg-blue-500/20 text-blue-400 border border-blue-500/30";
+      case "tournament":
+        return "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30";
       default:
         return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
     }
@@ -714,7 +716,7 @@ private showNoData(): void {
     const displayName = document.getElementById("profile-display-name");
     const displayEmail = document.getElementById("profile-display-email");
 
-    if (displayName) displayName.textContent = this.currentUser.login;
+    if (displayName) displayName.textContent = this.currentUser.public_login;
     if (displayEmail) displayEmail.textContent = this.currentUser.email;
   }
 
@@ -792,8 +794,8 @@ private showNoData(): void {
     }
 
     try {
-      const response = await fetch("/user", {
-        method: "PUT",
+      const response = await fetch("/friends/remove", {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
@@ -1091,7 +1093,7 @@ private showNoData(): void {
                                     </div>
 
                                     <!-- Labels -->
-                                    <div class="absolute top-2 right-4 font-mono text-xs text-blue-400">performance %</div>
+                                    <div class="absolute top-2 right-4 font-mono text-xs text-blue-400">performance</div>
                                 </div>
                             </div>
 
@@ -1327,9 +1329,30 @@ private showNoData(): void {
                             </button>
                           </div>
 
-                        </div>
-                      </div>
-                    </div>
+                          <!-- GDPR Compliance -->
+                          <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden backdrop-blur-sm">
+                            <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #f50bf5ff, transparent);"></div>
+
+                            <h3 class="font-mono font-bold text-lg text-pink-400 mb-6">$ data --management</h3>
+
+                            <!-- Anonymization Section -->
+                            <div class="p-4 bg-gray-800 rounded-lg mb-4">
+                              <h4 class="font-mono text-white font-medium mb-2">Data Anonymization</h4>
+                              <p class="font-mono text-sm text-gray-400 mb-4">Replace your personal data with anonymous values while keeping your account active</p>
+                              <button id="anonymize-account-btn" class="w-full px-4 py-3 bg-pink-500 hover:bg-pink-600 text-white font-mono rounded-lg transition-colors">
+                                $ anonymize account
+                              </button>
+                            </div>
+
+                            <!-- Account Deletion Section -->
+                            <div class="p-4 bg-gray-800 rounded-lg mb-4">
+                              <h4 class="font-mono text-red-400 font-medium mb-2">Account Deletion</h4>
+                              <p class="font-mono text-sm text-gray-400 mb-4">Permanently delete your account and all associated data (irreversible)</p>
+                              <button id="delete-account-btn" class="w-full px-4 py-3 bg-red-600 hover:bg-red-700 text-white font-mono rounded-lg transition-colors">
+                                $ delete account
+                              </button>
+                            </div>
+                          </div>
         `;
     this.loadUserProfile();
   }
@@ -1362,6 +1385,15 @@ private showNoData(): void {
     document.getElementById("tournament")?.addEventListener("click", () => {
       this.showTournamentPopup();
     });
+    document.getElementById("anonymize-account-btn")
+      ?.addEventListener("click", () => {
+        this.anonymizeAccount();
+      });
+
+    document
+      .getElementById("delete-account-btn")?.addEventListener("click", () => {
+        this.deleteAccount();
+      });
 
     this.attachProfileEvents();
   }
@@ -1910,11 +1942,7 @@ private showNoData(): void {
           <div class="text-6xl mb-4 font-mono">[PONG]</div>
           <p class="font-mono mb-6">pong.exe ready</p>
           <p class="font-mono text-green-400 mb-8">remote mode selected ᯤ</p>
-
-          <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-md mx-auto mb-6">
             <div class="space-y-4">
-              <button id="create-room" class="w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white font-mono font-bold rounded-lg transition-colors">
-                $--create room
               </button>
               <button id="join-room" class="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white font-mono font-bold rounded-lg transition-colors">
                 $--join room
@@ -1936,17 +1964,7 @@ private showNoData(): void {
         });
       }
     } else if (mode === "remote") {
-      const createRoomBtn = document.getElementById("create-room");
       const joinRoomBtn = document.getElementById("join-room");
-
-      if (createRoomBtn) {
-        createRoomBtn.addEventListener("click", () => {
-          GamePage.showProfileAlert(
-            "profile-alert",
-            "$ create: feature not implemented yet",
-          );
-        });
-      }
 
       if (joinRoomBtn) {
         joinRoomBtn.addEventListener("click", () => {
@@ -2858,6 +2876,306 @@ private showNoData(): void {
     GamePage.tournamentMatchData = null;
   }
   ///////////////////////////////////////////tournois//////////////////////////////////////
+  ///////////////////////////////////////////GDPR/////////////////////////////////////////
+
+  private async anonymizeAccount(): Promise<void> {
+  const confirmed = await this.showConfirmationPopup(
+    'anonymize',
+    '$ data --anonymize',
+    'This will anonymize your public display:',
+    [
+      '• Public username → "user_[id]_[random]"',
+      '• Alias → "user_[id]_[random]"',
+      '',
+      'Your login and other data remain unchanged.',
+      'This action cannot be undone.'
+    ],
+    'ANONYMIZE',
+    'amber'
+  );
+
+  if (!confirmed) {
+    GamePage.showProfileAlert("profile-alert", "$ anonymization cancelled");
+    return;
+  }
+
+  const btn = document.getElementById("anonymize-account-btn") as HTMLButtonElement;
+  if (!btn) return;
+
+  btn.textContent = "$ anonymizing...";
+  btn.disabled = true;
+  this.hideProfileAlerts();
+
+  try {
+    const response = await fetch("/anonymize", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({})
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      GamePage.showProfileAlert(
+        "profile-success",
+        data.message || "$ account anonymized successfully",
+        "success",
+      );
+      
+      setTimeout(() => {
+        this.loadUserProfile();
+      }, 2000);
+    } else {
+      GamePage.showProfileAlert(
+        "profile-alert",
+        `$ ${data.error || "anonymization failed"}`,
+      );
+    }
+  } catch (error) {
+    GamePage.showProfileAlert("profile-alert", "$ network error");
+    console.error("Anonymization error:", error);
+  } finally {
+    btn.textContent = "$ anonymize account";
+    btn.disabled = false;
+  }
+}
+
+  private async deleteAccount(): Promise<void> {
+  const confirmed = await this.showConfirmationPopup(
+    'delete',
+    '$ account --delete',
+    'DANGER - This will mark your account as deleted:',
+    [
+      '• Username → "deleted_user"',
+      '• Email → removed',
+      '• Avatar → removed', 
+      '• Password → removed',
+      '• Stats → reset to 0',
+      '• Friends → removed',
+      '',
+      'This action is IRREVERSIBLE.',
+      'You will be immediately logged out.'
+    ],
+    'DELETE FOREVER',
+    'red'
+  );
+
+  if (!confirmed) {
+    GamePage.showProfileAlert("profile-alert", "$ account deletion cancelled");
+    return;
+  }
+
+  const btn = document.getElementById("delete-account-btn") as HTMLButtonElement;
+  if (!btn) return;
+
+  btn.textContent = "$ deleting...";
+  btn.disabled = true;
+  this.hideProfileAlerts();
+
+  try {
+    const response = await fetch("/delete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({}) 
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      GamePage.showProfileAlert(
+        "profile-success",
+        data.message || "$ account deleted successfully",
+        "success",
+      );
+      
+      this.cleanup();
+      if (window.socket) {
+        window.socket.close();
+      }
+      
+      setTimeout(() => {
+        window.router.navigate("/");
+      }, 2000);
+    } else {
+      GamePage.showProfileAlert(
+        "profile-alert",
+        `$ ${data.error || "deletion failed"}`,
+      );
+    }
+  } catch (error) {
+    GamePage.showProfileAlert("profile-alert", "$ network error");
+    console.error("Account deletion error:", error);
+  } finally {
+    btn.textContent = "$ delete account";
+    btn.disabled = false;
+  }
+  try {
+  await fetch("/auth/signout", {
+    method: "GET",
+    credentials: "include",
+  });
+} catch (err) {
+  console.log("Logout call failed, but account deleted");
+}
+}
+
+private showConfirmationPopup(
+  type: 'anonymize' | 'delete',
+  title: string,
+  description: string,
+  bulletPoints: string[],
+  confirmText: string,
+  color: 'amber' | 'red'
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const existingPopup = document.getElementById("confirmation-popup");
+    if (existingPopup) {
+      existingPopup.remove();
+    }
+
+    const colorClasses = {
+      amber: {
+        border: 'border-amber-500',
+        gradient: 'from-amber-500',
+        text: 'text-amber-400',
+        button: 'bg-amber-500 hover:bg-amber-600',
+        glow: 'shadow-amber-500/30'
+      },
+      red: {
+        border: 'border-red-500',
+        gradient: 'from-red-500',
+        text: 'text-red-400',
+        button: 'bg-red-600 hover:bg-red-700',
+        glow: 'shadow-red-500/30'
+      }
+    };
+
+    const colors = colorClasses[color];
+
+    const popup = document.createElement("div");
+    popup.id = "confirmation-popup";
+    popup.className = "fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[10001] backdrop-blur-sm";
+
+    popup.innerHTML = `
+      <div class="bg-gray-900 ${colors.border} border-2 rounded-xl p-8 max-w-lg w-full mx-4 relative overflow-hidden backdrop-blur-sm animate-pulse-slow">
+        <!-- Header avec gradient -->
+        <div class="absolute top-0 left-0 right-0 h-px opacity-60" style="background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
+        
+        <!-- Icon et titre -->
+        <div class="text-center mb-6">
+          <h3 class="font-mono text-2xl font-bold ${colors.text} mb-2">${title}</h3>
+          <div class="w-16 h-1 bg-gradient-to-r ${colors.gradient} to-transparent mx-auto"></div>
+        </div>
+
+        <!-- Description -->
+        <div class="mb-6">
+          <p class="font-mono text-white text-center mb-4">${description}</p>
+          
+          <!-- Liste des conséquences -->
+          <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 font-mono text-sm">
+            ${bulletPoints.map(point => 
+              point === '' 
+                ? '<div class="h-2"></div>' 
+                : `<div class="text-gray-300 mb-1 ${point.startsWith('⚠️') ? colors.text : ''}">${point}</div>`
+            ).join('')}
+          </div>
+        </div>
+
+        <!-- Input de confirmation -->
+        <div class="mb-6">
+          <label class="block font-mono text-gray-400 text-sm mb-2">
+            Type "${confirmText}" to confirm:
+          </label>
+          <input
+            type="text"
+            id="confirmation-input"
+            class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg font-mono text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-${color}-500 focus:border-${color}-500"
+            placeholder="${confirmText}"
+            autocomplete="off"
+          >
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex gap-4">
+          <button id="cancel-confirmation" class="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-mono rounded-lg transition-all duration-200">
+            $ cancel
+          </button>
+          <button id="confirm-action" disabled class="flex-1 px-6 py-3 ${colors.button} text-white font-mono font-bold rounded-lg transition-all duration-200 opacity-50 cursor-not-allowed">
+            $ confirm
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(popup);
+
+    const input = document.getElementById("confirmation-input") as HTMLInputElement;
+    const confirmBtn = document.getElementById("confirm-action") as HTMLButtonElement;
+    const cancelBtn = document.getElementById("cancel-confirmation") as HTMLButtonElement;
+
+    setTimeout(() => input.focus(), 100);
+
+    const validateInput = () => {
+      const isValid = input.value.trim() === confirmText;
+      if (isValid) {
+        confirmBtn.disabled = false;
+        confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        confirmBtn.classList.add('hover:shadow-lg', colors.glow);
+      } else {
+        confirmBtn.disabled = true;
+        confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        confirmBtn.classList.remove('hover:shadow-lg', colors.glow);
+      }
+    };
+
+    input.addEventListener('input', validateInput);
+    
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !confirmBtn.disabled) {
+        popup.remove();
+        resolve(true);
+      }
+    });
+
+    confirmBtn.addEventListener('click', () => {
+      if (!confirmBtn.disabled) {
+        popup.remove();
+        resolve(true);
+      }
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      popup.remove();
+      resolve(false);
+    });
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        popup.remove();
+        document.removeEventListener('keydown', handleEscape);
+        resolve(false);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+
+    popup.addEventListener('click', (e) => {
+      if (e.target === popup) {
+        popup.remove();
+        resolve(false);
+      }
+    });
+  });
+}
+
+  ///////////////////////////////////////////GDPR/////////////////////////////////////////
+
+  
 
   private async handleLogout(): Promise<void> {
     if (confirm("$ logout: Are you sure you want to exit?")) {

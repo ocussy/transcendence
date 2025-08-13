@@ -17,6 +17,8 @@ const Match = {
     score1: { type: "integer", nullable: true },
     score2: { type: "integer", nullable: true },
     winner: { type: "string", nullable: true },
+    id_player1: { type: "integer", nullable: true },
+    id_player2: { type: "integer", nullable: true },
     //JAI BESOIN DE CA AUSSI
     // mode: { type: 'string' },
     // duration: { type: 'integer' },

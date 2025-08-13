@@ -54,16 +54,16 @@ export async function seedDatabase(db) {
 
   // Matchs
   const insertMatch = db.prepare(`
-    INSERT INTO matches (player1, player2, winner, score1, score2, duration, mode)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO matches (player1, player2, winner, score1, score2, duration, mode, id_player1, id_player2)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  insertMatch.run('Adem', 'Geoffrey', 1, 11, 7, 300, 'normal');
-  insertMatch.run('Océane', 'Lucie', null, 9, 11, 290, 'normal');
-  insertMatch.run('Coco', 'Rydom', 5, 11, 8, 310, 'tournament');
-  insertMatch.run('Adem', 'Océane', null, 10, 12, 260, 'normal');
-  insertMatch.run('Lucie', 'Rydom', 4, 11, 6, 280, 'tournament');
-  insertMatch.run('Geoffrey', 'Coco', 2, 11, 9, 295, 'normal');
+  insertMatch.run('Adem', 'Geoffrey', 1, 11, 7, 300, 'local', 1, 2);
+  insertMatch.run('Océane', 'Lucie', null, 9, 11, 290, 'local', 3, 4);
+  insertMatch.run('Coco', 'Rydom', 5, 11, 8, 310, 'tournament', 5, 6);
+  insertMatch.run('Adem', 'Océane', null, 10, 12, 260, 'local', 1, 3);
+  insertMatch.run('Lucie', 'Rydom', 4, 11, 6, 280, 'tournament', 4, 6);
+  insertMatch.run('Geoffrey', 'Coco', 2, 11, 9, 295, 'local', 2, 5);
 
   // Amitiés
   const insertFriend = db.prepare(`

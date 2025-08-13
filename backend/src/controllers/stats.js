@@ -28,11 +28,11 @@ export function getStats(req, reply) {
       .prepare(
         `
         SELECT winner FROM matches
-        WHERE player1 = ? OR player2 = ?
+        WHERE id_player1 = ? OR id_player2 = ?
         ORDER BY created_at DESC LIMIT 10
       `,
       )
-      .all(userLogin, userLogin);
+      .all(userId, userId);
 
     let currentStreak = 0;
     for (const match of recentMatches) {
@@ -85,16 +85,24 @@ export function getMatchHistory(req, reply) {
     if (!user) {
       return reply.status(404).send({ error: t(req.lang, "user_not_found") });
     }
-
-    const userLogin = user.public_login;
     const matches = db
       .prepare(
         `
         SELECT
           *,
           CASE
-            WHEN player1 = ? THEN player2
-            ELSE player1
+            WHEN id_player1 = ? THEN 
+              CASE 
+                WHEN id_player2 IS NOT NULL AND id_player2 != 0 THEN 
+                  (SELECT public_login FROM users WHERE id = id_player2)
+                ELSE player2 
+              END
+            ELSE 
+              CASE 
+                WHEN id_player1 IS NOT NULL AND id_player1 != 0 THEN 
+                  (SELECT public_login FROM users WHERE id = id_player1)
+                ELSE player1 
+              END
           END as opponent,
           CASE
             WHEN winner = ? THEN 'WIN'
@@ -102,13 +110,12 @@ export function getMatchHistory(req, reply) {
           END as result,
           datetime(created_at, 'localtime') as formatted_date
         FROM matches
-        WHERE player1 = ? OR player2 = ?
+        WHERE id_player1 = ? OR id_player2 = ?
         ORDER BY created_at DESC
         LIMIT ?
       `,
       )
-      .all(userLogin, userId, userLogin, userLogin, limit);
-
+      .all(userId, userId, userId, userId, limit);
     reply.send(matches);
   } catch (error) {
     reply.status(500).send({ error: t(req.lang, "failed_to_fetch_stats")});
@@ -128,7 +135,6 @@ export function getPerformanceData(req, reply) {
       return reply.status(404).send({ error: t(req.lang, "user_not_found") });
     }
 
-    const userLogin = user.public_login;
 
     const performanceData = db
       .prepare(
@@ -138,14 +144,14 @@ export function getPerformanceData(req, reply) {
           COUNT(*) as games_played,
           SUM(CASE WHEN winner = ? THEN 1 ELSE 0 END) as games_won
         FROM matches
-        WHERE (player1 = ? OR player2 = ?)
+        WHERE (id_player1 = ? OR id_player2 = ?)
           AND created_at >= datetime('now', '-7 days')
           AND score1 IS NOT NULL AND score2 IS NOT NULL
         GROUP BY DATE(created_at)
         ORDER BY date ASC
       `,
       )
-      .all(userLogin, userLogin, userLogin);
+      .all(userId, userId, userId);
 
     const chartData = performanceData.map((day) => ({
       date: day.date,

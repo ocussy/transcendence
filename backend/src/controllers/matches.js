@@ -14,8 +14,8 @@ import { t } from '../../utils/i18n.js';
         winner = user.id;
         db.prepare('UPDATE users SET games_won = games_won + 1 WHERE id = ?').run(userId);
       }
-      const stmt = db.prepare('INSERT INTO matches (player1, player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?)');
-      stmt.run(user.public_login, "ia", mode, score1, score2, winner, duration);
+      const stmt = db.prepare('INSERT INTO matches (player1, id_player1, player2, id_player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+      stmt.run(user.public_login, userId, "ia", 0, mode, score1, score2, winner, duration);
       db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
       reply.code(201).send({ message: t(req.lang, "match_saved") });
     }
@@ -24,8 +24,8 @@ import { t } from '../../utils/i18n.js';
         winner = user.id;
         db.prepare('UPDATE users SET games_won = games_won + 1 WHERE id = ?').run(userId);
       }
-      const stmt = db.prepare('INSERT INTO matches (player1, player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?)');
-      stmt.run(user.public_login, "guest", mode, score1, score2, winner, duration);
+      const stmt = db.prepare('INSERT INTO matches (player1, id_player1, player2, id_player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+      stmt.run(user.public_login, userId, "guest", 0, mode, score1, score2, winner, duration);
       db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
       reply.code(201).send({ message: t(req.lang, "match_saved"), winner: winner ? user.id : null });
     }
@@ -55,22 +55,21 @@ import { t } from '../../utils/i18n.js';
         db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(user1.id);
         db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(user2.id);
         
-        const stmt = db.prepare('INSERT INTO matches (player1, player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?)');
-        stmt.run(user1.public_login, user2.public_login, mode, score1, score2, winner, duration);
+        
+        const stmt = db.prepare('INSERT INTO matches (player1, id_player1, player2, id_player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+        stmt.run(user1.public_login, user1.id, user2.public_login, user2.id, mode, score1, score2, winner, duration);
         reply.code(201).send({ message: t(req.lang, "match_saved"), winner });
       }
     else if (score1 > score2) {
       winner = user.id;
       db.prepare('UPDATE users SET games_won = games_won + 1 WHERE login = ?').run(player1);
-      const stmt = db.prepare('INSERT INTO matches (player1, player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?)');
-      stmt.run(user.public_login, player2, "tournament", score1, score2, winner, duration);
+      const stmt = db.prepare('INSERT INTO matches (player1, id_player1, player2, id_player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?)');
+      stmt.run(user.public_login, userId, player2, 0, "tournament", score1, score2, winner, duration);
       db.prepare('UPDATE users SET games_played = games_played + 1 WHERE login IN (?, ?)').run(player1, player2);
       reply.code(201).send({ winner: winner ? user.id : null  });
     }
   } catch (err) {
     console.error("❌ Erreur dans postMatch:", err);
-    console.error("Stack trace:", err.stack);
-    console.error("Données reçues:", { mode, score1, score2, duration, player1, player2, userId });
     reply.status(500).send({ error: t(req.lang, "failed_to_create_match") });
   }
 }
