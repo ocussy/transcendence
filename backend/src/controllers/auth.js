@@ -4,8 +4,7 @@ import { auth, OAuth2Client } from "google-auth-library";
 import nodemailer from "nodemailer";
 import bcrypt from "bcrypt";
 import dotenv from "dotenv";
-import { app } from "../server.js";
-import { t } from "../../utils/i18n.js";
+import { app, t } from "../server.js";
 dotenv.config();
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -30,7 +29,7 @@ export async function loginExist(login) {
     WHERE login = ?
     LIMIT 1
   `);
-  const user = stmt.get(login); // SQLite get() est synchrone, pas besoin de await ici
+  const user = stmt.get(login);
   return !!user;
 }
 
@@ -45,11 +44,10 @@ export async function emailExist(email) {
     WHERE email = ?
     LIMIT 1
   `);
-  const user = stmt.get(email); // get() = sync
+  const user = stmt.get(email);
   return !!user;
 }
 
-// Handler pour l'inscription
 export async function signUp(req, reply) {
   let { login, password, email } = req.body;
 
@@ -300,7 +298,6 @@ export async function sendOtpVerificationEmail(user, reply) {
     `);
     stmt.run(hashedCode, expiresAt, user.id);
 
-    // Envoi de l'email après avoir stocké le code
     await transporter.sendMail(mailOptions);
     return true;
   } catch (err) {

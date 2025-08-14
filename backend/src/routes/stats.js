@@ -1,7 +1,6 @@
 import {
   getStats,
   getMatchHistory,
-  getPerformanceData,
 } from "../controllers/stats.js";
 import { verifyUser } from "../controllers/users.js";
 
@@ -51,31 +50,7 @@ const getMatchHistoryOptions = {
   handler: getMatchHistory,
 };
 
-// GET /stats/performance
-const getPerformanceDataOptions = {
-  preHandler: verifyUser,
-  schema: {
-    response: {
-      200: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            date: { type: "string", format: "date" },
-            winRate: { type: "number" },
-            gamesPlayed: { type: "integer" },
-          },
-        },
-      },
-    },
-  },
-  handler: getPerformanceData,
-};
-
-
-// Register routes
-export default async function statsRoutes(fastify, options) {
+export default async function statsRoutes(fastify) {
   fastify.get("/stats", getStatsOptions);
   fastify.get("/match-history", getMatchHistoryOptions);
-  fastify.get("/stats/performance", getPerformanceDataOptions);
 }

@@ -1,8 +1,6 @@
 import {  getUser,
-          debugDb, 
           verifyUser, 
           updateUser,
-          getStatUser, 
           getFriendsUser, 
           removeFriends,
           anonymizeUser,
@@ -55,31 +53,6 @@ const getFriendsOptions = {
   handler: getFriendsUser,
 };
 
-const getStatUserOptions = {
-  preHandler: verifyUser,
-  schema: {
-    response: {
-      200: {
-        type: "object",
-        properties: {
-          matches: { type: "array",
-            properties: {
-              player1 : { type: "string" },
-              player2 : { type: "string" },
-              winner : { type: "string" },
-              score1 : { type: "number" },
-              score2 : { type: "number" },
-              created_at : { type: "string" },
-              duration: { type: "number" },
-              mode: { type: "string" },
-            },
-          },
-        },
-      },
-    },
-  },
-  handler: getStatUser,
-};
 
 
 const updateUserOptions = {
@@ -132,11 +105,6 @@ const removeFriendsOptions = {
   handler: removeFriends,
 };
 
-const debugOptions = {
-  // pour tt voir
-  handler: debugDb,
-};
-
 const anonymizeUserOptions = {
   preHandler: verifyUser,
   schema: {
@@ -178,8 +146,6 @@ export default async function userRoutes(fastify, options) {
   fastify.get("/user", getUserOptions);
   fastify.get("/friends", getFriendsOptions);
   fastify.put("/user", updateUserOptions);
-  fastify.get("/debug/users", debugOptions);
-  fastify.get("/stat", getStatUserOptions);
   fastify.post("/friends/remove", removeFriendsOptions);
   fastify.post("/anonymize", anonymizeUserOptions);
   fastify.post("/delete", deleteUserOptions);

@@ -1943,20 +1943,20 @@ private showNoData(): void {
       `;
     } else if (mode === "remote") {
       controlsHTML = `
-        <div class="text-center text-gray-500">
-          <div class="text-6xl mb-4 font-mono">[PONG]</div>
-          <p class="font-mono mb-6">pong.exe ready</p>
-          <p class="font-mono text-green-400 mb-8">remote mode selected ᯤ</p>
-            <div class="space-y-4">
-              </button>
-              <button id="join-room" class="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white font-mono font-bold rounded-lg transition-colors">
-                $--join room
-              </button>
-            </div>
-            </div>
-          </div>
-        </div>
-      `;
+    <div class="text-center text-gray-500">
+      <div class="text-6xl mb-4 font-mono">[PONG]</div>
+      <p class="font-mono mb-6">pong.exe ready</p>
+      <p class="font-mono text-green-400 mb-8">remote mode selected ᯤ</p>
+      <div class="space-y-4">
+        <button id="join-room" class="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white font-mono font-bold rounded-lg transition-colors">
+          $--join queue
+        </button>
+        <button id="leave-queue" class="w-full px-4 py-3 bg-red-500 hover:bg-red-600 text-white font-mono font-bold rounded-lg transition-colors hidden">
+          $--leave queue
+        </button>
+      </div>
+    </div>
+  `;
     }
 
     canvasDiv.innerHTML = controlsHTML;
@@ -1970,12 +1970,21 @@ private showNoData(): void {
       }
     } else if (mode === "remote") {
       const joinRoomBtn = document.getElementById("join-room");
+      const leaveQueueBtn = document.getElementById("leave-queue");
 
       if (joinRoomBtn) {
         joinRoomBtn.addEventListener("click", () => {
           console.log('🖱️ Bouton "join room" cliqué');
           this.enableGameMode();
           this.connectToRemoteMatchmaking();
+        });
+      }
+
+      if (leaveQueueBtn)
+      {
+        leaveQueueBtn.addEventListener("click", () => {
+          this.disableGameMode();
+          this.leaveQueue();
         });
       }
     }
@@ -2017,6 +2026,7 @@ private showNoData(): void {
           "$ searching for opponent...",
           "success"
         );
+        this.updateQueueButtons(true);
       };
 
       this.remoteSocket.onmessage = (event) => {
@@ -2032,6 +2042,7 @@ private showNoData(): void {
       this.remoteSocket.onclose = () => {
         console.log('❌ Connexion WebSocket fermée');
         this.remoteSocket = null;
+        this.updateQueueButtons(false);
       };
 
       this.remoteSocket.onerror = (error) => {
@@ -2040,6 +2051,7 @@ private showNoData(): void {
           "profile-alert",
           "$ connection failed - try again"
         );
+        this.updateQueueButtons(false);
       };
 
     } catch (error) {
@@ -2047,6 +2059,34 @@ private showNoData(): void {
       GamePage.showProfileAlert(
         "profile-alert",
         "$ connection error - check network"
+      );
+    }
+  }
+
+    private updateQueueButtons(inQueue: boolean): void {
+    const joinBtn = document.getElementById("join-room");
+    const leaveBtn = document.getElementById("leave-queue");
+    
+    if (joinBtn && leaveBtn) {
+      if (inQueue) {
+        joinBtn.classList.add("hidden");
+        leaveBtn.classList.remove("hidden");
+      } else {
+        joinBtn.classList.remove("hidden");
+        leaveBtn.classList.add("hidden");
+      }
+    }
+  }
+
+    private leaveQueue(): void {
+    if (this.remoteSocket && this.remoteSocket.readyState === WebSocket.OPEN) {
+      console.log('🚪 Quitter la file d\'attente');
+      this.remoteSocket.close();
+      this.disableGameMode();
+      GamePage.showProfileAlert(
+        "profile-success",
+        "$ left queue",
+        "success"
       );
     }
   }
@@ -2276,11 +2316,11 @@ private showNoData(): void {
 
         <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-md mx-auto mb-6">
           <div class="space-y-4">
-            <button id="create-room" class="w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white font-mono font-bold rounded-lg transition-colors">
-              $--create room
-            </button>
             <button id="join-room" class="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white font-mono font-bold rounded-lg transition-colors">
               $--join room
+            </button>
+            <button id="leave-queue" class="w-full px-4 py-3 bg-red-500 hover:bg-red-600 text-white font-mono font-bold rounded-lg transition-colors hidden">
+              $--leave queue
             </button>
           </div>
         </div>
@@ -2288,18 +2328,18 @@ private showNoData(): void {
     `;
 
     // Réattacher les event listeners
-    const createRoomBtn = document.getElementById("create-room");
     const joinRoomBtn = document.getElementById("join-room");
+    const leaveQueueBtn = document.getElementById("leave-queue");
 
-    if (createRoomBtn) {
-      createRoomBtn.addEventListener("click", () => {
-        this.connectToRemoteMatchmaking();
-      });
-    }
 
     if (joinRoomBtn) {
       joinRoomBtn.addEventListener("click", () => {
         this.connectToRemoteMatchmaking();
+      });
+    }
+        if (leaveQueueBtn) {
+      leaveQueueBtn.addEventListener("click", () => {
+        this.leaveQueue();
       });
     }
   }
@@ -2511,6 +2551,7 @@ private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promis
         ` creating tournament: ${tournamentName} with players:`,
         players,
       );
+      this.enableGameMode();
       const response = await fetch("/tournament", {
         method: "POST",
         headers: {

@@ -1,6 +1,5 @@
 import db from '../../utils/db.js'
-import { t } from '../../utils/i18n.js';
-// Handler pour match creation
+import { t } from '../server.js';
 
  export function postMatch(req, reply) {
   const { mode, score1, score2, duration, player1, player2 } = req.body;
@@ -30,17 +29,14 @@ import { t } from '../../utils/i18n.js';
       reply.code(201).send({ message: t(req.lang, "match_saved"), winner: winner ? user.id : null });
     }
     else if (mode === "remote") {
-        // ✅ CORRIGER : Chercher par public_login au lieu de login
         const user1 = db.prepare('SELECT id, public_login FROM users WHERE public_login = ?').get(player1);
         const user2 = db.prepare('SELECT id, public_login FROM users WHERE public_login = ?').get(player2);
         
-        // ✅ Vérifier que les deux joueurs existent
         if (!user1 || !user2) {
           console.error("❌ Joueurs non trouvés:", { player1, player2, user1, user2 });
           return reply.status(404).send({ error: "Un ou plusieurs joueurs introuvables" });
         }
         
-        // ✅ Déterminer le gagnant et mettre à jour ses victoires
         if (score1 > score2) {
           winner = user1.id;
           db.prepare('UPDATE users SET games_won = games_won + 1 WHERE id = ?').run(user1.id);
@@ -49,9 +45,7 @@ import { t } from '../../utils/i18n.js';
           winner = user2.id;
           db.prepare('UPDATE users SET games_won = games_won + 1 WHERE id = ?').run(user2.id);
         }
-        // (En cas d'égalité, winner reste null)
         
-        // ✅ CORRIGER : Mettre à jour games_played pour LES DEUX joueurs
         db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(user1.id);
         db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(user2.id);
         
@@ -71,59 +65,5 @@ import { t } from '../../utils/i18n.js';
   } catch (err) {
     console.error("❌ Erreur dans postMatch:", err);
     reply.status(500).send({ error: t(req.lang, "failed_to_create_match") });
-  }
-}
-
-export function getMatches(req, reply) {
-  try {
-    const rows = db.prepare('SELECT * FROM matches').all();
-    reply.send(rows);
-  } catch (err) {
-    reply.status(500).send({ error: t(req.lang, "server_error") });
-  }
-}
-
-export async function getMatchesByUser(req, reply, userId) {
-  try {
-    const user = db.prepare('SELECT login FROM users WHERE id = ?').get(userId);
-    if (!user) {
-      return reply.status(404).send({ error: t(req.lang, "user_not_found") });
-    }
-
-    const rows = db.prepare('SELECT * FROM matches WHERE player1 = ? OR player2 = ?').all(user.id, user.id);
-    reply.send(rows);
-  } catch (err) {
-    reply.status(500).send({ error: t(req.lang, "server_error") });
-  }
-}
-
-export function getMatchById(req, reply) {
-  const { id } = req.params;
-  
-  try {
-    const row = db.prepare('SELECT * FROM matches WHERE id = ?').get(id);
-    
-    if (!row) {
-      return reply.status(404).send({ error: t(req.lang, "match_not_found") });
-    }
-    reply.send(row);
-  } catch (err) {
-    reply.status(500).send({ error: t(req.lang, "server_error") });
-  }
-}
-
-export function removeMatch(req, reply) {
-  const { id } = req.params;
-
-  try {
-    const match = db.prepare('SELECT * FROM matches WHERE id = ?').get(id);
-    if (!match) {
-      return reply.status(404).send({ error: t(req.lang, "match_not_found") });
-    }
-
-    db.prepare('DELETE FROM matches WHERE id = ?').run(id);
-    reply.send({ message: t(req.lang, "match_removed") });
-  } catch (err) {
-    reply.status(500).send({ error: t(req.lang, "server_error") });
   }
 }

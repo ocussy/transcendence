@@ -1,10 +1,9 @@
 import db from "../../utils/db.js";
 import { loginExist, isStrongPassword, emailExist } from "./auth.js";
 import bcrypt from "bcrypt";
-import { getMatchesByUser } from "./matches.js";
 import { logConnectedUsers} from "../remote.js";
 import { app } from "../server.js";
-import { t } from "../../utils/i18n.js";
+import { t } from "../server.js";
 
 export async function verifyUser(req, reply) {
   try {
@@ -15,30 +14,6 @@ export async function verifyUser(req, reply) {
   }
 }
 
-export async function buildUpdateQuery(table, updates, whereClause, whereArgs) {
-  const fields = [];
-  const values = [];
-
-  for (const key in updates) {
-    if (updates[key] !== undefined) {
-      fields.push(`${key} = ?`);
-      values.push(updates[key]);
-    }
-  }
-
-  if (fields.length === 0) {
-    throw new Error("No fields to update");
-  }
-
-  const sql = `UPDATE ? SET ${fields.map(() => "? = ?").join(", ")} WHERE ${whereClause}`;
-  values.unshift(
-    table,
-    ...Object.keys(updates).filter((key) => updates[key] !== undefined),
-  );
-  return { sql, values: [...values, ...whereArgs] };
-}
-
-// Handler pour GET /user
 export async function getUser(req, reply) {
   try {
     const id = req.user.id;
@@ -72,7 +47,6 @@ export async function getFriendsUser(req, reply) {
 async function verifData(req, reply) {
   const { login, email, avatarUrl, password, secure_auth, friend, alias } = req.body;
 
-  // verifier si j'ai besoin de cette verif
   if (!email && !avatarUrl && !password && secure_auth === undefined && !login && !friend && !alias) {
     return reply.status(400).send({
       error: t(req.lang, "no_fields_to_update"),
@@ -121,9 +95,9 @@ async function addFriends(userId, friendLogin) {
     const stmtAdd = db.prepare(
       `INSERT INTO friends (user_id, friend_id) VALUES (?, ?)`,
     );
-    stmtAdd.run(userId, friend.id); //pareil
+    stmtAdd.run(userId, friend.id);
   } else {
-    return -1; // Friend already exists
+    return -1;
   }
   return friend.id;
 }
@@ -217,28 +191,6 @@ export async function removeFriends(req, reply) {
   );
   stmtRemove.run(userId, friendId.id);
   return reply.status(200).send({ message: t(req.lang, "friend_deleted") });
-}
-
-export async function getStatUser(req, reply) {
-  try {
-    userId = req.user.id;
-    if (!userId) {
-      return reply.status(404).send({ error: t(req.lang, "user_not_found") });
-    }
-    const matches = getMatchesByUser(req, reply, userId);
-    return reply.status(200).send(matches);
-  } catch (err) {
-    reply.status(500).send({ error: t(req.lang, "server_error") });
-  }
-}
-
-export function debugDb(req, reply) {
-  try {
-    const rows = db.prepare("SELECT * FROM users").all();
-    reply.send(rows);
-  } catch (err) {
-    reply.status(500).send({ error: t(req.lang, "server_error") });
-  }
 }
 
 export function anonymizeUser(req, reply) {

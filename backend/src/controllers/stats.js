@@ -1,5 +1,5 @@
 import db from "../../utils/db.js";
-import { t } from "../../utils/i18n.js";
+import { t } from "../server.js";
 
 export function getStats(req, reply) {
   try {
@@ -119,51 +119,5 @@ export function getMatchHistory(req, reply) {
     reply.send(matches);
   } catch (error) {
     reply.status(500).send({ error: t(req.lang, "failed_to_fetch_stats")});
-  }
-}
-
-export function getPerformanceData(req, reply) {
-  try {
-    if (!req.user || !req.user.id) {
-      return reply.status(401).send({ error: t(req.lang, "user_not_authenticated") });
-    }
-
-    const userId = req.user.id;
-
-    const user = db.prepare("SELECT public_login FROM users WHERE id = ?").get(userId);
-    if (!user) {
-      return reply.status(404).send({ error: t(req.lang, "user_not_found") });
-    }
-
-
-    const performanceData = db
-      .prepare(
-        `
-        SELECT
-          DATE(created_at) as date,
-          COUNT(*) as games_played,
-          SUM(CASE WHEN winner = ? THEN 1 ELSE 0 END) as games_won
-        FROM matches
-        WHERE (id_player1 = ? OR id_player2 = ?)
-          AND created_at >= datetime('now', '-7 days')
-          AND score1 IS NOT NULL AND score2 IS NOT NULL
-        GROUP BY DATE(created_at)
-        ORDER BY date ASC
-      `,
-      )
-      .all(userId, userId, userId);
-
-    const chartData = performanceData.map((day) => ({
-      date: day.date,
-      winRate:
-        day.games_played > 0
-          ? Math.round((day.games_won / day.games_played) * 100)
-          : 0,
-      gamesPlayed: day.games_played,
-    }));
-
-    reply.send(chartData);
-  } catch (error) {
-    reply.status(500).send({ error: t(req.lang, "failed_to_fetch_stats") });
   }
 }

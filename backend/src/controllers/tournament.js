@@ -1,5 +1,5 @@
 import db from '../../utils/db.js'
-import { t } from '../../utils/i18n.js';
+import { t } from '../server.js'
 
 export function createTournament(req, reply) {
     const id = req.user.id;
@@ -7,12 +7,11 @@ export function createTournament(req, reply) {
 
     const user = db.prepare('SELECT alias FROM users WHERE id = ?').get(id);
 
-    //verifier les alias tous differents
-     const uniquePlayers = [...new Set(players)];
+    const uniquePlayers = [...new Set(players)];
     if (uniquePlayers.length !== players.length) {
         return reply.status(400).send({ error: t(req.lang, "unique_players") });
     }
-    //verifier que les alias soient differents des alias des utilisateurs
+
     const placeholders = players.map(() => '?').join(',');
     const existingUsers = db.prepare(`SELECT alias FROM users WHERE alias IN (${placeholders})`).all(...players);
     console.log("existingUsers : ", existingUsers);
@@ -31,7 +30,6 @@ export function createTournament(req, reply) {
         insertParticipants.run(tournament.lastInsertRowid, player);
     }
 
-    const allParticipants = db.prepare(`SELECT name, tournament_id FROM participants`).all();
     const participants = db.prepare(`SELECT * FROM participants WHERE tournament_id = ?`).all(tournament.lastInsertRowid);
 
     const player_1 = participants[1].name;
@@ -79,24 +77,5 @@ export function updateTournament(req, reply) {
         const player_1 = participants[0].name;
         reply.status(200).send({ id, status: "finished", player_id: id, player_1, player_2: null });
     }
-
-}
-
-export function getTournamentById(req, reply) {
-    const { id } = req.params;
-
-    const tournament = db.prepare(`SELECT * FROM tournaments WHERE id = ?`).get(id);
-    if (!tournament) {
-        return reply.status(404).send({ error: t(req.lang, "tournament_not_found") });
-    }
-
-    const participants = db.prepare(`SELECT name FROM participants WHERE tournament_id = ?`).all(id);
-    reply.status(200).send({
-        id: tournament.id,
-        name: tournament.name,
-        maxPlayers: tournament.maxPlayers,
-        created_at: new Date(tournament.created_at).toISOString(),
-        participants: participants,
-    });
 }
 

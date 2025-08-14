@@ -19,6 +19,8 @@ import { setupConnexionSocket, setupRemoteSocket, setupRemoteGame, clearConnecte
 import statsRoutes from "./routes/stats.js";
 import tournamentRoutes from "./routes/tournament.js";
 import fs from "fs";
+import en from "../locales/en.json" with { type: "json" };
+import fr from "../locales/fr.json" with { type: "json" };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -112,6 +114,13 @@ setupRemoteGame(app);
 // });
 
 // set language for all requests
+const translations = { en, fr };
+
+export function t(lang, key) {
+  const selected = translations[lang] || translations.en;
+  return selected[key] || key;
+}
+
 app.addHook("preHandler", async (req, reply) => {
   try {
       req.lang = 'en';

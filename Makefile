@@ -36,3 +36,7 @@ clean-images:
 # Nettoyer les volumes non utilisés (hors projet)
 clean-volumes:
 	docker volume prune -f
+
+re :
+	docker compose restart
+
