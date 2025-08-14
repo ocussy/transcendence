@@ -1,4 +1,3 @@
-
 import { socket } from "./auth.js";
 import { tryConnectWebSocketIfAuthenticated } from "./auth.js";
 import { verifyToken } from "./auth.js";
@@ -55,7 +54,7 @@ export class GamePage {
         // Traiter directement les messages de remote-pong.js
         this.handleRemoteGameMessage(data);
       }
-    }
+    };
     (window as any).enableGameMode = () => {
       this.enableGameMode();
     };
@@ -66,26 +65,28 @@ export class GamePage {
     (window as any).startGame = () => {
       this.startGame("local");
     };
-        (window as any).startGameAI = () => {
+    (window as any).startGameAI = () => {
       this.startGame("ai");
     };
 
-        // Nettoyer les WebSockets et déconnecter lors du déchargement de la page
-    window.addEventListener('beforeunload', async (event) => {
+    // Nettoyer les WebSockets et déconnecter lors du déchargement de la page
+    window.addEventListener("beforeunload", async (event) => {
       // ✅ DÉCONNEXION AUTOMATIQUE lors de la fermeture
       try {
         // Appel synchrone pour la déconnexion (plus fiable)
-        navigator.sendBeacon('/logout', JSON.stringify({}));
-        
+        navigator.sendBeacon("/logout", JSON.stringify({}));
+
         // Nettoyer les cookies côté client
-        document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-        
+        document.cookie =
+          "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie =
+          "refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
         console.log("🚪 Déconnexion automatique lors de la fermeture");
       } catch (error) {
         console.error("Erreur lors de la déconnexion:", error);
       }
-      
+
       // Nettoyer les WebSockets
       this.cleanup();
     });
@@ -105,7 +106,7 @@ export class GamePage {
     this.showSectionWithoutPush(targetSection);
   }
   //////////////////////////////////////////////////////////game start lock///////////////////////////////////
-    public enableGameMode(): void {
+  public enableGameMode(): void {
     this.isGameActive = true;
     this.updateUIForGameMode(true);
   }
@@ -116,62 +117,90 @@ export class GamePage {
   }
 
   private updateUIForGameMode(isActive: boolean): void {
-    const navButtons = document.querySelectorAll('.nav-btn');
-    navButtons.forEach(btn => {
+    const navButtons = document.querySelectorAll(".nav-btn");
+    navButtons.forEach((btn) => {
       const button = btn as HTMLButtonElement;
       if (isActive) {
         button.disabled = true;
-        button.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
-        button.title = 'Navigation disabled during match';
+        button.classList.add(
+          "opacity-50",
+          "cursor-not-allowed",
+          "pointer-events-none",
+        );
+        button.title = "Navigation disabled during match";
       } else {
         button.disabled = false;
-        button.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
-        button.title = '';
+        button.classList.remove(
+          "opacity-50",
+          "cursor-not-allowed",
+          "pointer-events-none",
+        );
+        button.title = "";
       }
     });
 
-    const gameButtons = ['local-game-btn', 'ai-game-btn', 'remote-game-btn'];
-    gameButtons.forEach(id => {
+    const gameButtons = ["local-game-btn", "ai-game-btn", "remote-game-btn"];
+    gameButtons.forEach((id) => {
       const button = document.getElementById(id) as HTMLButtonElement;
       if (button) {
         if (isActive) {
           button.disabled = true;
-          button.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
-          button.innerHTML = button.innerHTML.replace('$ ', ' [LOCKED] ');
+          button.classList.add(
+            "opacity-50",
+            "cursor-not-allowed",
+            "pointer-events-none",
+          );
+          button.innerHTML = button.innerHTML.replace("$ ", " [LOCKED] ");
         } else {
           button.disabled = false;
-          button.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
-          button.innerHTML = button.innerHTML.replace(' [LOCKED] ', '$ ');
+          button.classList.remove(
+            "opacity-50",
+            "cursor-not-allowed",
+            "pointer-events-none",
+          );
+          button.innerHTML = button.innerHTML.replace(" [LOCKED] ", "$ ");
         }
       }
     });
 
-    const tournamentBtn = document.getElementById('tournament') as HTMLButtonElement;
+    const tournamentBtn = document.getElementById(
+      "tournament",
+    ) as HTMLButtonElement;
     if (tournamentBtn) {
       if (isActive) {
         tournamentBtn.disabled = true;
-        tournamentBtn.classList.add('opacity-50', 'cursor-not-allowed');
-        tournamentBtn.textContent = '$ [LOCKED] tournament in progress';
+        tournamentBtn.classList.add("opacity-50", "cursor-not-allowed");
+        tournamentBtn.textContent = "$ [LOCKED] tournament in progress";
       } else {
         tournamentBtn.disabled = false;
-        tournamentBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-        tournamentBtn.textContent = '$ initialize-tournament';
+        tournamentBtn.classList.remove("opacity-50", "cursor-not-allowed");
+        tournamentBtn.textContent = "$ initialize-tournament";
       }
     }
 
-    const logoutBtn = document.getElementById('logout-btn') as HTMLButtonElement;
+    const logoutBtn = document.getElementById(
+      "logout-btn",
+    ) as HTMLButtonElement;
     if (logoutBtn) {
       if (isActive) {
-        logoutBtn.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
-        logoutBtn.title = 'Logout disabled during match';
+        logoutBtn.classList.add(
+          "opacity-50",
+          "cursor-not-allowed",
+          "pointer-events-none",
+        );
+        logoutBtn.title = "Logout disabled during match";
       } else {
-        logoutBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
-        logoutBtn.title = '';
+        logoutBtn.classList.remove(
+          "opacity-50",
+          "cursor-not-allowed",
+          "pointer-events-none",
+        );
+        logoutBtn.title = "";
       }
     }
   }
 
-    static forceExitGameMode(): void {
+  static forceExitGameMode(): void {
     const gamePageInstance = (window as any).gamePageInstance;
     if (gamePageInstance) {
       (window as any).gamePageInstance?.disableGameMode();
@@ -362,60 +391,65 @@ export class GamePage {
     }
   }
 
-//////////////////////////////////////////////////graph//////////////////////////////////////////
-private async loadPerformanceData(): Promise<void> {
-  try {
-    const response = await fetch("/match-history?limit=20", {
-      credentials: "include",
-    });
-    if (!response.ok) throw new Error("Failed to fetch");
-    
-    const matches: MatchHistory[] = await response.json();
-    if (matches.length > 0) {
-      this.updateAdvancedChart(matches);
-    } else {
+  //////////////////////////////////////////////////graph//////////////////////////////////////////
+  private async loadPerformanceData(): Promise<void> {
+    try {
+      const response = await fetch("/match-history?limit=20", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch");
+
+      const matches: MatchHistory[] = await response.json();
+      if (matches.length > 0) {
+        this.updateAdvancedChart(matches);
+      } else {
+        this.showNoData();
+      }
+    } catch (error) {
       this.showNoData();
     }
-  } catch (error) {
-    this.showNoData();
   }
-}
 
-private updateAdvancedChart(matches: MatchHistory[]): void {
-  const svg = document.getElementById("performance-chart");
-  const placeholder = document.getElementById("chart-placeholder");
-  
-  if (!svg || !placeholder) return;
-  
-  placeholder.style.display = "none";
-  
-  // Calcul du score de performance basé sur plusieurs facteurs
-  let cumulativeScore = 50; // Score de départ (50%)
-  const dataPoints: { x: number, y: number, result: string, winRate: number }[] = [];
-  
-  const reversedMatches = matches.reverse();
-  let totalWins = 0;
-  
-  reversedMatches.forEach((match, index) => {
-    // Mise à jour des statistiques
-    if (match.result === "WIN") {
-      totalWins++;
-      cumulativeScore = Math.min(100, cumulativeScore + 8); // +8% pour une victoire
-    } else if (match.result === "LOSS") {
-      cumulativeScore = Math.max(0, cumulativeScore - 5); // -5% pour une défaite
-    } else {
-      cumulativeScore = Math.max(0, cumulativeScore - 1); // -1% pour un draw
-    }
-    
-    const winRate = ((totalWins / (index + 1)) * 100);
-    const x = 10 + (index * 80) / Math.max(matches.length - 1, 1);
-    const y = 85 - (cumulativeScore * 0.7); // Inverser l'axe Y et ajuster l'échelle
-    
-    dataPoints.push({ x, y, result: match.result, winRate });
-  });
-  
-  // Création du graphique SVG avancé
-  let svgContent = `
+  private updateAdvancedChart(matches: MatchHistory[]): void {
+    const svg = document.getElementById("performance-chart");
+    const placeholder = document.getElementById("chart-placeholder");
+
+    if (!svg || !placeholder) return;
+
+    placeholder.style.display = "none";
+
+    // Calcul du score de performance basé sur plusieurs facteurs
+    let cumulativeScore = 50; // Score de départ (50%)
+    const dataPoints: {
+      x: number;
+      y: number;
+      result: string;
+      winRate: number;
+    }[] = [];
+
+    const reversedMatches = matches.reverse();
+    let totalWins = 0;
+
+    reversedMatches.forEach((match, index) => {
+      // Mise à jour des statistiques
+      if (match.result === "WIN") {
+        totalWins++;
+        cumulativeScore = Math.min(100, cumulativeScore + 8); // +8% pour une victoire
+      } else if (match.result === "LOSS") {
+        cumulativeScore = Math.max(0, cumulativeScore - 5); // -5% pour une défaite
+      } else {
+        cumulativeScore = Math.max(0, cumulativeScore - 1); // -1% pour un draw
+      }
+
+      const winRate = (totalWins / (index + 1)) * 100;
+      const x = 10 + (index * 80) / Math.max(matches.length - 1, 1);
+      const y = 85 - cumulativeScore * 0.7; // Inverser l'axe Y et ajuster l'échelle
+
+      dataPoints.push({ x, y, result: match.result, winRate });
+    });
+
+    // Création du graphique SVG avancé
+    let svgContent = `
     <!-- Grille de fond -->
     <defs>
       <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
@@ -431,46 +465,49 @@ private updateAdvancedChart(matches: MatchHistory[]): void {
         <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.05" />
       </linearGradient>
     </defs>
-    
+
     <!-- Grille de fond -->
     <rect width="100" height="100" fill="url(#grid)" opacity="0.5"/>
-    
+
     <!-- Lignes de référence -->
     <line x1="10" y1="22" x2="90" y2="22" stroke="#10b981" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.6"/>
-    
+
     <line x1="10" y1="50" x2="90" y2="50" stroke="#f59e0b" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.6"/>
-    
+
     <line x1="10" y1="78" x2="90" y2="78" stroke="#ef4444" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.6"/>
   `;
-  
-  // Zone sous la courbe (area chart)
-  if (dataPoints.length > 1) {
-    const areaPath = `M ${dataPoints[0].x},85 ` + 
-      dataPoints.map(p => `L ${p.x},${p.y}`).join(' ') +
-      ` L ${dataPoints[dataPoints.length - 1].x},85 Z`;
-    
-    svgContent += `<path d="${areaPath}" fill="url(#areaGradient)" opacity="0.4"/>`;
-  }
-  
-  // Ligne principale du graphique
-  if (dataPoints.length > 1) {
-    const pathData = dataPoints.map((point, index) => {
-      return `${index === 0 ? 'M' : 'L'} ${point.x},${point.y}`;
-    }).join(' ');
-    
-    svgContent += `<path d="${pathData}" fill="none" stroke="url(#lineGradient)" stroke-width="2" stroke-linecap="round"/>`;
-  }
-  svg.innerHTML = svgContent;
-}
 
-// Amélioration de la méthode showNoData pour plus de style
-private showNoData(): void {
-  const placeholder = document.getElementById("chart-placeholder");
-  const svg = document.getElementById("performance-chart");
-  
-  if (placeholder && svg) {
-    placeholder.style.display = "flex";
-    svg.innerHTML = `
+    // Zone sous la courbe (area chart)
+    if (dataPoints.length > 1) {
+      const areaPath =
+        `M ${dataPoints[0].x},85 ` +
+        dataPoints.map((p) => `L ${p.x},${p.y}`).join(" ") +
+        ` L ${dataPoints[dataPoints.length - 1].x},85 Z`;
+
+      svgContent += `<path d="${areaPath}" fill="url(#areaGradient)" opacity="0.4"/>`;
+    }
+
+    // Ligne principale du graphique
+    if (dataPoints.length > 1) {
+      const pathData = dataPoints
+        .map((point, index) => {
+          return `${index === 0 ? "M" : "L"} ${point.x},${point.y}`;
+        })
+        .join(" ");
+
+      svgContent += `<path d="${pathData}" fill="none" stroke="url(#lineGradient)" stroke-width="2" stroke-linecap="round"/>`;
+    }
+    svg.innerHTML = svgContent;
+  }
+
+  // Amélioration de la méthode showNoData pour plus de style
+  private showNoData(): void {
+    const placeholder = document.getElementById("chart-placeholder");
+    const svg = document.getElementById("performance-chart");
+
+    if (placeholder && svg) {
+      placeholder.style.display = "flex";
+      svg.innerHTML = `
       <defs>
         <pattern id="emptyGrid" width="20" height="20" patternUnits="userSpaceOnUse">
           <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#374151" stroke-width="0.5" opacity="0.2"/>
@@ -478,16 +515,16 @@ private showNoData(): void {
       </defs>
       <rect width="100" height="100" fill="url(#emptyGrid)"/>
     `;
-    
-    placeholder.innerHTML = `
+
+      placeholder.innerHTML = `
       <div class="text-center text-gray-600">
         <div class="font-mono text-sm opacity-75">--WAITING FOR DATA--</div>
         <p class="font-mono text-xs mt-1 opacity-50">Performance analytics will appear here</p>
       </div>
     `;
+    }
   }
-}
-  ////////////////////////////////////////////////graph////////////////////////////////////////// 
+  ////////////////////////////////////////////////graph//////////////////////////////////////////
   ////////////////////////////////////////////////FIN DASH////////////////////////////////////////////
 
   ///////////////////////////////////////////////avatar//////////////////////////////////////////////
@@ -508,15 +545,21 @@ private showNoData(): void {
 
   //////////////////////////////////////////////creation match apeller dans le script///////////////////////////////////////
 
-  static async createMatch(mode: string, score1: number, score2: number, duration: number, player1 : string, player2 : string): Promise<number | null> {
-    
+  static async createMatch(
+    mode: string,
+    score1: number,
+    score2: number,
+    duration: number,
+    player1: string,
+    player2: string,
+  ): Promise<number | null> {
     try {
       let result = null;
-      
+
       if (GamePage.currentTournamentId && GamePage.tournamentMatchData) {
         if (GamePage.shouldRecordTournamentMatch) {
           console.log("🏆 USER PARTICIPATING - Recording tournament match...");
-          
+
           const response = await fetch("/match", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -537,20 +580,30 @@ private showNoData(): void {
           console.log("✅ Tournament match recorded:", data);
           GamePage.currentMatchId = data.id;
           GamePage.showProfileAlert("profile-success", data.message, "success");
-          
+
           await GamePage.updateTournamentWithWinner(score1, score2);
           result = data.id;
-        } 
-        else {
+        } else {
           console.log("👥 GUEST vs GUEST - No match recording...");
-          GamePage.showProfileAlert("profile-success", "Match terminé (mode spectateur)", "success");
           await GamePage.updateTournamentWithWinner(score1, score2);
           result = null;
         }
-      } 
-      else {
+      } else {
         console.log("🎮 NORMAL MATCH - Recording without player names...");
-        console.log("Mode:", mode, "Score1:", score1, "Score2:", score2, "Duration:", duration, "Player1:", player1, "Player2:", player2);
+        console.log(
+          "Mode:",
+          mode,
+          "Score1:",
+          score1,
+          "Score2:",
+          score2,
+          "Duration:",
+          duration,
+          "Player1:",
+          player1,
+          "Player2:",
+          player2,
+        );
         const response = await fetch("/match", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -560,8 +613,8 @@ private showNoData(): void {
             score1: score1,
             score2: score2,
             duration: duration,
-            player1 : player1,
-            player2 : player2,
+            player1: player1,
+            player2: player2,
           }),
         });
 
@@ -572,12 +625,15 @@ private showNoData(): void {
         GamePage.currentMatchId = data.id;
         result = data.id;
       }
-      
+
       const gamePageInstance = (window as any).gamePageInstance;
-      if (gamePageInstance && GamePage.tournamentMatchData && GamePage.tournamentMatchData.status === "finished") {
+      if (
+        gamePageInstance &&
+        GamePage.tournamentMatchData &&
+        GamePage.tournamentMatchData.status === "finished"
+      ) {
         gamePageInstance.disableGameMode();
-      }
-      else if (gamePageInstance && !GamePage.tournamentMatchData) {
+      } else if (gamePageInstance && !GamePage.tournamentMatchData) {
         gamePageInstance.disableGameMode();
       }
 
@@ -585,12 +641,12 @@ private showNoData(): void {
     } catch (error) {
       console.error("❌ Error in createMatch:", error);
       GamePage.showProfileAlert("profile-alert", String(error));
-      
+
       const gamePageInstance = (window as any).gamePageInstance;
       if (gamePageInstance) {
         gamePageInstance.disableGameMode();
       }
-      
+
       return null;
     }
   }
@@ -736,7 +792,9 @@ private showNoData(): void {
       } else {
         GamePage.showProfileAlert(
           "profile-alert",
-          (data.error instanceof Error ? data.error.message : "$ error: failed to load friends"),
+          data.error instanceof Error
+            ? data.error.message
+            : "$ error: failed to load friends",
         );
         this.friendsList = [];
         this.renderFriendsSection();
@@ -744,7 +802,9 @@ private showNoData(): void {
     } catch (error) {
       GamePage.showProfileAlert(
         "profile-alert",
-        (error instanceof Error ? error.message : "$ error: failed to load friends"),
+        error instanceof Error
+          ? error.message
+          : "$ error: failed to load friends",
       );
       this.friendsList = [];
       this.renderFriendsSection();
@@ -770,11 +830,7 @@ private showNoData(): void {
       const data = await response.json();
 
       if (response.ok) {
-        GamePage.showProfileAlert(
-          "profile-success",
-          data.message,
-          "success",
-        );
+        GamePage.showProfileAlert("profile-success", data.message, "success");
         await this.loadFriends();
         const input = document.getElementById(
           "add-friend-input",
@@ -810,11 +866,7 @@ private showNoData(): void {
       const data = await response.json();
 
       if (response.ok) {
-        GamePage.showProfileAlert(
-          "profile-success",
-          data.message,
-          "success",
-        );
+        GamePage.showProfileAlert("profile-success", data.message, "success");
         await this.loadFriends();
       } else {
         GamePage.showProfileAlert(
@@ -867,9 +919,11 @@ private showNoData(): void {
                     <div class="font-mono font-bold text-white text-sm">${friend.public_login}</div>
                   </div>
                   <div class="font-mono text-xs text-gray-400">
-                    ${friend.games_played === 0
-                      ? "No matches"
-                      : `${winRate}% win rate • ${friend.games_played} games`}
+                    ${
+                      friend.games_played === 0
+                        ? "No matches"
+                        : `${winRate}% win rate • ${friend.games_played} games`
+                    }
                   </div>
                 </div>
               </div>
@@ -1401,25 +1455,27 @@ private showNoData(): void {
     document.getElementById("tournament")?.addEventListener("click", () => {
       this.showTournamentPopup();
     });
-    document.getElementById("anonymize-account-btn")
+    document
+      .getElementById("anonymize-account-btn")
       ?.addEventListener("click", () => {
         this.anonymizeAccount();
       });
 
     document
-      .getElementById("delete-account-btn")?.addEventListener("click", () => {
+      .getElementById("delete-account-btn")
+      ?.addEventListener("click", () => {
         this.deleteAccount();
       });
     document.getElementById("contact-link")?.addEventListener("click", () => {
-    import('./privacy.js').then(({ showContactPopup }) => {
-      showContactPopup();
+      import("./privacy.js").then(({ showContactPopup }) => {
+        showContactPopup();
+      });
     });
-  });
     document.getElementById("privacy-link")?.addEventListener("click", () => {
-    import('./privacy.js').then(({ showPrivacyPopup }) => {
-      showPrivacyPopup();})
+      import("./privacy.js").then(({ showPrivacyPopup }) => {
+        showPrivacyPopup();
+      });
     });
-  
 
     this.attachProfileEvents();
   }
@@ -1554,11 +1610,7 @@ private showNoData(): void {
       const data = await response.json();
 
       if (response.ok) {
-        GamePage.showProfileAlert(
-          "profile-success",
-          data.message,
-          "success",
-        );
+        GamePage.showProfileAlert("profile-success", data.message, "success");
         Object.assign(this.currentUser, updateData);
         this.updateProfileDisplay();
 
@@ -1606,7 +1658,10 @@ private showNoData(): void {
     }
 
     if (newPassword !== confirmPassword) {
-      GamePage.showProfileAlert("profile-alert", "$ error: passwords do not match");
+      GamePage.showProfileAlert(
+        "profile-alert",
+        "$ error: passwords do not match",
+      );
       return;
     }
 
@@ -1635,11 +1690,7 @@ private showNoData(): void {
       const data = await response.json();
 
       if (response.ok) {
-        GamePage.showProfileAlert(
-          "profile-success",
-          data.message,
-          "success",
-        );
+        GamePage.showProfileAlert("profile-success", data.message, "success");
         (
           document.getElementById("profile-new-password") as HTMLInputElement
         ).value = "";
@@ -1698,11 +1749,7 @@ private showNoData(): void {
       const data = await response.json();
 
       if (response.ok) {
-        GamePage.showProfileAlert(
-          "profile-success",
-          data.message,
-          "success",
-        );
+        GamePage.showProfileAlert("profile-success", data.message, "success");
         if (this.currentUser) {
           this.currentUser.secure_auth = isEnabled;
         }
@@ -1850,11 +1897,10 @@ private showNoData(): void {
   }
 
   private showSection(sectionName: string): void {
-
     if (this.isGameActive) {
       GamePage.showProfileAlert(
-        "profile-alert", 
-        "$ error: navigation locked during match"
+        "profile-alert",
+        "$ error: navigation locked during match",
       );
       return;
     }
@@ -1900,7 +1946,7 @@ private showNoData(): void {
   public startGame(mode: "local" | "ai" | "remote"): void {
     // if (this.isGameActive) {
     //   GamePage.showProfileAlert(
-    //     "profile-alert", 
+    //     "profile-alert",
     //     "$ error: match already in progress"
     //   );
     //   return;
@@ -2005,27 +2051,30 @@ private showNoData(): void {
 
   // Fonction pour se connecter au matchmaking remote
   private connectToRemoteMatchmaking(): void {
-    console.log('🔄 connectToRemoteMatchmaking appelée');
-    console.log('📊 État WebSocket actuel:', this.remoteSocket?.readyState);
-    
+    console.log("🔄 connectToRemoteMatchmaking appelée");
+    console.log("📊 État WebSocket actuel:", this.remoteSocket?.readyState);
+
     // Vérifier si une connexion est déjà en cours ou ouverte
     if (this.remoteSocket && this.remoteSocket.readyState === WebSocket.OPEN) {
-      console.log('⚠️ WebSocket déjà connectée, ignorer');
+      console.log("⚠️ WebSocket déjà connectée, ignorer");
       return;
     }
-    
-    if (this.remoteSocket && this.remoteSocket.readyState === WebSocket.CONNECTING) {
-      console.log('⚠️ WebSocket en cours de connexion, ignorer');
+
+    if (
+      this.remoteSocket &&
+      this.remoteSocket.readyState === WebSocket.CONNECTING
+    ) {
+      console.log("⚠️ WebSocket en cours de connexion, ignorer");
       return;
     }
-    
+
     // Fermer la connexion existante si elle existe
     if (this.remoteSocket) {
-      console.log('🔄 Fermeture WebSocket existante');
+      console.log("🔄 Fermeture WebSocket existante");
       this.remoteSocket.close();
     }
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
     const wsUrl = `${protocol}//${host}/ws/remote`;
 
@@ -2033,99 +2082,97 @@ private showNoData(): void {
       this.remoteSocket = new WebSocket(wsUrl);
 
       this.remoteSocket.onopen = () => {
-        console.log('✅ Connecté au matchmaking remote');
+        console.log("✅ Connecté au matchmaking remote");
         GamePage.showProfileAlert(
           "profile-success",
           "$ searching for opponent...",
-          "success"
+          "success",
         );
       };
 
       this.remoteSocket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('📩 Message reçu:', data);
+          console.log("📩 Message reçu:", data);
           this.handleRemoteMessage(data);
         } catch (error) {
-          console.error('Erreur parsing message WebSocket:', error);
+          console.error("Erreur parsing message WebSocket:", error);
         }
       };
 
       this.remoteSocket.onclose = () => {
-        console.log('❌ Connexion WebSocket fermée');
+        console.log("❌ Connexion WebSocket fermée");
         this.remoteSocket = null;
       };
 
       this.remoteSocket.onerror = (error) => {
-        console.error('❌ Erreur WebSocket:', error);
+        console.error("❌ Erreur WebSocket:", error);
         GamePage.showProfileAlert(
           "profile-alert",
-          "$ connection failed - try again"
+          "$ connection failed - try again",
         );
       };
-
     } catch (error) {
-      console.error('❌ Erreur création WebSocket:', error);
+      console.error("❌ Erreur création WebSocket:", error);
       GamePage.showProfileAlert(
         "profile-alert",
-        "$ connection error - check network"
+        "$ connection error - check network",
       );
     }
   }
 
   // // Fonction pour gérer les messages du serveur remote
   private handleRemoteMessage(data: any): void {
-    console.log('📩 Message reçu du serveur remote:', data.type);
+    console.log("📩 Message reçu du serveur remote:", data.type);
     switch (data.type) {
-      case 'waiting':
-        console.log('⏳ En attente d\'un adversaire...');
+      case "waiting":
+        console.log("⏳ En attente d'un adversaire...");
         GamePage.showProfileAlert(
           "profile-success",
           "$ waiting for opponent...",
-          "success"
+          "success",
         );
         break;
 
-      case 'match_found':
-        console.log('🎮 Match trouvé!', data);
+      case "match_found":
+        console.log("🎮 Match trouvé!", data);
         GamePage.showProfileAlert(
           "profile-success",
           "$ match found! starting game...",
-          "success"
+          "success",
         );
-        
+
         // Démarrer le jeu remote avec roomId
         setTimeout(() => {
           this.connectToRemoteGame(data.roomId, data.opponentId);
         }, 1500);
         break;
 
-      case 'error':
-        console.error('❌ Erreur serveur:', data.message);
-        GamePage.showProfileAlert(
-          "profile-alert",
-          `$ error: ${data.message}`
-        );
+      case "error":
+        console.error("❌ Erreur serveur:", data.message);
+        GamePage.showProfileAlert("profile-alert", `$ error: ${data.message}`);
         break;
 
-        
-
       default:
-        console.log('Message non géré:', data);
+        console.log("Message non géré:", data);
     }
   }
 
-
   // Fonction pour se connecter au jeu remote via WebSocket
-  private async connectToRemoteGame(roomId: string, opponentId : number): Promise<void> {
+  // Dans connectToRemoteGame, remplace par ça :
+
+  private async connectToRemoteGame(
+    roomId: string,
+    opponentId: number,
+  ): Promise<void> {
     if (this.remoteSocket) {
       this.remoteSocket.close();
       this.remoteSocket = null;
     }
 
     console.log(`🔗 Connexion au jeu remote - Room: ${roomId}`);
-    
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
     const wsUrl = `${protocol}//${host}/ws/remote/game?roomId=${roomId}`;
 
@@ -2133,68 +2180,211 @@ private showNoData(): void {
       const gameSocket = new WebSocket(wsUrl);
 
       gameSocket.onopen = () => {
-        console.log('✅ Connecté au jeu remote');
+        console.log("✅ Connecté au jeu remote");
         GamePage.showProfileAlert(
           "profile-success",
           "$ connected to game room",
-          "success"
+          "success",
         );
+
+        // 🆕 NE PAS afficher l'écran tout de suite, attendre le game_init
+        console.log("⏳ En attente du game_init pour afficher l'écran...");
       };
 
-      await this.launchGame("remote");
-      // Stocker la socket pour pouvoir l'utiliser dans le jeu
-      (window as any).gameSocket = gameSocket;
-    
+      // 🆕 ÉCOUTER DIRECTEMENT LE game_init ICI
+      gameSocket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("📨 Message reçu dans game.ts:", data.type);
 
+          if (data.type === "game_init") {
+            console.log("🎯 game_init reçu avec playerSide:", data.playerSide);
+
+            // 🆕 PREMIER ET SEUL affichage avec les bonnes valeurs
+            this.renderControlsScreen(data.playerSide);
+
+            // Stocker la socket pour le jeu
+            (window as any).gameSocket = gameSocket;
+          }
+        } catch (error) {
+          console.error("Erreur parsing message:", error);
+        }
+      };
     } catch (error) {
-      console.error('❌ Erreur création WebSocket jeu:', error);
+      console.error("❌ Erreur création WebSocket jeu:", error);
       GamePage.showProfileAlert(
         "profile-alert",
-        "$ failed to connect to game room"
+        "$ failed to connect to game room",
       );
     }
   }
 
+  // Et renderControlsScreen devient plus simple :
+
+  private renderControlsScreen(playerSide: "left" | "right"): void {
+    const canvasDiv = document.getElementById("game-canvas")!;
+
+    // playerSide est toujours défini maintenant
+    const isLeftPlayer = playerSide === "left";
+    const isRightPlayer = playerSide === "right";
+
+    const leftPlayerLabel = isLeftPlayer ? "YOU" : "OPPONENT";
+    const rightPlayerLabel = isRightPlayer ? "YOU" : "OPPONENT";
+
+    const leftPlayerBorder = isLeftPlayer
+      ? "border-green-500"
+      : "border-blue-500";
+    const rightPlayerBorder = isRightPlayer
+      ? "border-green-500"
+      : "border-red-500";
+
+    const leftPlayerBg = isLeftPlayer ? "bg-green-500/20" : "bg-blue-500/20";
+    const rightPlayerBg = isRightPlayer ? "bg-green-500/20" : "bg-red-500/20";
+
+    const leftPlayerText = isLeftPlayer ? "text-green-400" : "text-blue-400";
+    const rightPlayerText = isRightPlayer ? "text-green-400" : "text-red-400";
+
+    canvasDiv.innerHTML = `
+      <div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg p-8 relative overflow-hidden backdrop-blur-sm">
+        <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+
+        <div class="text-white h-full flex flex-col justify-center">
+          <div class="text-center max-w-2xl mx-auto">
+
+            <!-- Match title -->
+            <h1 class="font-mono text-3xl font-bold text-green-400 mb-8">remote match ready</h1>
+
+            <!-- Players cards avec contrôles -->
+            <div class="grid grid-cols-3 items-center gap-6 mb-8">
+
+              <!-- Left Player -->
+              <div class="bg-gray-800 ${leftPlayerBorder} border rounded-lg p-6 ${isLeftPlayer ? "ring-2 ring-green-500/50" : ""}">
+                <div class="w-16 h-16 ${leftPlayerBg} ${leftPlayerBorder} border rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span class="font-mono text-lg font-bold ${leftPlayerText}">L</span>
+                </div>
+                <h3 class="font-mono text-lg font-bold ${leftPlayerText} mb-3">${leftPlayerLabel}</h3>
+                <div class="space-y-2">
+                  <div class="font-mono text-sm text-gray-300">W - move up</div>
+                  <div class="font-mono text-sm text-gray-300">S - move down</div>
+                </div>
+                ${isLeftPlayer ? '<div class="mt-3 px-2 py-1 bg-green-500/20 border border-green-500/30 rounded text-xs font-mono text-green-400">Your side</div>' : ""}
+              </div>
+
+              <!-- VS -->
+              <div class="text-center">
+                <div class="font-mono text-3xl font-bold text-white mb-2">VS</div>
+                <div class="w-16 h-1 bg-gradient-to-r from-blue-500 to-red-500 mx-auto"></div>
+              </div>
+
+              <!-- Right Player -->
+              <div class="bg-gray-800 ${rightPlayerBorder} border rounded-lg p-6 ${isRightPlayer ? "ring-2 ring-green-500/50" : ""}">
+                <div class="w-16 h-16 ${rightPlayerBg} ${rightPlayerBorder} border rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span class="font-mono text-lg font-bold ${rightPlayerText}">R</span>
+                </div>
+                <h3 class="font-mono text-lg font-bold ${rightPlayerText} mb-3">${rightPlayerLabel}</h3>
+                <div class="space-y-2">
+                  <div class="font-mono text-sm text-gray-300">I - move up</div>
+                  <div class="font-mono text-sm text-gray-300">K - move down</div>
+                </div>
+                ${isRightPlayer ? '<div class="mt-3 px-2 py-1 bg-green-500/20 border border-green-500/30 rounded text-xs font-mono text-green-400">Your side</div>' : ""}
+              </div>
+
+            </div>
+
+
+            <!-- Loading bar -->
+            <div class="max-w-md mx-auto">
+              <div class="font-mono text-green-400 text-sm mb-3">initializing connection...</div>
+              <div class="bg-gray-800 border border-gray-700 rounded-lg p-2">
+                <div id="loading-bar" class="h-2 bg-gradient-to-r from-green-500 to-green-400 rounded transition-all duration-100" style="width: 0%"></div>
+              </div>
+              <div class="font-mono text-gray-400 text-xs mt-2" id="loading-text">preparing match...</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Démarrer l'animation automatiquement
+    this.startLoadingAnimation();
+  }
+
+  // Méthode séparée pour l'animation
+  private startLoadingAnimation(): void {
+    let progress = 0;
+    const loadingBar = document.getElementById("loading-bar")!;
+    const loadingText = document.getElementById("loading-text")!;
+
+    const loadingMessages = [
+      "preparing match...",
+      "syncing players...",
+      "establishing connection...",
+      "loading game assets...",
+      "finalizing setup...",
+    ];
+
+    const updateProgress = () => {
+      progress += 2;
+      loadingBar.style.width = `${progress}%`;
+
+      if (progress === 20) loadingText.textContent = loadingMessages[1];
+      else if (progress === 40) loadingText.textContent = loadingMessages[2];
+      else if (progress === 60) loadingText.textContent = loadingMessages[3];
+      else if (progress === 80) loadingText.textContent = loadingMessages[4];
+      else if (progress >= 100) {
+        loadingText.textContent = "starting match...";
+
+        setTimeout(() => {
+          console.log("remoteeeeeeeeeeeeeeeeeeeeeee gaming");
+          this.launchGame("remote");
+        }, 500);
+
+        return;
+      }
+
+      setTimeout(updateProgress, 60);
+    };
+
+    updateProgress();
+  }
+
   // Méthode pour traiter les messages de remote-pong.js (évite la récursion)
   private handleRemoteGameMessage(data: any): void {
-    console.log('🎮 Message remote reçu:', data.type);
-    
+    console.log("🎮 Message remote reçu:", data.type);
+
     switch (data.type) {
       // case 'game_init':
       //   console.log('🎮 game_init reçu de remote-pong.js - traitement direct');
       //   // game_init est maintenant traité directement ici
       //   break;
-        
-        case 'game_ended':
-          this.hasGameEnded = true;
-          if ((window as any).gameSocket) {
-            (window as any).gameSocket.close();
-            (window as any).gameSocket = null;
-          }
-          GamePage.showProfileAlert(
-            "profile-success",
-            "$ game ended",
-            "success"
-          );
-          
-          this.disableGameMode();
-          // Afficher l'interface de fin de partie
-          const gameCanvasDiv = document.getElementById("game-canvas")!;
-          
-          // Récupérer les données du jeu depuis remote-pong.js ou les variables globales
-          const currentGame = (window as any).remotePongGameInstance;
-          console.log("currentGame", currentGame);
-          const player1Name = currentGame?.player1Name || 'Player 1';
-          const player2Name = currentGame?.player2Name || 'Player 2';
-          const scoreLeft = currentGame?.scoreLeft || 0;
-          const scoreRight = currentGame?.scoreRight || 0;
-          
-          gameCanvasDiv.innerHTML = `
+
+      case "game_ended":
+        this.hasGameEnded = true;
+        if ((window as any).gameSocket) {
+          (window as any).gameSocket.close();
+          (window as any).gameSocket = null;
+        }
+        GamePage.showProfileAlert("profile-success", "$ game ended", "success");
+
+        this.disableGameMode();
+        // Afficher l'interface de fin de partie
+        const gameCanvasDiv = document.getElementById("game-canvas")!;
+
+        // Récupérer les données du jeu depuis remote-pong.js ou les variables globales
+        const currentGame = (window as any).remotePongGameInstance;
+        console.log("currentGame", currentGame);
+        const player1Name = currentGame?.player1Name || "Player 1";
+        const player2Name = currentGame?.player2Name || "Player 2";
+        const scoreLeft = currentGame?.scoreLeft || 0;
+        const scoreRight = currentGame?.scoreRight || 0;
+
+        gameCanvasDiv.innerHTML = `
             <div class="w-full h-full flex items-center justify-center bg-black border border-gray-700 rounded-lg">
               <div class="text-center text-white p-8">
                 <div class="text-6xl mb-6 text-green-400"></div>
                 <h2 class="font-mono text-3xl font-bold text-green-400 mb-6">GAME OVER</h2>
-                
+
                 <div class="mb-8 space-y-4">
                   <div class="flex justify-between items-center bg-gray-800 p-4 rounded-lg">
                     <div class="text-left">
@@ -2203,7 +2393,7 @@ private showNoData(): void {
                     </div>
                     <div class="text-4xl font-bold text-blue-400">${scoreLeft}</div>
                   </div>
-                  
+
                   <div class="flex justify-between items-center bg-gray-800 p-4 rounded-lg">
                     <div class="text-left">
                       <div class="text-lg font-bold text-red-400">${player2Name}</div>
@@ -2212,17 +2402,19 @@ private showNoData(): void {
                     <div class="text-4xl font-bold text-red-400">${scoreRight}</div>
                   </div>
                 </div>
-                
+
                 <div class="mb-6">
                   <div class="text-xl font-bold text-yellow-400">
-                    ${scoreLeft > scoreRight ? 
-                      ` ${player1Name} Wins!` : 
-                      scoreRight > scoreLeft ? 
-                      ` ${player2Name} Wins!` : 
-                      ' It\'s a Tie!'}
+                    ${
+                      scoreLeft > scoreRight
+                        ? ` ${player1Name} Wins!`
+                        : scoreRight > scoreLeft
+                          ? ` ${player2Name} Wins!`
+                          : " It's a Tie!"
+                    }
                   </div>
                 </div>
-                
+
                 <div class="space-y-4">
                   <button id="back-to-menu-game-ended" class="w-full px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-mono font-bold rounded-lg transition-colors">
                     $ back to menu
@@ -2231,21 +2423,23 @@ private showNoData(): void {
               </div>
             </div>
           `;
-  
-          document.getElementById('back-to-menu-game-ended')?.addEventListener('click', () => {
+
+        document
+          .getElementById("back-to-menu-game-ended")
+          ?.addEventListener("click", () => {
             this.startGame("remote");
           });
-          break;
-        
-      case 'player_disconnected':
+        break;
+
+      case "player_disconnected":
         if (this.hasGameEnded) {
           // Si la partie s'est terminée proprement, ignorer les déconnexions tardives
           break;
         }
-        console.log('❌ Joueur déconnecté:', data.playerId);
+        console.log("❌ Joueur déconnecté:", data.playerId);
         GamePage.showProfileAlert(
           "profile-alert",
-          "$ opponent disconnected !!!!!"
+          "$ opponent disconnected !!!!!",
         );
         this.disableGameMode();
         // Afficher l'interface de déconnexion
@@ -2256,7 +2450,7 @@ private showNoData(): void {
               <div class="text-6xl mb-6 text-red-400">⚠️</div>
               <h2 class="font-mono text-2xl font-bold text-red-400 mb-4">CONNECTION LOST</h2>
               <p class="font-mono text-gray-400 mb-8">Your opponent has disconnected</p>
-              
+
               <div class="space-y-4">
                 <button id="back-to-menu" class="w-full px-6 py-3 bg-green-500 hover:bg-600 text-white font-mono font-bold rounded-lg transition-colors">
                   $ back to menu
@@ -2266,24 +2460,26 @@ private showNoData(): void {
           </div>
         `;
 
-        document.getElementById('back-to-menu')?.addEventListener('click', () => {
-          this.showRemoteMenu();
-        });
-        
+        document
+          .getElementById("back-to-menu")
+          ?.addEventListener("click", () => {
+            this.showRemoteMenu();
+          });
+
         // Nettoyer les ressources du jeu
         if (typeof (window as any).disposeGame === "function") {
           (window as any).disposeGame();
         }
-        
+
         // Fermer la WebSocket du jeu
         if ((window as any).gameSocket) {
           (window as any).gameSocket.close();
           (window as any).gameSocket = null;
         }
         break;
-        
+
       default:
-        console.log('Message remote non géré:', data);
+        console.log("Message remote non géré:", data);
     }
   }
 
@@ -2326,55 +2522,56 @@ private showNoData(): void {
     }
   }
 
-private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promise<void> {
-  this.hasGameEnded = false;
-  if (typeof (window as any).disposeGame === "function") {
-    (window as any).disposeGame();
-  }
+  private async launchGame(
+    mode: "local" | "tournament" | "ai" | "remote",
+  ): Promise<void> {
+    this.hasGameEnded = false;
+    if (typeof (window as any).disposeGame === "function") {
+      (window as any).disposeGame();
+    }
 
     this.hasGameEnded = false;
     this.enableGameMode();
     if (typeof (window as any).disposeGame === "function") {
       (window as any).disposeGame();
     }
-    
+
     const canvasDiv = document.getElementById("game-canvas")!;
     canvasDiv.innerHTML = `<canvas id="renderCanvas" class="w-full h-full" tabindex="0"></canvas>`;
 
-  const oldScript = document.getElementById("pong-script");
-  if (oldScript) oldScript.remove();
+    const oldScript = document.getElementById("pong-script");
+    if (oldScript) oldScript.remove();
 
-  let scriptSrc = "../../pong/pong.js";
-  if (mode === "ai") scriptSrc = "../../pong/pov.js";
-  if (mode === "remote") scriptSrc = "../../pong/remote-pong.js";
+    let scriptSrc = "../../pong/pong.js";
+    if (mode === "ai") scriptSrc = "../../pong/pov.js";
+    if (mode === "remote") scriptSrc = "../../pong/remote-pong.js";
 
-  // 🔹 On transmet le mode au script via window
-  (window as any).gameMode = mode;
-  const script = document.createElement("script");
-  script.id = "pong-script";
-  script.src = scriptSrc + "?t=" + Date.now(); // éviter le cache
-  script.async = false;
+    // 🔹 On transmet le mode au script via window
+    (window as any).gameMode = mode;
+    const script = document.createElement("script");
+    script.id = "pong-script";
+    script.src = scriptSrc + "?t=" + Date.now(); // éviter le cache
+    script.async = false;
 
-  console.log(`Game ${mode} started`);
+    console.log(`Game ${mode} started`);
 
-  if (mode === "remote") {
-    script.onload = () => {
-      console.log("✅ remote-pong.js chargé");
-    };
+    if (mode === "remote") {
+      script.onload = () => {
+        console.log("✅ remote-pong.js chargé");
+      };
+    }
+
+    canvasDiv.appendChild(script);
+
+    if (GamePage.currentTournamentId) {
+      console.log("🏆 Tournament game launched:", {
+        tournamentId: GamePage.currentTournamentId,
+        shouldRecord: GamePage.shouldRecordTournamentMatch,
+        matchData: GamePage.tournamentMatchData,
+      });
+    }
   }
 
-  canvasDiv.appendChild(script);
-
-  if (GamePage.currentTournamentId) {
-    console.log("🏆 Tournament game launched:", {
-      tournamentId: GamePage.currentTournamentId,
-      shouldRecord: GamePage.shouldRecordTournamentMatch,
-      matchData: GamePage.tournamentMatchData
-    });
-  }
-}
-
-  
   ///////////////////////////////////////////game//////////////////////////////////////
 
   //////////////////////////////////////////tournois//////////////////////////////////////
@@ -2524,7 +2721,7 @@ private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promis
           );
           return;
         }
-          players.push(alias);
+        players.push(alias);
       }
     }
 
@@ -2548,26 +2745,23 @@ private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promis
 
       const data = await response.json();
       if (!response.ok) {
-        GamePage.showProfileAlert(
-          "profile-alert",
-          data.error,
-        );
+        GamePage.showProfileAlert("profile-alert", data.error);
         return;
       }
 
       GamePage.currentTournamentId = data.id;
-      GamePage.shouldRecordTournamentMatch = data.player_id !== -1; 
+      GamePage.shouldRecordTournamentMatch = data.player_id !== -1;
       GamePage.tournamentMatchData = {
         player_1: data.player_1,
         player_2: data.player_2,
-        status: data.status
+        status: data.status,
       };
 
       console.log(" Tournament state initialized:", {
         id: GamePage.currentTournamentId,
         shouldRecord: GamePage.shouldRecordTournamentMatch,
         playerParticipating: data.player_id !== -1,
-        matchData: GamePage.tournamentMatchData
+        matchData: GamePage.tournamentMatchData,
       });
 
       const nameInput = document.querySelector(
@@ -2577,26 +2771,31 @@ private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promis
 
       this.showTournamentRules(tournamentName, players, data);
     } catch (error) {
-      GamePage.showProfileAlert("profile-alert", typeof error === "object" && error !== null && "message" in error ? (error as { message: string }).message : String(error));
+      GamePage.showProfileAlert(
+        "profile-alert",
+        typeof error === "object" && error !== null && "message" in error
+          ? (error as { message: string }).message
+          : String(error),
+      );
     }
   }
 
-	/**
-	 * 1. Affiche les règles du tournoi - Taille agrandie
-	 */
-	private showTournamentRules(
-	tournamentName: string,
-	players: string[],
-	tournamentData: any,
-	): void {
-	const canvasDiv = document.getElementById("game-canvas")!;
+  /**
+   * 1. Affiche les règles du tournoi - Taille agrandie
+   */
+  private showTournamentRules(
+    tournamentName: string,
+    players: string[],
+    tournamentData: any,
+  ): void {
+    const canvasDiv = document.getElementById("game-canvas")!;
 
-	canvasDiv.innerHTML = `
+    canvasDiv.innerHTML = `
 		<div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg p-8 relative overflow-hidden backdrop-blur-sm">
 		<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
-		
+
 		<div class="text-center text-white h-full flex flex-col justify-center">
-			
+
 			<!-- Tournament header -->
 			<div class="mb-10">
 			<h2 class="font-mono text-3xl font-bold text-yellow-400 mb-4">${tournamentName}</h2>
@@ -2620,7 +2819,7 @@ private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promis
 			</div>
 
 			<!-- Start button -->
-			<button id="start-tournament" 
+			<button id="start-tournament"
 					class="px-12 py-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black font-mono font-bold text-lg rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-yellow-500/30 max-w-sm mx-auto">
 			$ start match
 			</button>
@@ -2629,30 +2828,32 @@ private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promis
 		</div>
 	`;
 
-	document.getElementById("start-tournament")?.addEventListener("click", () => {
-		this.showTournamentPreMatch(tournamentData);
-	});
-	}
+    document
+      .getElementById("start-tournament")
+      ?.addEventListener("click", () => {
+        this.showTournamentPreMatch(tournamentData);
+      });
+  }
 
-	/**
-	 * 2. Interface de pré-match - Version compacte
-	 */
-	private showTournamentPreMatch(tournamentData: any): void {
-	const canvasDiv = document.getElementById("game-canvas")!;
+  /**
+   * 2. Interface de pré-match - Version compacte
+   */
+  private showTournamentPreMatch(tournamentData: any): void {
+    const canvasDiv = document.getElementById("game-canvas")!;
 
-	canvasDiv.innerHTML = `
+    canvasDiv.innerHTML = `
 		<div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg p-6 relative overflow-hidden backdrop-blur-sm">
 		<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
-		
+
 		<div class="text-white h-full flex items-center justify-center">
 			<div class="text-center max-w-3xl w-full">
-			
+
 			<!-- Match title -->
 			<h1 class="font-mono text-3xl font-bold text-yellow-400 mb-8">match ready</h1>
-			
+
 			<!-- Players cards -->
 			<div class="grid grid-cols-3 items-center gap-6 mb-8">
-				
+
 				<!-- Player 1 -->
 				<div class="bg-gray-800 border border-blue-500 rounded-lg p-4">
 				<div class="w-16 h-16 bg-blue-500/20 border border-blue-500 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -2689,7 +2890,7 @@ private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promis
 				<div>
 					<div class="text-yellow-400 font-bold">status</div>
 					<div class="text-white text-lg">
-					${tournamentData.player_id !== -1 ? 'playing' : 'spectating'}
+					${tournamentData.player_id !== -1 ? "playing" : "spectating"}
 					</div>
 				</div>
 				</div>
@@ -2697,7 +2898,7 @@ private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promis
 
 			<!-- Ready button -->
 			<div id="start-button-container">
-				<button id="ready-to-fight" 
+				<button id="ready-to-fight"
 						class="px-8 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-mono font-bold rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/30">
 				$ ready to fight
 				</button>
@@ -2708,67 +2909,67 @@ private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promis
 		</div>
 	`;
 
-	document.getElementById("ready-to-fight")?.addEventListener("click", () => {
-		this.startMatchCountdown(tournamentData);
-	});
-	}
+    document.getElementById("ready-to-fight")?.addEventListener("click", () => {
+      this.startMatchCountdown(tournamentData);
+    });
+  }
 
-	/**
-	 * 3. Compte à rebours - Taille agrandie
-	 */
-	private startMatchCountdown(tournamentData: any): void {
-	const canvasDiv = document.getElementById("game-canvas")!;
-	let countdown = 3;
-	
-	const updateCountdown = () => {
-		if (countdown > 0) {
-		canvasDiv.innerHTML = `
+  /**
+   * 3. Compte à rebours - Taille agrandie
+   */
+  private startMatchCountdown(tournamentData: any): void {
+    const canvasDiv = document.getElementById("game-canvas")!;
+    let countdown = 3;
+
+    const updateCountdown = () => {
+      if (countdown > 0) {
+        canvasDiv.innerHTML = `
 			<div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg relative overflow-hidden backdrop-blur-sm flex items-center justify-center">
 			<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
-			
+
 			<div class="text-center">
 				<div class="font-mono text-9xl font-bold text-yellow-400 mb-6">${countdown}</div>
 				<div class="font-mono text-2xl text-gray-400">get ready...</div>
 			</div>
 			</div>
 		`;
-		countdown--;
-		setTimeout(updateCountdown, 1000);
-		} else {
-		canvasDiv.innerHTML = `
+        countdown--;
+        setTimeout(updateCountdown, 1000);
+      } else {
+        canvasDiv.innerHTML = `
 			<div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg relative overflow-hidden backdrop-blur-sm flex items-center justify-center">
 			<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #10b981, transparent);"></div>
-			
+
 			<div class="text-center">
 				<div class="font-mono text-8xl font-bold text-green-400">FIGHT!</div>
 			</div>
 			</div>
 		`;
-		
-		setTimeout(() => {
-			this.launchGame("tournament");
-		}, 1000);
-		}
-	};
 
-	updateCountdown();
-	}
+        setTimeout(() => {
+          this.launchGame("tournament");
+        }, 1000);
+      }
+    };
 
-	/**
-	 * 4. Interface prochain match - Taille agrandie
-	 */
-	static showNextTournamentMatch(tournamentData: any): void {
-	const canvasDiv = document.getElementById("game-canvas");
-	if (!canvasDiv) return;
+    updateCountdown();
+  }
 
-	canvasDiv.innerHTML = `
+  /**
+   * 4. Interface prochain match - Taille agrandie
+   */
+  static showNextTournamentMatch(tournamentData: any): void {
+    const canvasDiv = document.getElementById("game-canvas");
+    if (!canvasDiv) return;
+
+    canvasDiv.innerHTML = `
 		<div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg p-8 relative overflow-hidden backdrop-blur-sm">
 		<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #10b981, transparent);"></div>
-		
+
 		<div class="text-white h-full flex flex-col justify-center">
-			
+
 			<div class="text-center max-w-2xl mx-auto">
-			
+
 			<!-- Result notification -->
 			<div class="bg-green-500/10 border border-green-500 rounded-lg p-6 mb-12">
 				<div class="font-mono text-green-400 font-bold text-xl">match completed</div>
@@ -2793,7 +2994,7 @@ private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promis
 			</div>
 
 			<!-- Continue button -->
-			<button id="start-next-match" 
+			<button id="start-next-match"
 					class="px-12 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white font-mono font-bold text-lg rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-500/30">
 				$ continue tournament
 			</button>
@@ -2803,66 +3004,75 @@ private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promis
 		</div>
 	`;
 
-	document.getElementById("start-next-match")?.addEventListener("click", () => {
-		const gamePageInstance = (window as any).gamePageInstance;
-		if (gamePageInstance) {
-		gamePageInstance.showTournamentPreMatch(tournamentData);
-		}
-	});
-	}
+    document
+      .getElementById("start-next-match")
+      ?.addEventListener("click", () => {
+        const gamePageInstance = (window as any).gamePageInstance;
+        if (gamePageInstance) {
+          gamePageInstance.showTournamentPreMatch(tournamentData);
+        }
+      });
+  }
 
-  static async updateTournamentWithWinner(score1: number, score2: number): Promise<void> {
+  static async updateTournamentWithWinner(
+    score1: number,
+    score2: number,
+  ): Promise<void> {
     if (!GamePage.currentTournamentId || !GamePage.tournamentMatchData) return;
 
     try {
-      const winner = score1 > score2 
-        ? GamePage.tournamentMatchData.player_1 
-        : GamePage.tournamentMatchData.player_2;
-      
-      console.log(`🏆 Match finished: ${GamePage.tournamentMatchData.player_1} (${score1}) vs ${GamePage.tournamentMatchData.player_2} (${score2})`);
+      const winner =
+        score1 > score2
+          ? GamePage.tournamentMatchData.player_1
+          : GamePage.tournamentMatchData.player_2;
+
+      console.log(
+        `🏆 Match finished: ${GamePage.tournamentMatchData.player_1} (${score1}) vs ${GamePage.tournamentMatchData.player_2} (${score2})`,
+      );
       console.log(`🏆 Winner: ${winner}`);
-      
-      const response = await fetch(`/tournament/${GamePage.currentTournamentId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
+
+      const response = await fetch(
+        `/tournament/${GamePage.currentTournamentId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            winner: winner,
+          }),
         },
-        credentials: "include",
-        body: JSON.stringify({
-          winner: winner,
-        }),
-      });
+      );
 
       const data = await response.json();
 
       if (response.ok) {
         console.log("Tournament updated:", data);
-        
+
         if (data.status === "in progress") {
           GamePage.tournamentMatchData = {
             player_1: data.player_1,
             player_2: data.player_2,
-            status: data.status
+            status: data.status,
           };
-          
+
           GamePage.shouldRecordTournamentMatch = data.player_id !== -1;
-          
+
           GamePage.showProfileAlert(
-            "profile-success", 
-            `🏆 ${winner} wins! Next match: ${data.player_1} vs ${data.player_2}`, 
-            "success"
+            "profile-success",
+            ` ${winner} wins! Next match: ${data.player_1} vs ${data.player_2}`,
+            "success",
           );
 
           setTimeout(() => {
             GamePage.showNextTournamentMatch(data);
           }, 3000);
-          
-        } 
-        else if (data.status === "finished") {
+        } else if (data.status === "finished") {
           GamePage.showProfileAlert(
-            "profile-success", 
-            `🏆 TOURNAMENT CHAMPION: ${data.player_1}! 🎉`, 
-            "success"
+            "profile-success",
+            ` TOURNAMENT CHAMPION: ${data.player_1}! `,
+            "success",
           );
           setTimeout(() => {
             GamePage.resetTournamentState();
@@ -2871,245 +3081,300 @@ private async launchGame(mode: "local" | "tournament" | "ai" | "remote"): Promis
       }
     } catch (error) {
       console.error("Error updating tournament:", error);
-      GamePage.showProfileAlert(
-        "profile-alert",
-        "Failed to update tournament"
-      );
+      GamePage.showProfileAlert("profile-alert", "Failed to update tournament");
     }
   }
 
-    static resetTournamentState(): void {
-    
+  static resetTournamentState(): void {
     GamePage.currentTournamentId = null;
     GamePage.shouldRecordTournamentMatch = false;
     GamePage.tournamentMatchData = null;
-    
-    // Rediriger vers la page d'accueil à la fin du tournoi
+
+    // Au lieu de rediriger, nettoyer et réinitialiser l'interface
     const gamePageInstance = (window as any).gamePageInstance;
     if (gamePageInstance) {
-      gamePageInstance.goToHomePage();
-    } else {
-      // Fallback si l'instance n'est pas disponible
-      if (window.router) {
-        window.router.navigate("/");
-      } else {
-        window.location.href = "/";
-      }
+      gamePageInstance.resetToGameMenu();
     }
   }
 
-  // Méthode pour retourner à la page d'accueil
-  public goToHomePage(): void {
+  // Nouvelle méthode pour remettre l'interface proprement :
+  public resetToGameMenu(): void {
     // Nettoyer les ressources du jeu si nécessaire
     if (typeof (window as any).disposeGame === "function") {
       (window as any).disposeGame();
     }
-    
+
     // Désactiver le mode jeu
     this.disableGameMode();
-    
+
     // Nettoyer les WebSockets
     this.cleanup();
-    
-    // Rediriger vers la page d'accueil
-    if (window.router) {
-      window.router.navigate("/");
-    } else {
-      window.location.href = "/";
+
+    // Remettre l'interface de jeu dans son état initial
+    this.resetGameInterface();
+  }
+
+  // Méthode pour réinitialiser l'interface de jeu :
+  private resetGameInterface(): void {
+    const canvasDiv = document.getElementById("game-canvas")!;
+
+    canvasDiv.innerHTML = `
+      <div class="w-full h-[500px] bg-black border border-gray-700 rounded-lg flex items-center justify-center relative">
+        <div class="text-center text-gray-500">
+          <div class="text-6xl mb-4 font-mono animate-pulse"></div>
+          <div class="text-3xl mb-4 font-mono text-yellow-400">TOURNAMENT COMPLETED!</div>
+          <p class="font-mono text-lg mb-8">Congratulations to all participants</p>
+
+          <div class="space-y-4">
+            <button id="back-to-games-btn" class="block mx-auto px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-mono font-bold rounded-lg transition-colors">
+              $ back to games menu
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document
+      .getElementById("back-to-games-btn")
+      ?.addEventListener("click", () => {
+        this.showBackToGameMenu();
+      });
+
+    // Auto-retour au menu après 10 secondes
+    setTimeout(() => {
+      this.showBackToGameMenu();
+    }, 15000);
+  }
+
+  // Méthode pour revenir au menu des jeux normal
+  private showBackToGameMenu(): void {
+    const canvasDiv = document.getElementById("game-canvas")!;
+
+    canvasDiv.innerHTML = `
+      <div class="w-full h-[500px] bg-black border border-gray-700 rounded-lg flex items-center justify-center relative">
+        <div class="text-center text-gray-500">
+          <div class="text-6xl mb-4 font-mono">[PONG]</div>
+          <p class="font-mono">pong.exe ready</p>
+          <p class="font-mono text-sm text-gray-600 mt-2">select mode to initialize</p>
+        </div>
+      </div>
+    `;
+
+    // Remettre les champs de tournoi vides
+    const nameInput = document.querySelector(
+      'input[placeholder="tournament_name"]',
+    ) as HTMLInputElement;
+    if (nameInput) {
+      nameInput.value = "";
     }
+
+    // Afficher une notification de succès
+    GamePage.showProfileAlert(
+      "profile-success",
+      " Tournament completed! Ready for new games",
+      "success",
+    );
   }
   ///////////////////////////////////////////tournois//////////////////////////////////////
   ///////////////////////////////////////////GDPR/////////////////////////////////////////
 
   private async anonymizeAccount(): Promise<void> {
-  const confirmed = await this.showConfirmationPopup(
-    'anonymize',
-    '$ data --anonymize',
-    'This will anonymize your public display:',
-    [
-      '• Public username → "user_[id]_[random]"',
-      '• Alias → "user_[id]_[random]"',
-      '',
-      'Your login and other data remain unchanged.',
-      'This action cannot be undone.'
-    ],
-    'ANONYMIZE',
-    'amber'
-  );
+    const confirmed = await this.showConfirmationPopup(
+      "anonymize",
+      "$ data --anonymize",
+      "This will anonymize your public display:",
+      [
+        '• Public username → "user_[id]_[random]"',
+        '• Alias → "user_[id]_[random]"',
+        "",
+        "Your login and other data remain unchanged.",
+        "This action cannot be undone.",
+      ],
+      "ANONYMIZE",
+      "amber",
+    );
 
-  if (!confirmed) {
-    GamePage.showProfileAlert("profile-alert", "$ anonymization cancelled");
-    return;
-  }
-
-  const btn = document.getElementById("anonymize-account-btn") as HTMLButtonElement;
-  if (!btn) return;
-
-  btn.textContent = "$ anonymizing...";
-  btn.disabled = true;
-  this.hideProfileAlerts();
-
-  try {
-    const response = await fetch("/anonymize", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify({})
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      GamePage.showProfileAlert(
-        "profile-success",
-        data.message || "$ account anonymized successfully",
-        "success",
-      );
-      
-      setTimeout(() => {
-        this.loadUserProfile();
-      }, 2000);
-    } else {
-      GamePage.showProfileAlert(
-        "profile-alert",
-        `$ ${data.error || "anonymization failed"}`,
-      );
+    if (!confirmed) {
+      GamePage.showProfileAlert("profile-alert", "$ anonymization cancelled");
+      return;
     }
-  } catch (error) {
-    GamePage.showProfileAlert("profile-alert", "$ network error");
-    console.error("Anonymization error:", error);
-  } finally {
-    btn.textContent = "$ anonymize account";
-    btn.disabled = false;
+
+    const btn = document.getElementById(
+      "anonymize-account-btn",
+    ) as HTMLButtonElement;
+    if (!btn) return;
+
+    btn.textContent = "$ anonymizing...";
+    btn.disabled = true;
+    this.hideProfileAlerts();
+
+    try {
+      const response = await fetch("/anonymize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({}),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        GamePage.showProfileAlert(
+          "profile-success",
+          data.message || "$ account anonymized successfully",
+          "success",
+        );
+
+        setTimeout(() => {
+          this.loadUserProfile();
+        }, 2000);
+      } else {
+        GamePage.showProfileAlert(
+          "profile-alert",
+          `$ ${data.error || "anonymization failed"}`,
+        );
+      }
+    } catch (error) {
+      GamePage.showProfileAlert("profile-alert", "$ network error");
+      console.error("Anonymization error:", error);
+    } finally {
+      btn.textContent = "$ anonymize account";
+      btn.disabled = false;
+    }
   }
-}
 
   private async deleteAccount(): Promise<void> {
-  const confirmed = await this.showConfirmationPopup(
-    'delete',
-    '$ account --delete',
-    'DANGER - This will mark your account as deleted:',
-    [
-      '• Username → "deleted_user"',
-      '• Email → removed',
-      '• Avatar → removed', 
-      '• Password → removed',
-      '• Stats → reset to 0',
-      '• Friends → removed',
-      '',
-      'This action is IRREVERSIBLE.',
-      'You will be immediately logged out.'
-    ],
-    'DELETE FOREVER',
-    'red'
-  );
+    const confirmed = await this.showConfirmationPopup(
+      "delete",
+      "$ account --delete",
+      "DANGER - This will mark your account as deleted:",
+      [
+        '• Username → "deleted_user"',
+        "• Email → removed",
+        "• Avatar → removed",
+        "• Password → removed",
+        "• Stats → reset to 0",
+        "• Friends → removed",
+        "",
+        "This action is IRREVERSIBLE.",
+        "You will be immediately logged out.",
+      ],
+      "DELETE FOREVER",
+      "red",
+    );
 
-  if (!confirmed) {
-    GamePage.showProfileAlert("profile-alert", "$ account deletion cancelled");
-    return;
-  }
-
-  const btn = document.getElementById("delete-account-btn") as HTMLButtonElement;
-  if (!btn) return;
-
-  btn.textContent = "$ deleting...";
-  btn.disabled = true;
-  this.hideProfileAlerts();
-
-  try {
-    const response = await fetch("/delete", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify({}) 
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      GamePage.showProfileAlert(
-        "profile-success",
-        data.message || "$ account deleted successfully",
-        "success",
-      );
-      
-      this.cleanup();
-      if (window.socket) {
-        window.socket.close();
-      }
-      
-      setTimeout(() => {
-        window.router.navigate("/");
-      }, 2000);
-    } else {
+    if (!confirmed) {
       GamePage.showProfileAlert(
         "profile-alert",
-        `$ ${data.error || "deletion failed"}`,
+        "$ account deletion cancelled",
       );
-    }
-  } catch (error) {
-    GamePage.showProfileAlert("profile-alert", "$ network error");
-    console.error("Account deletion error:", error);
-  } finally {
-    btn.textContent = "$ delete account";
-    btn.disabled = false;
-  }
-  try {
-  await fetch("/auth/signout", {
-    method: "GET",
-    credentials: "include",
-  });
-} catch (err) {
-  console.log("Logout call failed, but account deleted");
-}
-}
-
-private showConfirmationPopup(
-  type: 'anonymize' | 'delete',
-  title: string,
-  description: string,
-  bulletPoints: string[],
-  confirmText: string,
-  color: 'amber' | 'red'
-): Promise<boolean> {
-  return new Promise((resolve) => {
-    const existingPopup = document.getElementById("confirmation-popup");
-    if (existingPopup) {
-      existingPopup.remove();
+      return;
     }
 
-    const colorClasses = {
-      amber: {
-        border: 'border-amber-500',
-        gradient: 'from-amber-500',
-        text: 'text-amber-400',
-        button: 'bg-amber-500 hover:bg-amber-600',
-        glow: 'shadow-amber-500/30'
-      },
-      red: {
-        border: 'border-red-500',
-        gradient: 'from-red-500',
-        text: 'text-red-400',
-        button: 'bg-red-600 hover:bg-red-700',
-        glow: 'shadow-red-500/30'
+    const btn = document.getElementById(
+      "delete-account-btn",
+    ) as HTMLButtonElement;
+    if (!btn) return;
+
+    btn.textContent = "$ deleting...";
+    btn.disabled = true;
+    this.hideProfileAlerts();
+
+    try {
+      const response = await fetch("/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({}),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        GamePage.showProfileAlert(
+          "profile-success",
+          data.message || "$ account deleted successfully",
+          "success",
+        );
+
+        this.cleanup();
+        if (window.socket) {
+          window.socket.close();
+        }
+
+        setTimeout(() => {
+          window.router.navigate("/");
+        }, 2000);
+      } else {
+        GamePage.showProfileAlert(
+          "profile-alert",
+          `$ ${data.error || "deletion failed"}`,
+        );
       }
-    };
+    } catch (error) {
+      GamePage.showProfileAlert("profile-alert", "$ network error");
+      console.error("Account deletion error:", error);
+    } finally {
+      btn.textContent = "$ delete account";
+      btn.disabled = false;
+    }
+    try {
+      await fetch("/auth/signout", {
+        method: "GET",
+        credentials: "include",
+      });
+    } catch (err) {
+      console.log("Logout call failed, but account deleted");
+    }
+  }
 
-    const colors = colorClasses[color];
+  private showConfirmationPopup(
+    type: "anonymize" | "delete",
+    title: string,
+    description: string,
+    bulletPoints: string[],
+    confirmText: string,
+    color: "amber" | "red",
+  ): Promise<boolean> {
+    return new Promise((resolve) => {
+      const existingPopup = document.getElementById("confirmation-popup");
+      if (existingPopup) {
+        existingPopup.remove();
+      }
 
-    const popup = document.createElement("div");
-    popup.id = "confirmation-popup";
-    popup.className = "fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[10001] backdrop-blur-sm";
+      const colorClasses = {
+        amber: {
+          border: "border-amber-500",
+          gradient: "from-amber-500",
+          text: "text-amber-400",
+          button: "bg-amber-500 hover:bg-amber-600",
+          glow: "shadow-amber-500/30",
+        },
+        red: {
+          border: "border-red-500",
+          gradient: "from-red-500",
+          text: "text-red-400",
+          button: "bg-red-600 hover:bg-red-700",
+          glow: "shadow-red-500/30",
+        },
+      };
 
-    popup.innerHTML = `
+      const colors = colorClasses[color];
+
+      const popup = document.createElement("div");
+      popup.id = "confirmation-popup";
+      popup.className =
+        "fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[10001] backdrop-blur-sm";
+
+      popup.innerHTML = `
       <div class="bg-gray-900 ${colors.border} border-2 rounded-xl p-8 max-w-lg w-full mx-4 relative overflow-hidden backdrop-blur-sm animate-pulse-slow">
         <!-- Header avec gradient -->
         <div class="absolute top-0 left-0 right-0 h-px opacity-60" style="background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
-        
+
         <!-- Icon et titre -->
         <div class="text-center mb-6">
           <h3 class="font-mono text-2xl font-bold ${colors.text} mb-2">${title}</h3>
@@ -3119,14 +3384,16 @@ private showConfirmationPopup(
         <!-- Description -->
         <div class="mb-6">
           <p class="font-mono text-white text-center mb-4">${description}</p>
-          
+
           <!-- Liste des conséquences -->
           <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 font-mono text-sm">
-            ${bulletPoints.map(point => 
-              point === '' 
-                ? '<div class="h-2"></div>' 
-                : `<div class="text-gray-300 mb-1 ${point.startsWith('⚠️') ? colors.text : ''}">${point}</div>`
-            ).join('')}
+            ${bulletPoints
+              .map((point) =>
+                point === ""
+                  ? '<div class="h-2"></div>'
+                  : `<div class="text-gray-300 mb-1 ${point.startsWith("⚠️") ? colors.text : ""}">${point}</div>`,
+              )
+              .join("")}
           </div>
         </div>
 
@@ -3156,69 +3423,73 @@ private showConfirmationPopup(
       </div>
     `;
 
-    document.body.appendChild(popup);
+      document.body.appendChild(popup);
 
-    const input = document.getElementById("confirmation-input") as HTMLInputElement;
-    const confirmBtn = document.getElementById("confirm-action") as HTMLButtonElement;
-    const cancelBtn = document.getElementById("cancel-confirmation") as HTMLButtonElement;
+      const input = document.getElementById(
+        "confirmation-input",
+      ) as HTMLInputElement;
+      const confirmBtn = document.getElementById(
+        "confirm-action",
+      ) as HTMLButtonElement;
+      const cancelBtn = document.getElementById(
+        "cancel-confirmation",
+      ) as HTMLButtonElement;
 
-    setTimeout(() => input.focus(), 100);
+      setTimeout(() => input.focus(), 100);
 
-    const validateInput = () => {
-      const isValid = input.value.trim() === confirmText;
-      if (isValid) {
-        confirmBtn.disabled = false;
-        confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-        confirmBtn.classList.add('hover:shadow-lg', colors.glow);
-      } else {
-        confirmBtn.disabled = true;
-        confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
-        confirmBtn.classList.remove('hover:shadow-lg', colors.glow);
-      }
-    };
+      const validateInput = () => {
+        const isValid = input.value.trim() === confirmText;
+        if (isValid) {
+          confirmBtn.disabled = false;
+          confirmBtn.classList.remove("opacity-50", "cursor-not-allowed");
+          confirmBtn.classList.add("hover:shadow-lg", colors.glow);
+        } else {
+          confirmBtn.disabled = true;
+          confirmBtn.classList.add("opacity-50", "cursor-not-allowed");
+          confirmBtn.classList.remove("hover:shadow-lg", colors.glow);
+        }
+      };
 
-    input.addEventListener('input', validateInput);
-    
-    input.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter' && !confirmBtn.disabled) {
-        popup.remove();
-        resolve(true);
-      }
-    });
+      input.addEventListener("input", validateInput);
 
-    confirmBtn.addEventListener('click', () => {
-      if (!confirmBtn.disabled) {
-        popup.remove();
-        resolve(true);
-      }
-    });
+      input.addEventListener("keypress", (e) => {
+        if (e.key === "Enter" && !confirmBtn.disabled) {
+          popup.remove();
+          resolve(true);
+        }
+      });
 
-    cancelBtn.addEventListener('click', () => {
-      popup.remove();
-      resolve(false);
-    });
+      confirmBtn.addEventListener("click", () => {
+        if (!confirmBtn.disabled) {
+          popup.remove();
+          resolve(true);
+        }
+      });
 
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        popup.remove();
-        document.removeEventListener('keydown', handleEscape);
-        resolve(false);
-      }
-    };
-    document.addEventListener('keydown', handleEscape);
-
-    popup.addEventListener('click', (e) => {
-      if (e.target === popup) {
+      cancelBtn.addEventListener("click", () => {
         popup.remove();
         resolve(false);
-      }
+      });
+
+      const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          popup.remove();
+          document.removeEventListener("keydown", handleEscape);
+          resolve(false);
+        }
+      };
+      document.addEventListener("keydown", handleEscape);
+
+      popup.addEventListener("click", (e) => {
+        if (e.target === popup) {
+          popup.remove();
+          resolve(false);
+        }
+      });
     });
-  });
-}
+  }
 
   ///////////////////////////////////////////GDPR/////////////////////////////////////////
-
-  
 
   private async handleLogout(): Promise<void> {
     if (confirm("$ logout: Are you sure you want to exit?")) {
@@ -3230,7 +3501,7 @@ private showConfirmationPopup(
       } catch (err) {
         GamePage.showProfileAlert(
           "profile-alert",
-          (err instanceof Error ? err.message : "$ error: failed to logout"),
+          err instanceof Error ? err.message : "$ error: failed to logout",
         );
       }
       if (window.socket) {
@@ -3247,7 +3518,7 @@ private showConfirmationPopup(
     if (this.remoteSocket) {
       this.remoteSocket.close();
       this.remoteSocket = null;
-      console.log('🧹 WebSocket remote nettoyée');
+      console.log("🧹 WebSocket remote nettoyée");
     }
   }
 }

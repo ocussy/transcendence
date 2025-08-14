@@ -30,11 +30,13 @@ export class GamePage {
         window.startGameAI = () => {
             this.startGame("ai");
         };
-        window.addEventListener('beforeunload', async (event) => {
+        window.addEventListener("beforeunload", async (event) => {
             try {
-                navigator.sendBeacon('/logout', JSON.stringify({}));
-                document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                document.cookie = 'refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                navigator.sendBeacon("/logout", JSON.stringify({}));
+                document.cookie =
+                    "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                document.cookie =
+                    "refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
                 console.log("🚪 Déconnexion automatique lors de la fermeture");
             }
             catch (error) {
@@ -62,58 +64,58 @@ export class GamePage {
         this.updateUIForGameMode(false);
     }
     updateUIForGameMode(isActive) {
-        const navButtons = document.querySelectorAll('.nav-btn');
-        navButtons.forEach(btn => {
+        const navButtons = document.querySelectorAll(".nav-btn");
+        navButtons.forEach((btn) => {
             const button = btn;
             if (isActive) {
                 button.disabled = true;
-                button.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
-                button.title = 'Navigation disabled during match';
+                button.classList.add("opacity-50", "cursor-not-allowed", "pointer-events-none");
+                button.title = "Navigation disabled during match";
             }
             else {
                 button.disabled = false;
-                button.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
-                button.title = '';
+                button.classList.remove("opacity-50", "cursor-not-allowed", "pointer-events-none");
+                button.title = "";
             }
         });
-        const gameButtons = ['local-game-btn', 'ai-game-btn', 'remote-game-btn'];
-        gameButtons.forEach(id => {
+        const gameButtons = ["local-game-btn", "ai-game-btn", "remote-game-btn"];
+        gameButtons.forEach((id) => {
             const button = document.getElementById(id);
             if (button) {
                 if (isActive) {
                     button.disabled = true;
-                    button.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
-                    button.innerHTML = button.innerHTML.replace('$ ', ' [LOCKED] ');
+                    button.classList.add("opacity-50", "cursor-not-allowed", "pointer-events-none");
+                    button.innerHTML = button.innerHTML.replace("$ ", " [LOCKED] ");
                 }
                 else {
                     button.disabled = false;
-                    button.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
-                    button.innerHTML = button.innerHTML.replace(' [LOCKED] ', '$ ');
+                    button.classList.remove("opacity-50", "cursor-not-allowed", "pointer-events-none");
+                    button.innerHTML = button.innerHTML.replace(" [LOCKED] ", "$ ");
                 }
             }
         });
-        const tournamentBtn = document.getElementById('tournament');
+        const tournamentBtn = document.getElementById("tournament");
         if (tournamentBtn) {
             if (isActive) {
                 tournamentBtn.disabled = true;
-                tournamentBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                tournamentBtn.textContent = '$ [LOCKED] tournament in progress';
+                tournamentBtn.classList.add("opacity-50", "cursor-not-allowed");
+                tournamentBtn.textContent = "$ [LOCKED] tournament in progress";
             }
             else {
                 tournamentBtn.disabled = false;
-                tournamentBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                tournamentBtn.textContent = '$ initialize-tournament';
+                tournamentBtn.classList.remove("opacity-50", "cursor-not-allowed");
+                tournamentBtn.textContent = "$ initialize-tournament";
             }
         }
-        const logoutBtn = document.getElementById('logout-btn');
+        const logoutBtn = document.getElementById("logout-btn");
         if (logoutBtn) {
             if (isActive) {
-                logoutBtn.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
-                logoutBtn.title = 'Logout disabled during match';
+                logoutBtn.classList.add("opacity-50", "cursor-not-allowed", "pointer-events-none");
+                logoutBtn.title = "Logout disabled during match";
             }
             else {
-                logoutBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
-                logoutBtn.title = '';
+                logoutBtn.classList.remove("opacity-50", "cursor-not-allowed", "pointer-events-none");
+                logoutBtn.title = "";
             }
         }
     }
@@ -322,9 +324,9 @@ export class GamePage {
             else {
                 cumulativeScore = Math.max(0, cumulativeScore - 1);
             }
-            const winRate = ((totalWins / (index + 1)) * 100);
+            const winRate = (totalWins / (index + 1)) * 100;
             const x = 10 + (index * 80) / Math.max(matches.length - 1, 1);
-            const y = 85 - (cumulativeScore * 0.7);
+            const y = 85 - cumulativeScore * 0.7;
             dataPoints.push({ x, y, result: match.result, winRate });
         });
         let svgContent = `
@@ -343,27 +345,29 @@ export class GamePage {
         <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.05" />
       </linearGradient>
     </defs>
-    
+
     <!-- Grille de fond -->
     <rect width="100" height="100" fill="url(#grid)" opacity="0.5"/>
-    
+
     <!-- Lignes de référence -->
     <line x1="10" y1="22" x2="90" y2="22" stroke="#10b981" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.6"/>
-    
+
     <line x1="10" y1="50" x2="90" y2="50" stroke="#f59e0b" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.6"/>
-    
+
     <line x1="10" y1="78" x2="90" y2="78" stroke="#ef4444" stroke-width="0.5" stroke-dasharray="2,2" opacity="0.6"/>
   `;
         if (dataPoints.length > 1) {
             const areaPath = `M ${dataPoints[0].x},85 ` +
-                dataPoints.map(p => `L ${p.x},${p.y}`).join(' ') +
+                dataPoints.map((p) => `L ${p.x},${p.y}`).join(" ") +
                 ` L ${dataPoints[dataPoints.length - 1].x},85 Z`;
             svgContent += `<path d="${areaPath}" fill="url(#areaGradient)" opacity="0.4"/>`;
         }
         if (dataPoints.length > 1) {
-            const pathData = dataPoints.map((point, index) => {
-                return `${index === 0 ? 'M' : 'L'} ${point.x},${point.y}`;
-            }).join(' ');
+            const pathData = dataPoints
+                .map((point, index) => {
+                return `${index === 0 ? "M" : "L"} ${point.x},${point.y}`;
+            })
+                .join(" ");
             svgContent += `<path d="${pathData}" fill="none" stroke="url(#lineGradient)" stroke-width="2" stroke-linecap="round"/>`;
         }
         svg.innerHTML = svgContent;
@@ -430,7 +434,6 @@ export class GamePage {
                 }
                 else {
                     console.log("👥 GUEST vs GUEST - No match recording...");
-                    GamePage.showProfileAlert("profile-success", "Match terminé (mode spectateur)", "success");
                     await GamePage.updateTournamentWithWinner(score1, score2);
                     result = null;
                 }
@@ -459,7 +462,9 @@ export class GamePage {
                 result = data.id;
             }
             const gamePageInstance = window.gamePageInstance;
-            if (gamePageInstance && GamePage.tournamentMatchData && GamePage.tournamentMatchData.status === "finished") {
+            if (gamePageInstance &&
+                GamePage.tournamentMatchData &&
+                GamePage.tournamentMatchData.status === "finished") {
                 gamePageInstance.disableGameMode();
             }
             else if (gamePageInstance && !GamePage.tournamentMatchData) {
@@ -585,13 +590,17 @@ export class GamePage {
                 this.renderFriendsSection();
             }
             else {
-                GamePage.showProfileAlert("profile-alert", (data.error instanceof Error ? data.error.message : "$ error: failed to load friends"));
+                GamePage.showProfileAlert("profile-alert", data.error instanceof Error
+                    ? data.error.message
+                    : "$ error: failed to load friends");
                 this.friendsList = [];
                 this.renderFriendsSection();
             }
         }
         catch (error) {
-            GamePage.showProfileAlert("profile-alert", (error instanceof Error ? error.message : "$ error: failed to load friends"));
+            GamePage.showProfileAlert("profile-alert", error instanceof Error
+                ? error.message
+                : "$ error: failed to load friends");
             this.friendsList = [];
             this.renderFriendsSection();
         }
@@ -1218,21 +1227,23 @@ export class GamePage {
         document.getElementById("tournament")?.addEventListener("click", () => {
             this.showTournamentPopup();
         });
-        document.getElementById("anonymize-account-btn")
+        document
+            .getElementById("anonymize-account-btn")
             ?.addEventListener("click", () => {
             this.anonymizeAccount();
         });
         document
-            .getElementById("delete-account-btn")?.addEventListener("click", () => {
+            .getElementById("delete-account-btn")
+            ?.addEventListener("click", () => {
             this.deleteAccount();
         });
         document.getElementById("contact-link")?.addEventListener("click", () => {
-            import('./privacy.js').then(({ showContactPopup }) => {
+            import("./privacy.js").then(({ showContactPopup }) => {
                 showContactPopup();
             });
         });
         document.getElementById("privacy-link")?.addEventListener("click", () => {
-            import('./privacy.js').then(({ showPrivacyPopup }) => {
+            import("./privacy.js").then(({ showPrivacyPopup }) => {
                 showPrivacyPopup();
             });
         });
@@ -1686,73 +1697,74 @@ export class GamePage {
         }
     }
     connectToRemoteMatchmaking() {
-        console.log('🔄 connectToRemoteMatchmaking appelée');
-        console.log('📊 État WebSocket actuel:', this.remoteSocket?.readyState);
+        console.log("🔄 connectToRemoteMatchmaking appelée");
+        console.log("📊 État WebSocket actuel:", this.remoteSocket?.readyState);
         if (this.remoteSocket && this.remoteSocket.readyState === WebSocket.OPEN) {
-            console.log('⚠️ WebSocket déjà connectée, ignorer');
+            console.log("⚠️ WebSocket déjà connectée, ignorer");
             return;
         }
-        if (this.remoteSocket && this.remoteSocket.readyState === WebSocket.CONNECTING) {
-            console.log('⚠️ WebSocket en cours de connexion, ignorer');
+        if (this.remoteSocket &&
+            this.remoteSocket.readyState === WebSocket.CONNECTING) {
+            console.log("⚠️ WebSocket en cours de connexion, ignorer");
             return;
         }
         if (this.remoteSocket) {
-            console.log('🔄 Fermeture WebSocket existante');
+            console.log("🔄 Fermeture WebSocket existante");
             this.remoteSocket.close();
         }
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         const host = window.location.host;
         const wsUrl = `${protocol}//${host}/ws/remote`;
         try {
             this.remoteSocket = new WebSocket(wsUrl);
             this.remoteSocket.onopen = () => {
-                console.log('✅ Connecté au matchmaking remote');
+                console.log("✅ Connecté au matchmaking remote");
                 GamePage.showProfileAlert("profile-success", "$ searching for opponent...", "success");
             };
             this.remoteSocket.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    console.log('📩 Message reçu:', data);
+                    console.log("📩 Message reçu:", data);
                     this.handleRemoteMessage(data);
                 }
                 catch (error) {
-                    console.error('Erreur parsing message WebSocket:', error);
+                    console.error("Erreur parsing message WebSocket:", error);
                 }
             };
             this.remoteSocket.onclose = () => {
-                console.log('❌ Connexion WebSocket fermée');
+                console.log("❌ Connexion WebSocket fermée");
                 this.remoteSocket = null;
             };
             this.remoteSocket.onerror = (error) => {
-                console.error('❌ Erreur WebSocket:', error);
+                console.error("❌ Erreur WebSocket:", error);
                 GamePage.showProfileAlert("profile-alert", "$ connection failed - try again");
             };
         }
         catch (error) {
-            console.error('❌ Erreur création WebSocket:', error);
+            console.error("❌ Erreur création WebSocket:", error);
             GamePage.showProfileAlert("profile-alert", "$ connection error - check network");
         }
     }
     handleRemoteMessage(data) {
-        console.log('📩 Message reçu du serveur remote:', data.type);
+        console.log("📩 Message reçu du serveur remote:", data.type);
         switch (data.type) {
-            case 'waiting':
-                console.log('⏳ En attente d\'un adversaire...');
+            case "waiting":
+                console.log("⏳ En attente d'un adversaire...");
                 GamePage.showProfileAlert("profile-success", "$ waiting for opponent...", "success");
                 break;
-            case 'match_found':
-                console.log('🎮 Match trouvé!', data);
+            case "match_found":
+                console.log("🎮 Match trouvé!", data);
                 GamePage.showProfileAlert("profile-success", "$ match found! starting game...", "success");
                 setTimeout(() => {
                     this.connectToRemoteGame(data.roomId, data.opponentId);
                 }, 1500);
                 break;
-            case 'error':
-                console.error('❌ Erreur serveur:', data.message);
+            case "error":
+                console.error("❌ Erreur serveur:", data.message);
                 GamePage.showProfileAlert("profile-alert", `$ error: ${data.message}`);
                 break;
             default:
-                console.log('Message non géré:', data);
+                console.log("Message non géré:", data);
         }
     }
     async connectToRemoteGame(roomId, opponentId) {
@@ -1761,27 +1773,153 @@ export class GamePage {
             this.remoteSocket = null;
         }
         console.log(`🔗 Connexion au jeu remote - Room: ${roomId}`);
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         const host = window.location.host;
         const wsUrl = `${protocol}//${host}/ws/remote/game?roomId=${roomId}`;
         try {
             const gameSocket = new WebSocket(wsUrl);
             gameSocket.onopen = () => {
-                console.log('✅ Connecté au jeu remote');
+                console.log("✅ Connecté au jeu remote");
                 GamePage.showProfileAlert("profile-success", "$ connected to game room", "success");
+                console.log("⏳ En attente du game_init pour afficher l'écran...");
             };
-            await this.launchGame("remote");
-            window.gameSocket = gameSocket;
+            gameSocket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log("📨 Message reçu dans game.ts:", data.type);
+                    if (data.type === "game_init") {
+                        console.log("🎯 game_init reçu avec playerSide:", data.playerSide);
+                        this.renderControlsScreen(data.playerSide);
+                        window.gameSocket = gameSocket;
+                    }
+                }
+                catch (error) {
+                    console.error("Erreur parsing message:", error);
+                }
+            };
         }
         catch (error) {
-            console.error('❌ Erreur création WebSocket jeu:', error);
+            console.error("❌ Erreur création WebSocket jeu:", error);
             GamePage.showProfileAlert("profile-alert", "$ failed to connect to game room");
         }
     }
+    renderControlsScreen(playerSide) {
+        const canvasDiv = document.getElementById("game-canvas");
+        const isLeftPlayer = playerSide === "left";
+        const isRightPlayer = playerSide === "right";
+        const leftPlayerLabel = isLeftPlayer ? "YOU" : "OPPONENT";
+        const rightPlayerLabel = isRightPlayer ? "YOU" : "OPPONENT";
+        const leftPlayerBorder = isLeftPlayer
+            ? "border-green-500"
+            : "border-blue-500";
+        const rightPlayerBorder = isRightPlayer
+            ? "border-green-500"
+            : "border-red-500";
+        const leftPlayerBg = isLeftPlayer ? "bg-green-500/20" : "bg-blue-500/20";
+        const rightPlayerBg = isRightPlayer ? "bg-green-500/20" : "bg-red-500/20";
+        const leftPlayerText = isLeftPlayer ? "text-green-400" : "text-blue-400";
+        const rightPlayerText = isRightPlayer ? "text-green-400" : "text-red-400";
+        canvasDiv.innerHTML = `
+      <div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg p-8 relative overflow-hidden backdrop-blur-sm">
+        <div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
+
+        <div class="text-white h-full flex flex-col justify-center">
+          <div class="text-center max-w-2xl mx-auto">
+
+            <!-- Match title -->
+            <h1 class="font-mono text-3xl font-bold text-green-400 mb-8">remote match ready</h1>
+
+            <!-- Players cards avec contrôles -->
+            <div class="grid grid-cols-3 items-center gap-6 mb-8">
+
+              <!-- Left Player -->
+              <div class="bg-gray-800 ${leftPlayerBorder} border rounded-lg p-6 ${isLeftPlayer ? "ring-2 ring-green-500/50" : ""}">
+                <div class="w-16 h-16 ${leftPlayerBg} ${leftPlayerBorder} border rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span class="font-mono text-lg font-bold ${leftPlayerText}">L</span>
+                </div>
+                <h3 class="font-mono text-lg font-bold ${leftPlayerText} mb-3">${leftPlayerLabel}</h3>
+                <div class="space-y-2">
+                  <div class="font-mono text-sm text-gray-300">W - move up</div>
+                  <div class="font-mono text-sm text-gray-300">S - move down</div>
+                </div>
+                ${isLeftPlayer ? '<div class="mt-3 px-2 py-1 bg-green-500/20 border border-green-500/30 rounded text-xs font-mono text-green-400">Your side</div>' : ""}
+              </div>
+
+              <!-- VS -->
+              <div class="text-center">
+                <div class="font-mono text-3xl font-bold text-white mb-2">VS</div>
+                <div class="w-16 h-1 bg-gradient-to-r from-blue-500 to-red-500 mx-auto"></div>
+              </div>
+
+              <!-- Right Player -->
+              <div class="bg-gray-800 ${rightPlayerBorder} border rounded-lg p-6 ${isRightPlayer ? "ring-2 ring-green-500/50" : ""}">
+                <div class="w-16 h-16 ${rightPlayerBg} ${rightPlayerBorder} border rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span class="font-mono text-lg font-bold ${rightPlayerText}">R</span>
+                </div>
+                <h3 class="font-mono text-lg font-bold ${rightPlayerText} mb-3">${rightPlayerLabel}</h3>
+                <div class="space-y-2">
+                  <div class="font-mono text-sm text-gray-300">I - move up</div>
+                  <div class="font-mono text-sm text-gray-300">K - move down</div>
+                </div>
+                ${isRightPlayer ? '<div class="mt-3 px-2 py-1 bg-green-500/20 border border-green-500/30 rounded text-xs font-mono text-green-400">Your side</div>' : ""}
+              </div>
+
+            </div>
+
+
+            <!-- Loading bar -->
+            <div class="max-w-md mx-auto">
+              <div class="font-mono text-green-400 text-sm mb-3">initializing connection...</div>
+              <div class="bg-gray-800 border border-gray-700 rounded-lg p-2">
+                <div id="loading-bar" class="h-2 bg-gradient-to-r from-green-500 to-green-400 rounded transition-all duration-100" style="width: 0%"></div>
+              </div>
+              <div class="font-mono text-gray-400 text-xs mt-2" id="loading-text">preparing match...</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    `;
+        this.startLoadingAnimation();
+    }
+    startLoadingAnimation() {
+        let progress = 0;
+        const loadingBar = document.getElementById("loading-bar");
+        const loadingText = document.getElementById("loading-text");
+        const loadingMessages = [
+            "preparing match...",
+            "syncing players...",
+            "establishing connection...",
+            "loading game assets...",
+            "finalizing setup...",
+        ];
+        const updateProgress = () => {
+            progress += 2;
+            loadingBar.style.width = `${progress}%`;
+            if (progress === 20)
+                loadingText.textContent = loadingMessages[1];
+            else if (progress === 40)
+                loadingText.textContent = loadingMessages[2];
+            else if (progress === 60)
+                loadingText.textContent = loadingMessages[3];
+            else if (progress === 80)
+                loadingText.textContent = loadingMessages[4];
+            else if (progress >= 100) {
+                loadingText.textContent = "starting match...";
+                setTimeout(() => {
+                    console.log("remoteeeeeeeeeeeeeeeeeeeeeee gaming");
+                    this.launchGame("remote");
+                }, 500);
+                return;
+            }
+            setTimeout(updateProgress, 60);
+        };
+        updateProgress();
+    }
     handleRemoteGameMessage(data) {
-        console.log('🎮 Message remote reçu:', data.type);
+        console.log("🎮 Message remote reçu:", data.type);
         switch (data.type) {
-            case 'game_ended':
+            case "game_ended":
                 this.hasGameEnded = true;
                 if (window.gameSocket) {
                     window.gameSocket.close();
@@ -1792,8 +1930,8 @@ export class GamePage {
                 const gameCanvasDiv = document.getElementById("game-canvas");
                 const currentGame = window.remotePongGameInstance;
                 console.log("currentGame", currentGame);
-                const player1Name = currentGame?.player1Name || 'Player 1';
-                const player2Name = currentGame?.player2Name || 'Player 2';
+                const player1Name = currentGame?.player1Name || "Player 1";
+                const player2Name = currentGame?.player2Name || "Player 2";
                 const scoreLeft = currentGame?.scoreLeft || 0;
                 const scoreRight = currentGame?.scoreRight || 0;
                 gameCanvasDiv.innerHTML = `
@@ -1801,7 +1939,7 @@ export class GamePage {
               <div class="text-center text-white p-8">
                 <div class="text-6xl mb-6 text-green-400"></div>
                 <h2 class="font-mono text-3xl font-bold text-green-400 mb-6">GAME OVER</h2>
-                
+
                 <div class="mb-8 space-y-4">
                   <div class="flex justify-between items-center bg-gray-800 p-4 rounded-lg">
                     <div class="text-left">
@@ -1810,7 +1948,7 @@ export class GamePage {
                     </div>
                     <div class="text-4xl font-bold text-blue-400">${scoreLeft}</div>
                   </div>
-                  
+
                   <div class="flex justify-between items-center bg-gray-800 p-4 rounded-lg">
                     <div class="text-left">
                       <div class="text-lg font-bold text-red-400">${player2Name}</div>
@@ -1819,17 +1957,17 @@ export class GamePage {
                     <div class="text-4xl font-bold text-red-400">${scoreRight}</div>
                   </div>
                 </div>
-                
+
                 <div class="mb-6">
                   <div class="text-xl font-bold text-yellow-400">
-                    ${scoreLeft > scoreRight ?
-                    ` ${player1Name} Wins!` :
-                    scoreRight > scoreLeft ?
-                        ` ${player2Name} Wins!` :
-                        ' It\'s a Tie!'}
+                    ${scoreLeft > scoreRight
+                    ? ` ${player1Name} Wins!`
+                    : scoreRight > scoreLeft
+                        ? ` ${player2Name} Wins!`
+                        : " It's a Tie!"}
                   </div>
                 </div>
-                
+
                 <div class="space-y-4">
                   <button id="back-to-menu-game-ended" class="w-full px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-mono font-bold rounded-lg transition-colors">
                     $ back to menu
@@ -1838,15 +1976,17 @@ export class GamePage {
               </div>
             </div>
           `;
-                document.getElementById('back-to-menu-game-ended')?.addEventListener('click', () => {
+                document
+                    .getElementById("back-to-menu-game-ended")
+                    ?.addEventListener("click", () => {
                     this.startGame("remote");
                 });
                 break;
-            case 'player_disconnected':
+            case "player_disconnected":
                 if (this.hasGameEnded) {
                     break;
                 }
-                console.log('❌ Joueur déconnecté:', data.playerId);
+                console.log("❌ Joueur déconnecté:", data.playerId);
                 GamePage.showProfileAlert("profile-alert", "$ opponent disconnected !!!!!");
                 this.disableGameMode();
                 const canvasDiv = document.getElementById("game-canvas");
@@ -1856,7 +1996,7 @@ export class GamePage {
               <div class="text-6xl mb-6 text-red-400">⚠️</div>
               <h2 class="font-mono text-2xl font-bold text-red-400 mb-4">CONNECTION LOST</h2>
               <p class="font-mono text-gray-400 mb-8">Your opponent has disconnected</p>
-              
+
               <div class="space-y-4">
                 <button id="back-to-menu" class="w-full px-6 py-3 bg-green-500 hover:bg-600 text-white font-mono font-bold rounded-lg transition-colors">
                   $ back to menu
@@ -1865,7 +2005,9 @@ export class GamePage {
             </div>
           </div>
         `;
-                document.getElementById('back-to-menu')?.addEventListener('click', () => {
+                document
+                    .getElementById("back-to-menu")
+                    ?.addEventListener("click", () => {
                     this.showRemoteMenu();
                 });
                 if (typeof window.disposeGame === "function") {
@@ -1877,7 +2019,7 @@ export class GamePage {
                 }
                 break;
             default:
-                console.log('Message remote non géré:', data);
+                console.log("Message remote non géré:", data);
         }
     }
     showRemoteMenu() {
@@ -1949,7 +2091,7 @@ export class GamePage {
             console.log("🏆 Tournament game launched:", {
                 tournamentId: GamePage.currentTournamentId,
                 shouldRecord: GamePage.shouldRecordTournamentMatch,
-                matchData: GamePage.tournamentMatchData
+                matchData: GamePage.tournamentMatchData,
             });
         }
     }
@@ -2091,13 +2233,13 @@ export class GamePage {
             GamePage.tournamentMatchData = {
                 player_1: data.player_1,
                 player_2: data.player_2,
-                status: data.status
+                status: data.status,
             };
             console.log(" Tournament state initialized:", {
                 id: GamePage.currentTournamentId,
                 shouldRecord: GamePage.shouldRecordTournamentMatch,
                 playerParticipating: data.player_id !== -1,
-                matchData: GamePage.tournamentMatchData
+                matchData: GamePage.tournamentMatchData,
             });
             const nameInput = document.querySelector('input[placeholder="tournament_name"]');
             if (nameInput)
@@ -2105,7 +2247,9 @@ export class GamePage {
             this.showTournamentRules(tournamentName, players, data);
         }
         catch (error) {
-            GamePage.showProfileAlert("profile-alert", typeof error === "object" && error !== null && "message" in error ? error.message : String(error));
+            GamePage.showProfileAlert("profile-alert", typeof error === "object" && error !== null && "message" in error
+                ? error.message
+                : String(error));
         }
     }
     showTournamentRules(tournamentName, players, tournamentData) {
@@ -2113,9 +2257,9 @@ export class GamePage {
         canvasDiv.innerHTML = `
 		<div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg p-8 relative overflow-hidden backdrop-blur-sm">
 		<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
-		
+
 		<div class="text-center text-white h-full flex flex-col justify-center">
-			
+
 			<!-- Tournament header -->
 			<div class="mb-10">
 			<h2 class="font-mono text-3xl font-bold text-yellow-400 mb-4">${tournamentName}</h2>
@@ -2139,7 +2283,7 @@ export class GamePage {
 			</div>
 
 			<!-- Start button -->
-			<button id="start-tournament" 
+			<button id="start-tournament"
 					class="px-12 py-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black font-mono font-bold text-lg rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-yellow-500/30 max-w-sm mx-auto">
 			$ start match
 			</button>
@@ -2147,7 +2291,9 @@ export class GamePage {
 		</div>
 		</div>
 	`;
-        document.getElementById("start-tournament")?.addEventListener("click", () => {
+        document
+            .getElementById("start-tournament")
+            ?.addEventListener("click", () => {
             this.showTournamentPreMatch(tournamentData);
         });
     }
@@ -2156,16 +2302,16 @@ export class GamePage {
         canvasDiv.innerHTML = `
 		<div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg p-6 relative overflow-hidden backdrop-blur-sm">
 		<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
-		
+
 		<div class="text-white h-full flex items-center justify-center">
 			<div class="text-center max-w-3xl w-full">
-			
+
 			<!-- Match title -->
 			<h1 class="font-mono text-3xl font-bold text-yellow-400 mb-8">match ready</h1>
-			
+
 			<!-- Players cards -->
 			<div class="grid grid-cols-3 items-center gap-6 mb-8">
-				
+
 				<!-- Player 1 -->
 				<div class="bg-gray-800 border border-blue-500 rounded-lg p-4">
 				<div class="w-16 h-16 bg-blue-500/20 border border-blue-500 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -2202,7 +2348,7 @@ export class GamePage {
 				<div>
 					<div class="text-yellow-400 font-bold">status</div>
 					<div class="text-white text-lg">
-					${tournamentData.player_id !== -1 ? 'playing' : 'spectating'}
+					${tournamentData.player_id !== -1 ? "playing" : "spectating"}
 					</div>
 				</div>
 				</div>
@@ -2210,7 +2356,7 @@ export class GamePage {
 
 			<!-- Ready button -->
 			<div id="start-button-container">
-				<button id="ready-to-fight" 
+				<button id="ready-to-fight"
 						class="px-8 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-mono font-bold rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-500/30">
 				$ ready to fight
 				</button>
@@ -2232,7 +2378,7 @@ export class GamePage {
                 canvasDiv.innerHTML = `
 			<div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg relative overflow-hidden backdrop-blur-sm flex items-center justify-center">
 			<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #3b82f6, transparent);"></div>
-			
+
 			<div class="text-center">
 				<div class="font-mono text-9xl font-bold text-yellow-400 mb-6">${countdown}</div>
 				<div class="font-mono text-2xl text-gray-400">get ready...</div>
@@ -2246,7 +2392,7 @@ export class GamePage {
                 canvasDiv.innerHTML = `
 			<div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg relative overflow-hidden backdrop-blur-sm flex items-center justify-center">
 			<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #10b981, transparent);"></div>
-			
+
 			<div class="text-center">
 				<div class="font-mono text-8xl font-bold text-green-400">FIGHT!</div>
 			</div>
@@ -2266,11 +2412,11 @@ export class GamePage {
         canvasDiv.innerHTML = `
 		<div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg p-8 relative overflow-hidden backdrop-blur-sm">
 		<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #10b981, transparent);"></div>
-		
+
 		<div class="text-white h-full flex flex-col justify-center">
-			
+
 			<div class="text-center max-w-2xl mx-auto">
-			
+
 			<!-- Result notification -->
 			<div class="bg-green-500/10 border border-green-500 rounded-lg p-6 mb-12">
 				<div class="font-mono text-green-400 font-bold text-xl">match completed</div>
@@ -2295,7 +2441,7 @@ export class GamePage {
 			</div>
 
 			<!-- Continue button -->
-			<button id="start-next-match" 
+			<button id="start-next-match"
 					class="px-12 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white font-mono font-bold text-lg rounded-lg transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-green-500/30">
 				$ continue tournament
 			</button>
@@ -2304,7 +2450,9 @@ export class GamePage {
 		</div>
 		</div>
 	`;
-        document.getElementById("start-next-match")?.addEventListener("click", () => {
+        document
+            .getElementById("start-next-match")
+            ?.addEventListener("click", () => {
             const gamePageInstance = window.gamePageInstance;
             if (gamePageInstance) {
                 gamePageInstance.showTournamentPreMatch(tournamentData);
@@ -2337,16 +2485,16 @@ export class GamePage {
                     GamePage.tournamentMatchData = {
                         player_1: data.player_1,
                         player_2: data.player_2,
-                        status: data.status
+                        status: data.status,
                     };
                     GamePage.shouldRecordTournamentMatch = data.player_id !== -1;
-                    GamePage.showProfileAlert("profile-success", `🏆 ${winner} wins! Next match: ${data.player_1} vs ${data.player_2}`, "success");
+                    GamePage.showProfileAlert("profile-success", ` ${winner} wins! Next match: ${data.player_1} vs ${data.player_2}`, "success");
                     setTimeout(() => {
                         GamePage.showNextTournamentMatch(data);
                     }, 3000);
                 }
                 else if (data.status === "finished") {
-                    GamePage.showProfileAlert("profile-success", `🏆 TOURNAMENT CHAMPION: ${data.player_1}! 🎉`, "success");
+                    GamePage.showProfileAlert("profile-success", ` TOURNAMENT CHAMPION: ${data.player_1}! `, "success");
                     setTimeout(() => {
                         GamePage.resetTournamentState();
                     }, 3000);
@@ -2364,38 +2512,68 @@ export class GamePage {
         GamePage.tournamentMatchData = null;
         const gamePageInstance = window.gamePageInstance;
         if (gamePageInstance) {
-            gamePageInstance.goToHomePage();
-        }
-        else {
-            if (window.router) {
-                window.router.navigate("/");
-            }
-            else {
-                window.location.href = "/";
-            }
+            gamePageInstance.resetToGameMenu();
         }
     }
-    goToHomePage() {
+    resetToGameMenu() {
         if (typeof window.disposeGame === "function") {
             window.disposeGame();
         }
         this.disableGameMode();
         this.cleanup();
-        if (window.router) {
-            window.router.navigate("/");
+        this.resetGameInterface();
+    }
+    resetGameInterface() {
+        const canvasDiv = document.getElementById("game-canvas");
+        canvasDiv.innerHTML = `
+      <div class="w-full h-[500px] bg-black border border-gray-700 rounded-lg flex items-center justify-center relative">
+        <div class="text-center text-gray-500">
+          <div class="text-6xl mb-4 font-mono animate-pulse"></div>
+          <div class="text-3xl mb-4 font-mono text-yellow-400">TOURNAMENT COMPLETED!</div>
+          <p class="font-mono text-lg mb-8">Congratulations to all participants</p>
+
+          <div class="space-y-4">
+            <button id="back-to-games-btn" class="block mx-auto px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-mono font-bold rounded-lg transition-colors">
+              $ back to games menu
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+        document
+            .getElementById("back-to-games-btn")
+            ?.addEventListener("click", () => {
+            this.showBackToGameMenu();
+        });
+        setTimeout(() => {
+            this.showBackToGameMenu();
+        }, 15000);
+    }
+    showBackToGameMenu() {
+        const canvasDiv = document.getElementById("game-canvas");
+        canvasDiv.innerHTML = `
+      <div class="w-full h-[500px] bg-black border border-gray-700 rounded-lg flex items-center justify-center relative">
+        <div class="text-center text-gray-500">
+          <div class="text-6xl mb-4 font-mono">[PONG]</div>
+          <p class="font-mono">pong.exe ready</p>
+          <p class="font-mono text-sm text-gray-600 mt-2">select mode to initialize</p>
+        </div>
+      </div>
+    `;
+        const nameInput = document.querySelector('input[placeholder="tournament_name"]');
+        if (nameInput) {
+            nameInput.value = "";
         }
-        else {
-            window.location.href = "/";
-        }
+        GamePage.showProfileAlert("profile-success", " Tournament completed! Ready for new games", "success");
     }
     async anonymizeAccount() {
-        const confirmed = await this.showConfirmationPopup('anonymize', '$ data --anonymize', 'This will anonymize your public display:', [
+        const confirmed = await this.showConfirmationPopup("anonymize", "$ data --anonymize", "This will anonymize your public display:", [
             '• Public username → "user_[id]_[random]"',
             '• Alias → "user_[id]_[random]"',
-            '',
-            'Your login and other data remain unchanged.',
-            'This action cannot be undone.'
-        ], 'ANONYMIZE', 'amber');
+            "",
+            "Your login and other data remain unchanged.",
+            "This action cannot be undone.",
+        ], "ANONYMIZE", "amber");
         if (!confirmed) {
             GamePage.showProfileAlert("profile-alert", "$ anonymization cancelled");
             return;
@@ -2413,7 +2591,7 @@ export class GamePage {
                     "Content-Type": "application/json",
                 },
                 credentials: "include",
-                body: JSON.stringify({})
+                body: JSON.stringify({}),
             });
             const data = await response.json();
             if (response.ok) {
@@ -2436,17 +2614,17 @@ export class GamePage {
         }
     }
     async deleteAccount() {
-        const confirmed = await this.showConfirmationPopup('delete', '$ account --delete', 'DANGER - This will mark your account as deleted:', [
+        const confirmed = await this.showConfirmationPopup("delete", "$ account --delete", "DANGER - This will mark your account as deleted:", [
             '• Username → "deleted_user"',
-            '• Email → removed',
-            '• Avatar → removed',
-            '• Password → removed',
-            '• Stats → reset to 0',
-            '• Friends → removed',
-            '',
-            'This action is IRREVERSIBLE.',
-            'You will be immediately logged out.'
-        ], 'DELETE FOREVER', 'red');
+            "• Email → removed",
+            "• Avatar → removed",
+            "• Password → removed",
+            "• Stats → reset to 0",
+            "• Friends → removed",
+            "",
+            "This action is IRREVERSIBLE.",
+            "You will be immediately logged out.",
+        ], "DELETE FOREVER", "red");
         if (!confirmed) {
             GamePage.showProfileAlert("profile-alert", "$ account deletion cancelled");
             return;
@@ -2464,7 +2642,7 @@ export class GamePage {
                     "Content-Type": "application/json",
                 },
                 credentials: "include",
-                body: JSON.stringify({})
+                body: JSON.stringify({}),
             });
             const data = await response.json();
             if (response.ok) {
@@ -2507,29 +2685,30 @@ export class GamePage {
             }
             const colorClasses = {
                 amber: {
-                    border: 'border-amber-500',
-                    gradient: 'from-amber-500',
-                    text: 'text-amber-400',
-                    button: 'bg-amber-500 hover:bg-amber-600',
-                    glow: 'shadow-amber-500/30'
+                    border: "border-amber-500",
+                    gradient: "from-amber-500",
+                    text: "text-amber-400",
+                    button: "bg-amber-500 hover:bg-amber-600",
+                    glow: "shadow-amber-500/30",
                 },
                 red: {
-                    border: 'border-red-500',
-                    gradient: 'from-red-500',
-                    text: 'text-red-400',
-                    button: 'bg-red-600 hover:bg-red-700',
-                    glow: 'shadow-red-500/30'
-                }
+                    border: "border-red-500",
+                    gradient: "from-red-500",
+                    text: "text-red-400",
+                    button: "bg-red-600 hover:bg-red-700",
+                    glow: "shadow-red-500/30",
+                },
             };
             const colors = colorClasses[color];
             const popup = document.createElement("div");
             popup.id = "confirmation-popup";
-            popup.className = "fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[10001] backdrop-blur-sm";
+            popup.className =
+                "fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[10001] backdrop-blur-sm";
             popup.innerHTML = `
       <div class="bg-gray-900 ${colors.border} border-2 rounded-xl p-8 max-w-lg w-full mx-4 relative overflow-hidden backdrop-blur-sm animate-pulse-slow">
         <!-- Header avec gradient -->
         <div class="absolute top-0 left-0 right-0 h-px opacity-60" style="background: linear-gradient(90deg, transparent, #f59e0b, transparent);"></div>
-        
+
         <!-- Icon et titre -->
         <div class="text-center mb-6">
           <h3 class="font-mono text-2xl font-bold ${colors.text} mb-2">${title}</h3>
@@ -2539,12 +2718,14 @@ export class GamePage {
         <!-- Description -->
         <div class="mb-6">
           <p class="font-mono text-white text-center mb-4">${description}</p>
-          
+
           <!-- Liste des conséquences -->
           <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 font-mono text-sm">
-            ${bulletPoints.map(point => point === ''
+            ${bulletPoints
+                .map((point) => point === ""
                 ? '<div class="h-2"></div>'
-                : `<div class="text-gray-300 mb-1 ${point.startsWith('⚠️') ? colors.text : ''}">${point}</div>`).join('')}
+                : `<div class="text-gray-300 mb-1 ${point.startsWith("⚠️") ? colors.text : ""}">${point}</div>`)
+                .join("")}
           </div>
         </div>
 
@@ -2582,41 +2763,41 @@ export class GamePage {
                 const isValid = input.value.trim() === confirmText;
                 if (isValid) {
                     confirmBtn.disabled = false;
-                    confirmBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    confirmBtn.classList.add('hover:shadow-lg', colors.glow);
+                    confirmBtn.classList.remove("opacity-50", "cursor-not-allowed");
+                    confirmBtn.classList.add("hover:shadow-lg", colors.glow);
                 }
                 else {
                     confirmBtn.disabled = true;
-                    confirmBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                    confirmBtn.classList.remove('hover:shadow-lg', colors.glow);
+                    confirmBtn.classList.add("opacity-50", "cursor-not-allowed");
+                    confirmBtn.classList.remove("hover:shadow-lg", colors.glow);
                 }
             };
-            input.addEventListener('input', validateInput);
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !confirmBtn.disabled) {
+            input.addEventListener("input", validateInput);
+            input.addEventListener("keypress", (e) => {
+                if (e.key === "Enter" && !confirmBtn.disabled) {
                     popup.remove();
                     resolve(true);
                 }
             });
-            confirmBtn.addEventListener('click', () => {
+            confirmBtn.addEventListener("click", () => {
                 if (!confirmBtn.disabled) {
                     popup.remove();
                     resolve(true);
                 }
             });
-            cancelBtn.addEventListener('click', () => {
+            cancelBtn.addEventListener("click", () => {
                 popup.remove();
                 resolve(false);
             });
             const handleEscape = (e) => {
-                if (e.key === 'Escape') {
+                if (e.key === "Escape") {
                     popup.remove();
-                    document.removeEventListener('keydown', handleEscape);
+                    document.removeEventListener("keydown", handleEscape);
                     resolve(false);
                 }
             };
-            document.addEventListener('keydown', handleEscape);
-            popup.addEventListener('click', (e) => {
+            document.addEventListener("keydown", handleEscape);
+            popup.addEventListener("click", (e) => {
                 if (e.target === popup) {
                     popup.remove();
                     resolve(false);
@@ -2633,7 +2814,7 @@ export class GamePage {
                 });
             }
             catch (err) {
-                GamePage.showProfileAlert("profile-alert", (err instanceof Error ? err.message : "$ error: failed to logout"));
+                GamePage.showProfileAlert("profile-alert", err instanceof Error ? err.message : "$ error: failed to logout");
             }
             if (window.socket) {
                 window.socket.close();
@@ -2647,7 +2828,7 @@ export class GamePage {
         if (this.remoteSocket) {
             this.remoteSocket.close();
             this.remoteSocket = null;
-            console.log('🧹 WebSocket remote nettoyée');
+            console.log("🧹 WebSocket remote nettoyée");
         }
     }
 }
