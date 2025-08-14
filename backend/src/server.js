@@ -1,3 +1,4 @@
+//imports 
 import fastify from "fastify";
 import path from "path";
 import fastifyStatic from "@fastify/static";
@@ -18,13 +19,12 @@ import { setupConnexionSocket, setupRemoteSocket, setupRemoteGame, clearConnecte
 import statsRoutes from "./routes/stats.js";
 import tournamentRoutes from "./routes/tournament.js";
 import fs from "fs";
-import { verifyUser } from "./controllers/users.js";
-
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config();
 
+// https configuration
 const key = fs.readFileSync(path.join(__dirname, "../certs/server.key"));
 const cert = fs.readFileSync(path.join(__dirname, "../certs/server.cert"));
 
@@ -35,10 +35,12 @@ export const app = fastify({
   },
 });
 
+//database
 seedDatabase(db);
 
 console.log("Database seeded successfully");
 
+// register plugins
 await app.register(websocket);
 
 await app.register(cors, {
@@ -47,7 +49,7 @@ await app.register(cors, {
 });
 
 
-app.register(jwt, {
+await app.register(jwt, {
   secret: process.env.JWT_SECRET,
   cookie: {
     cookieName: "token",
@@ -64,9 +66,6 @@ await app.register(FastifyRedis, {
   port:6379,
 });
 
-// Nettoyer les utilisateurs connectés au démarrage du serveur
-await clearConnectedUsers(app);
-
 app.register(fastifyStatic, {
   root: path.join(__dirname, "../frontend"),
   prefix: "/",
@@ -79,7 +78,9 @@ app.register(authRoutes);
 app.register(statsRoutes);
 app.register(tournamentRoutes);
 
-// pour SPA sinon les routes pas trouve
+await clearConnectedUsers(app);
+
+// SPA
 const spaRoutes = [
   "/",
   "/game",
@@ -95,18 +96,22 @@ spaRoutes.forEach((route) => {
   });
 });
 
+
+// websocket setup
 setupConnexionSocket(app);
 setupRemoteSocket(app);
 setupRemoteGame(app);
 
-app.decorate("authenticate", async (request, reply) => {
-  try {
-    await request.jwtVerify();
-  } catch (err) {
-    reply.send(err);
-  }
-});
 
+// app.decorate("authenticate", async (request, reply) => {
+//   try {
+//     await request.jwtVerify();
+//   } catch (err) {
+//     reply.send(err);
+//   }
+// });
+
+// set language for all requests
 app.addHook("preHandler", async (req, reply) => {
   try {
       req.lang = 'en';
@@ -118,7 +123,7 @@ app.addHook("preHandler", async (req, reply) => {
 });
 
 
-
+// start server
 const start = async () => {
   try {
     await app.listen({ port: 8000, host: "0.0.0.0" });
@@ -127,4 +132,5 @@ const start = async () => {
     process.exit(1);
   }
 };
+
 start();
