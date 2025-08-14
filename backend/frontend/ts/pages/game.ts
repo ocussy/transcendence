@@ -1357,7 +1357,19 @@ private showNoData(): void {
                               </button>
                             </div>
                           </div>
-        `;
+                          <!-- PRIVACY et CONTACT LINKS EN BAS -->
+                                <div class="text-center pb-8 space-x-4">
+                                  <button id="privacy-link" class="font-mono text-sm text-gray-600 hover:text-indigo-400 transition-colors duration-200">
+                                    privacy
+                                  </button>
+                                  <span class="text-gray-800">•</span>
+                                  <button id="contact-link" class="font-mono text-sm text-gray-600 hover:text-green-400 transition-colors duration-200">
+                                    contact
+                                  </button>
+                                </div>
+
+                              </div>
+  `;
     this.loadUserProfile();
   }
 
@@ -1398,6 +1410,16 @@ private showNoData(): void {
       .getElementById("delete-account-btn")?.addEventListener("click", () => {
         this.deleteAccount();
       });
+    document.getElementById("contact-link")?.addEventListener("click", () => {
+    import('./privacy.js').then(({ showContactPopup }) => {
+      showContactPopup();
+    });
+  });
+    document.getElementById("privacy-link")?.addEventListener("click", () => {
+    import('./privacy.js').then(({ showPrivacyPopup }) => {
+      showPrivacyPopup();})
+    });
+  
 
     this.attachProfileEvents();
   }
@@ -2170,7 +2192,7 @@ private showNoData(): void {
           gameCanvasDiv.innerHTML = `
             <div class="w-full h-full flex items-center justify-center bg-black border border-gray-700 rounded-lg">
               <div class="text-center text-white p-8">
-                <div class="text-6xl mb-6 text-green-400">🏆</div>
+                <div class="text-6xl mb-6 text-green-400"></div>
                 <h2 class="font-mono text-3xl font-bold text-green-400 mb-6">GAME OVER</h2>
                 
                 <div class="mb-8 space-y-4">
@@ -2194,10 +2216,10 @@ private showNoData(): void {
                 <div class="mb-6">
                   <div class="text-xl font-bold text-yellow-400">
                     ${scoreLeft > scoreRight ? 
-                      `🏆 ${player1Name} Wins!` : 
+                      ` ${player1Name} Wins!` : 
                       scoreRight > scoreLeft ? 
-                      `🏆 ${player2Name} Wins!` : 
-                      '🤝 It\'s a Tie!'}
+                      ` ${player2Name} Wins!` : 
+                      ' It\'s a Tie!'}
                   </div>
                 </div>
                 
