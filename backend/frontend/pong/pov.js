@@ -34,7 +34,7 @@
 
     let scoreLeft = 0;
     let scoreRight = 0;
-    const SCORE_LIMIT = 1;
+    const SCORE_LIMIT = 5;
     let gameEnded = false;
     let fontDataGlobal = null;
     let myText = null;
@@ -657,9 +657,6 @@
       catch(_) {}
       });
       observers = [];
-
-      // Optionnel : enlève les écouteurs window.resize ou keydown en stockant des handlers
-      // window.removeEventListener("resize", tonHandlerResize);
 
     } catch (err) {
       console.warn("⚠️ Erreur dans disposeGame:", err);

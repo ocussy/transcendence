@@ -54,10 +54,13 @@ import { t } from '../server.js';
         stmt.run(user1.public_login, user1.id, user2.public_login, user2.id, mode, score1, score2, winner, duration);
         reply.code(201).send({ message: t(req.lang, "match_saved"), winner });
       }
-    else if (score1 > score2) {
-      winner = user.id;
-      db.prepare('UPDATE users SET games_won = games_won + 1 WHERE login = ?').run(player1);
-      const stmt = db.prepare('INSERT INTO matches (player1, id_player1, player2, id_player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    else if (mode === "tournament") {
+      console.log("Score1 is greater than Score2 in tournament mode");
+      if (score1 > score2) {
+        winner = user.id;
+        db.prepare('UPDATE users SET games_won = games_won + 1 WHERE login = ?').run(player1);
+      }
+      const stmt = db.prepare('INSERT INTO matches (player1, id_player1, player2, id_player2, mode, score1, score2, winner, duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
       stmt.run(user.public_login, userId, player2, 0, "tournament", score1, score2, winner, duration);
       db.prepare('UPDATE users SET games_played = games_played + 1 WHERE login IN (?, ?)').run(player1, player2);
       reply.code(201).send({ winner: winner ? user.id : null  });

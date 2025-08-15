@@ -60,7 +60,7 @@ const GAME_CONFIG = {
     playHeight: 3,
     ballSpeed: 0.15,
     ballInitialSpeed: 0.15,
-    scoreLimit: 1,
+    scoreLimit: 5,
     maxSpeed: 0.6,
     accelerationFactor: 1.01,
     minZ: -4.3,
