@@ -651,7 +651,7 @@ function startRenderLoop() {
             console.log("⏰ 3 seconds elapsed - auto-disposing game");
             window.disposeGame();
             window.startGame();
-            }, 3000);
+            }, 2000);
         }
     
     scene.render();

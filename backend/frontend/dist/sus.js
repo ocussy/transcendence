@@ -32,7 +32,7 @@ class PoopEasterEgg {
             return;
         this.isPoopMode = true;
         this.clickCount = 0;
-        console.log("💩 EASTER EGG ACTIVATED! 💩");
+        console.log(" EASTER EGG ACTIVATED! ");
         const poopContainer = document.createElement("div");
         poopContainer.id = "poop-container";
         poopContainer.style.cssText = `
@@ -100,10 +100,10 @@ class PoopEasterEgg {
     }
     showMessage() {
         if (window.gamePageInstance?.showProfileAlert) {
-            window.gamePageInstance.showProfileAlert("profile-success", "CACA KI PU", "success");
+            window.gamePageInstance.showProfileAlert("profile-success", "CACA", "success");
         }
         else {
-            this.createSimpleAlert("CACA KI PU");
+            this.createSimpleAlert("CACA");
         }
     }
     createSimpleAlert(message) {

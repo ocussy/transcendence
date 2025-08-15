@@ -11,14 +11,14 @@ export function tryConnectWebSocketIfAuthenticated() {
             const host = window.location.host;
             const socket = new WebSocket(`${protocol}://${host}/ws`);
             socket.onopen = () => {
-                console.log("✅ WebSocket connectée");
+                console.log("WebSocket connectée");
             };
             socket.onclose = () => {
-                console.log("❌ WebSocket fermée");
+                console.log(" WebSocket fermée");
                 window.socket = undefined;
             };
             socket.onerror = (e) => {
-                console.error("⚠️ Erreur WebSocket :", e);
+                console.error(" Erreur WebSocket :", e);
             };
             window.socket = socket;
         }
@@ -42,12 +42,12 @@ async function checkAuthAndRedirect() {
     }
 }
 export async function verifyToken() {
-    console.log("🔍 Vérification du token JWT...");
+    console.log(" Vérification du token JWT...");
     const token = localStorage.getItem("token");
     if (!token)
         return;
     try {
-        console.log("🔍 Token trouvé, vérification en cours...");
+        console.log(" Token trouvé, vérification en cours...");
         const res = await fetch("/me", {
             headers: {
                 Authorization: `Bearer ${token}`,
@@ -56,10 +56,10 @@ export async function verifyToken() {
         if (!res.ok)
             throw new Error("Token invalide");
         const data = await res.json();
-        console.log("✅ Utilisateur connecté :", data.user);
+        console.log("Utilisateur connecté :", data.user);
     }
     catch (err) {
-        console.error("❌ Erreur vérification token :", err);
+        console.error("Erreur vérification token :", err);
     }
 }
 export class AuthPage {
@@ -362,7 +362,7 @@ export class AuthPage {
                 btn.textContent = "$ success";
                 btn.style.background = "#10b981";
                 this.showAlert("signin-success", `$ welcome back, ${data.login}!`, "success");
-                console.log("Authentication successful ✅", data);
+                console.log("Authentication successful ", data);
                 setTimeout(() => {
                     window.router.navigate("/game");
                 }, 1000);
@@ -421,7 +421,7 @@ export class AuthPage {
                 btn.textContent = "$ verified";
                 btn.style.background = "#10b981";
                 this.showAlert("verify2fa-success", "$ 2FA verification successful!", "success");
-                console.log("2FA verification successful ✅", data);
+                console.log("2FA verification successful ", data);
                 setTimeout(() => {
                     window.router.navigate("/game");
                 }, 1000);
@@ -467,7 +467,7 @@ export class AuthPage {
                 btn.textContent = "$ account created";
                 btn.style.background = "#10b981";
                 this.showAlert("signup-success", `$ account created for ${login}! switching to sign-in...`, "success");
-                console.log("Account created successfully ✅", data);
+                console.log("Account created successfully ", data);
                 setTimeout(() => {
                     this.switchTab("signin");
                     document.getElementById("signin-login").value =
@@ -547,7 +547,7 @@ export class AuthPage {
                     return;
                 }
                 this.showAlert(alertId, message, "success");
-                console.log("Google authentication successful ✅", data);
+                console.log("Google authentication successful ", data);
                 setTimeout(() => {
                     window.router.navigate("/game");
                 }, 1000);

@@ -248,7 +248,7 @@
         console.log("⏰ 3 seconds elapsed - auto-disposing game");
         window.disposeGame();
         window.startGameAI();
-    }, 3000);
+    }, 2000);
     
     return true;
     } else if (scoreRight >= SCORE_LIMIT) {

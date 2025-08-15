@@ -40,7 +40,6 @@ export class GamePage {
                     "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
                 document.cookie =
                     "refreshToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                console.log("🚪 Déconnexion automatique lors de la fermeture");
             }
             catch (error) {
                 console.error("Erreur lors de la déconnexion:", error);
@@ -175,7 +174,7 @@ export class GamePage {
     }
     async loadMatchHistory() {
         try {
-            const response = await fetch("/match-history?limit=5", {
+            const response = await fetch("/match-history?limit=10", {
                 credentials: "include",
             });
             const data = await response.json();
@@ -324,9 +323,6 @@ export class GamePage {
             else if (match.result === "LOSS") {
                 cumulativeScore = Math.max(0, cumulativeScore - 5);
             }
-            else {
-                cumulativeScore = Math.max(0, cumulativeScore - 1);
-            }
             const winRate = (totalWins / (index + 1)) * 100;
             const x = 10 + (index * 80) / Math.max(matches.length - 1, 1);
             const y = 85 - cumulativeScore * 0.7;
@@ -412,7 +408,6 @@ export class GamePage {
             let result = null;
             if (GamePage.currentTournamentId && GamePage.tournamentMatchData) {
                 if (GamePage.shouldRecordTournamentMatch) {
-                    console.log("🏆 USER PARTICIPATING - Recording tournament match...");
                     const response = await fetch("/match", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -429,21 +424,19 @@ export class GamePage {
                     const data = await response.json();
                     if (!response.ok)
                         throw new Error(data.error);
-                    console.log("✅ Tournament match recorded:", data);
+                    console.log(" Tournament match recorded:", data);
                     GamePage.currentMatchId = data.id;
                     GamePage.showProfileAlert("profile-success", data.message, "success");
                     await GamePage.updateTournamentWithWinner(score1, score2);
                     result = data.id;
                 }
                 else {
-                    console.log("👥 GUEST vs GUEST - No match recording...");
+                    console.log(" GUEST vs GUEST - No match recording");
                     await GamePage.updateTournamentWithWinner(score1, score2);
                     result = null;
                 }
             }
             else {
-                console.log("🎮 NORMAL MATCH - Recording without player names...");
-                console.log("Mode:", mode, "Score1:", score1, "Score2:", score2, "Duration:", duration, "Player1:", player1, "Player2:", player2);
                 const response = await fetch("/match", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -460,14 +453,14 @@ export class GamePage {
                 const data = await response.json();
                 if (!response.ok)
                     throw new Error(data.error);
-                console.log("✅ Normal match recorded:", data);
+                console.log("Normal match recorded");
                 GamePage.currentMatchId = data.id;
                 result = data.id;
             }
             return result;
         }
         catch (error) {
-            console.error("❌ Error in createMatch:", error);
+            console.error(" Error in createMatch:", error);
             GamePage.showProfileAlert("profile-alert", String(error));
             const gamePageInstance = window.gamePageInstance;
             if (gamePageInstance) {
@@ -1139,7 +1132,7 @@ export class GamePage {
 
                             <div class="flex items-center justify-between p-4 bg-gray-800 rounded-lg mb-4">
                               <div>
-                                <h4 class="font-mono text-white font-medium mb-1">Two-Factor Authentication</h4>
+                                <h4 class="font-mono text-white font-medium mb-1">Two-Factor Mail Authentication</h4>
                                 <p class="font-mono text-sm text-gray-400">Add an extra layer of security to your account</p>
                               </div>
                               <div class="flex items-center">
@@ -1553,7 +1546,6 @@ export class GamePage {
         activeBtn.classList.remove("text-gray-400");
         activeBtn.classList.add("bg-blue-500", "text-white");
         this.currentSection = sectionName;
-        console.log(`Section active (browser nav): ${sectionName}`);
         if (sectionName === "dashboard") {
             this.loadDashboardData();
         }
@@ -1684,7 +1676,6 @@ export class GamePage {
             const leaveQueueBtn = document.getElementById("leave-queue");
             if (joinRoomBtn) {
                 joinRoomBtn.addEventListener("click", () => {
-                    console.log('🖱️ Bouton "join room" cliqué');
                     this.enableGameMode();
                     this.connectToRemoteMatchmaking();
                 });
@@ -1698,15 +1689,13 @@ export class GamePage {
         }
     }
     connectToRemoteMatchmaking() {
-        console.log("🔄 connectToRemoteMatchmaking appelée");
-        console.log("📊 État WebSocket actuel:", this.remoteSocket?.readyState);
         if (this.remoteSocket && this.remoteSocket.readyState === WebSocket.OPEN) {
-            console.log("⚠️ WebSocket déjà connectée, ignorer");
+            console.log(" WebSocket déjà connectée, ignorer");
             return;
         }
         if (this.remoteSocket &&
             this.remoteSocket.readyState === WebSocket.CONNECTING) {
-            console.log("⚠️ WebSocket en cours de connexion, ignorer");
+            console.log(" WebSocket en cours de connexion, ignorer");
             return;
         }
         if (this.remoteSocket) {
@@ -1719,14 +1708,13 @@ export class GamePage {
         try {
             this.remoteSocket = new WebSocket(wsUrl);
             this.remoteSocket.onopen = () => {
-                console.log("✅ Connecté au matchmaking remote");
+                console.log(" Connecté au matchmaking remote");
                 GamePage.showProfileAlert("profile-success", "$ searching for opponent...", "success");
                 this.updateQueueButtons(true);
             };
             this.remoteSocket.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    console.log("📩 Message reçu:", data);
                     this.handleRemoteMessage(data);
                 }
                 catch (error) {
@@ -1734,18 +1722,18 @@ export class GamePage {
                 }
             };
             this.remoteSocket.onclose = () => {
-                console.log("❌ Connexion WebSocket fermée");
+                console.log(" Connexion WebSocket fermée");
                 this.remoteSocket = null;
                 this.updateQueueButtons(false);
             };
             this.remoteSocket.onerror = (error) => {
-                console.error("❌ Erreur WebSocket:", error);
+                console.error(" Erreur WebSocket:", error);
                 GamePage.showProfileAlert("profile-alert", "$ connection failed - try again");
                 this.updateQueueButtons(false);
             };
         }
         catch (error) {
-            console.error("❌ Erreur création WebSocket:", error);
+            console.error(" Erreur création WebSocket:", error);
             GamePage.showProfileAlert("profile-alert", "$ connection error - check network");
         }
     }
@@ -1765,27 +1753,25 @@ export class GamePage {
     }
     leaveQueue() {
         if (this.remoteSocket && this.remoteSocket.readyState === WebSocket.OPEN) {
-            console.log('🚪 Quitter la file d\'attente');
             this.remoteSocket.close();
             this.disableGameMode();
             GamePage.showProfileAlert("profile-success", "$ left queue", "success");
         }
     }
     handleRemoteMessage(data) {
-        console.log("📩 Message reçu du serveur remote:", data.type);
         switch (data.type) {
             case "waiting":
-                console.log("⏳ En attente d'un adversaire...");
+                console.log("En attente d'un adversaire");
                 GamePage.showProfileAlert("profile-success", "$ waiting for opponent...", "success");
                 break;
             case "match_found":
-                console.log("🎮 Match trouvé!", data);
+                console.log(" Match trouvé!");
                 const canvasDiv = document.getElementById("game-canvas");
                 canvasDiv.innerHTML = `
           <div class="text-center text-gray-500">
             <div class="text-6xl mb-4 font-mono">[PONG]</div>
             <p class="font-mono mb-6">pong.exe ready</p>
-            <p class="font-mono text-green-400 mb-8">🎯 match found! initializing...</p>
+            <p class="font-mono text-green-400 mb-8"> match found! initializing...</p>
             <div class="flex justify-center space-x-1">
               <div class="w-2 h-2 bg-green-500 rounded-full animate-bounce"></div>
               <div class="w-2 h-2 bg-green-500 rounded-full animate-bounce" style="animation-delay: 0.1s;"></div>
@@ -1798,7 +1784,7 @@ export class GamePage {
                 }, 500);
                 break;
             case "error":
-                console.error("❌ Erreur serveur:", data.message);
+                console.error("Erreur serveur:", data.message);
                 GamePage.showProfileAlert("profile-alert", `$ error: ${data.message}`);
                 break;
             default:
@@ -1810,14 +1796,12 @@ export class GamePage {
             this.remoteSocket.close();
             this.remoteSocket = null;
         }
-        console.log(`🔗 Connexion au jeu remote - Room: ${roomId}`);
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         const host = window.location.host;
         const wsUrl = `${protocol}//${host}/ws/remote/game?roomId=${roomId}`;
         try {
             const gameSocket = new WebSocket(wsUrl);
             gameSocket.onopen = () => {
-                console.log("✅ Connecté au jeu remote");
                 GamePage.showProfileAlert("profile-success", "$ connected to game room", "success");
             };
             gameSocket.onmessage = (event) => {
@@ -1835,7 +1819,7 @@ export class GamePage {
             };
         }
         catch (error) {
-            console.error("❌ Erreur création WebSocket jeu:", error);
+            console.error("Erreur création WebSocket jeu:", error);
             GamePage.showProfileAlert("profile-alert", "$ failed to connect to game room");
         }
     }
@@ -1946,7 +1930,6 @@ export class GamePage {
             else if (progress >= 100) {
                 loadingText.textContent = "starting match...";
                 setTimeout(() => {
-                    console.log("🎮 Animation terminée, transition vers le jeu");
                     const overlay = document.getElementById("controls-overlay");
                     const canvas = document.getElementById("renderCanvas");
                     if (overlay && canvas) {
@@ -1965,11 +1948,10 @@ export class GamePage {
                         }, 500);
                     }
                     if (window.remotePongGameInstance && window.remotePongGameInstance.createGameScene) {
-                        console.log("🎯 Démarrage de createGameScene");
                         window.remotePongGameInstance.createGameScene();
                     }
                     else {
-                        console.error("❌ remotePongGameInstance non disponible");
+                        console.error(" remotePongGameInstance non disponible");
                     }
                 }, 500);
                 return;
@@ -1979,7 +1961,6 @@ export class GamePage {
         updateProgress();
     }
     handleRemoteGameMessage(data) {
-        console.log("🎮 Message remote reçu:", data.type);
         switch (data.type) {
             case "game_ended":
                 this.hasGameEnded = true;
@@ -1990,7 +1971,6 @@ export class GamePage {
                 GamePage.showProfileAlert("profile-success", "$ game ended", "success");
                 const gameCanvasDiv = document.getElementById("game-canvas");
                 const currentGame = window.remotePongGameInstance;
-                console.log("currentGame", currentGame);
                 const player1Name = currentGame?.player1Name || "Player 1";
                 const player2Name = currentGame?.player2Name || "Player 2";
                 const scoreLeft = currentGame?.scoreLeft || 0;
@@ -2048,14 +2028,13 @@ export class GamePage {
                 if (this.hasGameEnded) {
                     break;
                 }
-                console.log("❌ Joueur déconnecté:", data.playerId);
-                GamePage.showProfileAlert("profile-alert", "$ opponent disconnected !!!!!");
+                GamePage.showProfileAlert("profile-alert", "$ opponent disconnected !");
                 this.disableGameMode();
                 const canvasDiv = document.getElementById("game-canvas");
                 canvasDiv.innerHTML = `
           <div class="w-full h-full flex items-center justify-center bg-black border border-gray-700 rounded-lg">
             <div class="text-center text-white p-8">
-              <div class="text-6xl mb-6 text-red-400">⚠️</div>
+              <div class="text-6xl mb-6 text-red-400"></div>
               <h2 class="font-mono text-2xl font-bold text-red-400 mb-4">CONNECTION LOST</h2>
               <p class="font-mono text-gray-400 mb-8">Your opponent has disconnected</p>
 
@@ -2109,20 +2088,11 @@ export class GamePage {
         script.id = "pong-script";
         script.src = scriptSrc + "?t=" + Date.now();
         script.async = false;
-        console.log(`Game ${mode} started`);
         if (mode === "remote") {
             script.onload = () => {
-                console.log("✅ remote-pong.js chargé");
             };
         }
         canvasDiv.appendChild(script);
-        if (GamePage.currentTournamentId) {
-            console.log("🏆 Tournament game launched:", {
-                tournamentId: GamePage.currentTournamentId,
-                shouldRecord: GamePage.shouldRecordTournamentMatch,
-                matchData: GamePage.tournamentMatchData,
-            });
-        }
     }
     showTournamentPopup() {
         const nameInput = document.querySelector('input[placeholder="tournament_name"]');
@@ -2239,7 +2209,6 @@ export class GamePage {
             }
         }
         try {
-            console.log(` creating tournament: ${tournamentName} with players:`, players);
             this.enableGameMode();
             const response = await fetch("/tournament", {
                 method: "POST",
@@ -2265,12 +2234,6 @@ export class GamePage {
                 player_2: data.player_2,
                 status: data.status,
             };
-            console.log(" Tournament state initialized:", {
-                id: GamePage.currentTournamentId,
-                shouldRecord: GamePage.shouldRecordTournamentMatch,
-                playerParticipating: data.player_id !== -1,
-                matchData: GamePage.tournamentMatchData,
-            });
             const nameInput = document.querySelector('input[placeholder="tournament_name"]');
             if (nameInput)
                 nameInput.value = "";
@@ -2421,10 +2384,10 @@ export class GamePage {
             else {
                 canvasDiv.innerHTML = `
 			<div class="w-full h-[500px] bg-gray-900 border border-gray-700 rounded-lg relative overflow-hidden backdrop-blur-sm flex items-center justify-center">
-			<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #10b981, transparent);"></div>
+			<div class="absolute top-0 left-0 right-0 h-px opacity-50" style="background: linear-gradient(90deg, transparent, #ff30eeff, transparent);"></div>
 
 			<div class="text-center">
-				<div class="font-mono text-8xl font-bold text-green-400">FIGHT!</div>
+				<div class="font-mono text-8xl font-bold text-green-400">PONG!</div>
 			</div>
 			</div>
 		`;
@@ -2496,8 +2459,6 @@ export class GamePage {
             const winner = score1 > score2
                 ? GamePage.tournamentMatchData.player_1
                 : GamePage.tournamentMatchData.player_2;
-            console.log(`🏆 Match finished: ${GamePage.tournamentMatchData.player_1} (${score1}) vs ${GamePage.tournamentMatchData.player_2} (${score2})`);
-            console.log(`🏆 Winner: ${winner}`);
             const response = await fetch(`/tournament/${GamePage.currentTournamentId}`, {
                 method: "PUT",
                 headers: {
@@ -2510,7 +2471,6 @@ export class GamePage {
             });
             const data = await response.json();
             if (response.ok) {
-                console.log("Tournament updated:", data);
                 if (data.status === "in progress") {
                     GamePage.tournamentMatchData = {
                         player_1: data.player_1,
@@ -2575,9 +2535,6 @@ export class GamePage {
             ?.addEventListener("click", () => {
             this.showBackToGameMenu();
         });
-        setTimeout(() => {
-            this.showBackToGameMenu();
-        }, 15000);
     }
     showBackToGameMenu() {
         const canvasDiv = document.getElementById("game-canvas");
@@ -2594,7 +2551,6 @@ export class GamePage {
         if (nameInput) {
             nameInput.value = "";
         }
-        GamePage.showProfileAlert("profile-success", " Tournament completed! Ready for new games", "success");
     }
     async anonymizeAccount() {
         const confirmed = await this.showConfirmationPopup("anonymize", "$ data --anonymize", "This will anonymize your public display:", [
@@ -2858,7 +2814,7 @@ export class GamePage {
         if (this.remoteSocket) {
             this.remoteSocket.close();
             this.remoteSocket = null;
-            console.log("🧹 WebSocket remote nettoyée");
+            console.log("WebSocket remote nettoyée");
         }
     }
 }

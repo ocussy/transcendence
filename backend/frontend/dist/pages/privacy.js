@@ -70,12 +70,12 @@ export function showContactPopup() {
         contactImage.style.maxWidth = "192px";
         contactImage.style.maxHeight = "300px";
         contactImage.onload = function () {
-            console.log("✅ Image loaded successfully!");
+            console.log("Image loaded successfully!");
             imageContainer.innerHTML = "";
             imageContainer.appendChild(contactImage);
         };
         contactImage.onerror = function () {
-            console.log("❌ Image failed to load from:", contactImage.src);
+            console.log(" Image failed to load from:", contactImage.src);
         };
     }
     const closePopup = () => popup.remove();

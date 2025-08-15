@@ -7,7 +7,6 @@ export class Router {
     this.routes.set(path, handler);
   }
 
-  //navigue vers une nouvelle page (sans rechargement a revoir)
   navigate(path: string): void {
     if (this.currentPath === path) {
       return;
