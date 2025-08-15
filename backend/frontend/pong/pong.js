@@ -14,11 +14,6 @@
     
       const mode = window.gameMode || "local";
 
-    // if (mode === "local") {
-    //   console.log("Mode local activé");
-    // } else {
-    //   console.log("Mode tournoi activé");
-    // }
     function startGameTimer() {
         gameStartTime = Date.now();
         gameEndTime = null;
@@ -37,7 +32,6 @@
         if (!gameStarted && !isGameOver && !gameStartTime) {
             startGameTimer();
             gameActuallyStarted = true; 
-            console.log("🎮 Game actually started - timer running");
         }
         return originalCountdown.apply(this, args);
     };
@@ -123,7 +117,6 @@ function restartGame() {
     if (autoDisposeTimeout) {
         clearTimeout(autoDisposeTimeout);
         autoDisposeTimeout = null;
-        console.log("🔄 Auto-dispose timeout cancelled - game restarting");
     }
 
     scoreLeft = 0;
@@ -596,13 +589,10 @@ function startRenderLoop() {
     ball.isVisible = false;
     const winner = scoreLeft >= GAME_CONFIG.scoreLimit ? "PLAYER 1" : "PLAYER 2";
     stopGameTimer();
-    console.log("gameactuallyStarted", gameActuallyStarted);
-    console.log("gameInterrupted", gameInterrupted);
+
     if (window.gameActive && gameActuallyStarted && !gameInterrupted) {
-        // Appel asynchrone pour éviter le blocage de l'UI
         setTimeout(async () => {
             await GamePage.createMatch("local", scoreLeft, scoreRight, gameDurationSeconds);
-            console.log("✅ Match recorded:", { scoreLeft, scoreRight, duration: gameDurationSeconds });
             window.enableGameMode();
         }, 0);
     } else if (gameInterrupted) {
@@ -648,7 +638,6 @@ function startRenderLoop() {
     
         if ( mode === "local" ){    
             autoDisposeTimeout = setTimeout(() => {
-            console.log("⏰ 3 seconds elapsed - auto-disposing game");
             window.disposeGame();
             window.startGame();
             }, 3000);
@@ -707,29 +696,26 @@ window.disposeGame = function () {
 
     if (window.gameActive && gameActuallyStarted && !isGameOver) {
         gameInterrupted = true;
-        console.log("🚫 Game interrupted - will not be recorded");
+        console.log("game interrupted - will not be recorded");
     }
     window.gameActive = false;
 
     try {
     if (engine && renderLoop) {
       engine.stopRenderLoop(renderLoop);
-      console.log("🛑 render loop stopped");
+      console.log("render loop stopped");
     }
 
     if (scene) {
       scene.dispose(true, true);
-      console.log("✅ scene disposed");
     }
 
     if (engine) {
       engine.dispose();
-      console.log("✅ engine disposed");
     }
     this.scene = ''
     if (advancedTexture) {
       advancedTexture.dispose();
-      console.log("✅ GUI disposed");
     }
 
     if (engine && engine.onResizeObservable) {
@@ -737,11 +723,10 @@ window.disposeGame = function () {
         try {
           engine.onResizeObservable.remove(obs);
         } catch (e) {
-          console.warn("⚠️ erreur suppression observer:", e);
+          console.warn("erreur suppression observer:", e);
         }
       });
       observers = [];
-      console.log("✅ observers cleared");
     }
 
     if (window._gameEventListeners) {
@@ -749,18 +734,15 @@ window.disposeGame = function () {
             target.removeEventListener(type, handler);
         });
         window._gameEventListeners = [];
-        console.log("✅ event listeners removed");
     }
 
     if (window._gameTimeouts) {
       window._gameTimeouts.forEach(id => clearTimeout(id));
       window._gameTimeouts = [];
-      console.log("✅ timeouts cleared");
     }
     if (window._gameIntervals) {
       window._gameIntervals.forEach(id => clearInterval(id));
       window._gameIntervals = [];
-      console.log("✅ intervals cleared");
     }
 
     window.currentGameState = null;
@@ -774,11 +756,10 @@ window.disposeGame = function () {
     if (window._createMatchTimeout) {
       clearTimeout(window._createMatchTimeout);
       window._createMatchTimeout = null;
-      console.log("✅ pending createMatch() cancelled");
     }
 
   } catch (err) {
-    console.warn("⚠️ Erreur dans disposeGame:", err);
+    console.warn("Erreur dans disposeGame:", err);
   }
 
   engine = null;
@@ -786,7 +767,7 @@ window.disposeGame = function () {
   renderLoop = null;
   advancedTexture = null;
 
-  console.log("🧼 Game fully cleaned up");
+  console.log("Game fully cleaned up");
 };
 
 window.addEventListener("resize", () => engine.resize());

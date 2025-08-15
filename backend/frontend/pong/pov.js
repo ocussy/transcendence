@@ -8,14 +8,14 @@
     let renderLoop = null;
     let observers = [];
     let autoDisposeTimeout = null;
-    // Start timer when game starts
+
     function startGameTimer() {
         gameStartTime = Date.now();
         gameEndTime = null;
         gameDurationSeconds = 0;
     }
 
-    // Stop timer and calculate duration
+
     function stopGameTimer() {
         if (gameStartTime) {
             gameEndTime = Date.now();
@@ -23,7 +23,7 @@
         }
     }
 
-    // Démarre le timer dès le début du jeu
+
     startGameTimer();const canvas = document.getElementById("renderCanvas");
     engine = new BABYLON.Engine(canvas, true);
 
@@ -41,22 +41,17 @@
     let myText2 = null;
     let gameOverText = null;
 
-    // Éléments DOM pour l'écran de fin
     const gameOverScreen = document.getElementById('gameOverScreen');
     const winnerText = document.getElementById('winnerText');
 
     function getLinearInitialVelocity(speed = 0.3, maxAngleDeg = 30) {
-        // Convertit l’angle max en radians
         const maxAngle = BABYLON.Angle.FromDegrees(maxAngleDeg).radians();
 
-        // Tire un angle aléatoire entre –maxAngle et +maxAngle
         const theta = (Math.random() * 2 - 1) * maxAngle;
 
-        // Composantes X et Z selon l’angle
         const x = Math.sin(theta) * speed;
         const z = Math.cos(theta) * speed * (Math.random() < 0.5 ? 1 : -1);
 
-        // Très petite variation Y pour donner un peu de piqué ou d’arc
         const y = (Math.random() * 2 - 1) * (speed * 0.1);
 
         return new BABYLON.Vector3(x, y, z);
@@ -90,25 +85,20 @@
     }
 
     function showGameOver(winner) {
-    // Supprime l'ancien message s'il existe
     if (gameOverText) {
     gameOverText.dispose();
     gameOverText = null;
     }
     if (!scene) return;
 
-    // Dimensions de la texture (agrandies pour contenir les deux textes)
     const dtWidth = 1024;
     const dtHeight = 768;
 
-    // On s'assure que la police est bien chargée
     document.fonts.load("64px Orbitron").then(() => {
     try {
-    // 1. Crée la texture dynamique
     const dynamicTexture = new BABYLON.DynamicTexture("dynamicText", { width: dtWidth, height: dtHeight }, scene, false);
     dynamicTexture.hasAlpha = true;
 
-    // 2. Dessine le texte principal centré
     const fontStyle = "bold 48px Orbitron";
     dynamicTexture.drawText(
     winner,
@@ -120,7 +110,6 @@
     true // inverser Y pour corriger l'orientation
     );
 
-    // 3. Dessine le texte "R pour rejouer (3s)" en dessous
     const smallFontStyle = "24px Orbitron";
     dynamicTexture.drawText(
     "R pour rejouer (3s)",
@@ -132,27 +121,20 @@
     true // inverser Y
     );
 
-    // 4. Crée un matériau et assigne la texture
     const textMaterial = new BABYLON.StandardMaterial("textMat", scene);
     textMaterial.diffuseTexture = dynamicTexture;
     textMaterial.emissiveColor = new BABYLON.Color3(0.2, 0.6, 1);
     textMaterial.backFaceCulling = false;
 
-    // 5. Crée un plan pour afficher la texture
     gameOverText = BABYLON.MeshBuilder.CreatePlane("textPlane", {
     width: 30,
     height: 24 // Augmenté pour contenir les deux textes
     }, scene);
     gameOverText.material = textMaterial;
 
-    // 6. Positionne le plan plus proche et plus grand
     gameOverText.position = new BABYLON.Vector3(0, 5, -10); // Rapproché de -10 à -5
 
-    // Agrandir le texte
     gameOverText.scaling = new BABYLON.Vector3(1.5, 1.5, 1.5); // 50% plus grand
-
-    // Optionnel: faire face à la caméra pour un meilleur rendu
-    // gameOverText.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
 
     } catch (error) {
     console.warn("Erreur création texte de fin:", error);
@@ -188,8 +170,6 @@
     myText.position.set(-8, 12, 0);
     myText2.position.set(8, 12, 0);
 
-    // myText.rotation.x = -Math.PI / 6; 
-    // myText2.rotation.x = -Math.PI / 6;
     } catch (error) {
     console.warn("Erreur création texte:", error);
     createFallbackScoreDisplay();
@@ -221,8 +201,6 @@
     myText2.material = scoreMaterial;
     myText.position.set(-8, 12, 0);
     myText2.position.set(8, 12, 0);
-    // myText.rotation.x = -Math.PI / 6;
-    // myText2.rotation.x = -Math.PI / 6;
     } catch (error) {
     console.warn("Erreur mise à jour score:", error);
     }
@@ -231,8 +209,6 @@
 
 
     function checkGameEnd() {
-    let winner;
-    // console.log("SHOW GAME OVER: ", winner);
     if (scoreLeft >= SCORE_LIMIT) {
     gameEnded = true;
     showGameOver("Vous avez gagné!");
@@ -243,9 +219,7 @@
         window.enableGameMode();
       }, 0);
     
-    // Auto-dispose timeout de 3 secondes
     autoDisposeTimeout = setTimeout(() => {
-        console.log("⏰ 3 seconds elapsed - auto-disposing game");
         window.disposeGame();
         window.startGameAI();
     }, 3000);
@@ -261,9 +235,7 @@
       window.enableGameMode();
       }, 0);
     
-    // Auto-dispose timeout de 3 secondes
     autoDisposeTimeout = setTimeout(() => {
-        console.log("⏰ 3 seconds elapsed - auto-disposing game");
         window.disposeGame();
         window.startGameAI();
     }, 3000);
@@ -278,10 +250,8 @@
     if (autoDisposeTimeout) {
         clearTimeout(autoDisposeTimeout);
         autoDisposeTimeout = null;
-        console.log("🔄 Auto-dispose timeout cancelled - game restarting");
     }
 
-    // Reset des scores
     scoreLeft = 0;
     scoreRight = 0;
     gameEnded = false;
@@ -290,18 +260,13 @@
     gameOverText.dispose();
     gameOverText = null;
     }
-    // Mise à jour de l'affichage
     updateScoreTextMeshes();
 
-    // Reset de la balle
     ball.position = new BABYLON.Vector3(0, tunnelHeight / 2, 0);
     ballVelocity =  getLinearInitialVelocity(0.3, 20);
 
-    // Redémarrer le timer après le restart
     startGameTimer();
 
-    // Cacher l'écran de fin
-    // gameOverScreen.style.display = 'none';
     }
 
     function createBuildingsAroundField(scene, tunnelWidth, tunnelLength) {
@@ -490,7 +455,6 @@
     const { scene: gameScene, paddle, iaPaddle, ball, tunnelWidth, tunnelHeight } = createScene();
     createBuildingsAroundField(scene, tunnelWidth, 40);
 
-    // Charger la police après la création de la scène
     loadFont();
 
     // Gestion des touches
@@ -502,7 +466,6 @@
 
     // Boucle de rendu
     engine.runRenderLoop(() => {
-    // Si le jeu est terminé, ne pas continuer la physique
     if (gameEnded) {
     scene.render();
     return;
@@ -597,7 +560,6 @@
     scoreRight++;
     updateScoreTextMeshes();
 
-    // Vérifier si le jeu est terminé
     if (!checkGameEnd()) {
     ball.position = new BABYLON.Vector3(0, tunnelHeight / 2, 0);
     const randomX = (Math.random() - 0.5) * 0.2;
@@ -610,7 +572,6 @@
     });
 
     window.disposeGame = function () {
-    console.log("🧹 disposeGame() called — on arrête et on clean");
 
     if (autoDisposeTimeout) {
       clearTimeout(autoDisposeTimeout);
@@ -633,25 +594,18 @@
       engine.stopRenderLoop(renderLoop);
       }
 
-      // supprime la scène Babylon
       if (scene) {
       scene.dispose(true, true);
-      console.log("✅ scene disposed");
       }
 
-      // supprime l'engine
       if (engine) {
       engine.dispose();
-      console.log("✅ engine disposed");
       }
 
-      // Si tu as des GUI (AdvancedDynamicTexture), par exemple  
       if (advancedTexture) {
       advancedTexture.dispose();
-      console.log("✅ GUI disposed");
       }
 
-      // Si tu as des observers, détache-les
       observers.forEach(obs => {
       try { engine.onResizeObservable.remove(obs); }
       catch(_) {}
@@ -659,10 +613,9 @@
       observers = [];
 
     } catch (err) {
-      console.warn("⚠️ Erreur dans disposeGame:", err);
+      console.warn("Erreur dans disposeGame:", err);
     }
 
-    // libère les références
     engine = null;
     scene = null;
     renderLoop = null;

@@ -12,14 +12,14 @@ export async function seedDatabase(db) {
 
   console.log('🌱 Initialisation de la base de données...');
 
-  // Utilisateurs fictifs
+  // Utilisateurs fictifs avec statistiques mises à jour
   const users = [
-    { login: 'adem', email: 'adem@example.com', games_won: 3, games_played: 5, public_login: 'Adem' },
-    { login: 'geoffrey', email: 'geoffrey@example.com', games_won: 2, games_played: 4, public_login: 'Geoffrey' },
-    { login: 'oceane', email: 'oceane@example.com', games_won: 1, games_played: 3, public_login: 'Océane' },
-    { login: 'lucie', email: 'lucie@example.com', games_won: 4, games_played: 6, public_login: 'Lucie' },
-    { login: 'coco', email: 'coco@example.com', games_won: 5, games_played: 7, public_login: 'Coco' },
-    { login: 'rydom', email: 'rydom@example.com', games_won: 0, games_played: 2, public_login: 'Rydom' },
+    { login: 'adem', email: 'adem@example.com', games_won: 8, games_played: 12, public_login: 'Adem' }, // 8 victoires sur 12 matchs
+    { login: 'geoffrey', email: 'geoffrey@example.com', games_won: 3, games_played: 10, public_login: 'Geoffrey' }, // 3 victoires sur 10 matchs
+    { login: 'oceane', email: 'oceane@example.com', games_won: 2, games_played: 8, public_login: 'Océane' }, // 2 victoires sur 8 matchs
+    { login: 'lucie', email: 'lucie@example.com', games_won: 7, games_played: 11, public_login: 'Lucie' }, // 7 victoires sur 11 matchs
+    { login: 'coco', email: 'coco@example.com', games_won: 7, games_played: 11, public_login: 'Coco' }, // 7 victoires sur 11 matchs
+    { login: 'rydom', email: 'rydom@example.com', games_won: 1, games_played: 8, public_login: 'Rydom' }, // 1 victoire sur 8 matchs
   ];
 
 
@@ -58,14 +58,44 @@ export async function seedDatabase(db) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  insertMatch.run('Adem', 'Geoffrey', 1, 11, 7, 300, 'local', 1, 2);
-  insertMatch.run('Océane', 'Lucie', null, 9, 11, 290, 'local', 3, 4);
-  insertMatch.run('Coco', 'Rydom', 5, 11, 8, 310, 'tournament', 5, 6);
-  insertMatch.run('Adem', 'Océane', null, 10, 12, 260, 'local', 1, 3);
-  insertMatch.run('Lucie', 'Rydom', 4, 11, 6, 280, 'tournament', 4, 6);
-  insertMatch.run('Geoffrey', 'Coco', 2, 11, 9, 295, 'local', 2, 5);
+  
+  // Matchs contre des invités (guest)
+  insertMatch.run('Adem', 'guest', userIds['adem'], 5, 2, 180, 'local', userIds['adem'], null);
+  insertMatch.run('Geoffrey', 'guest', null, 3, 5, 200, 'local', userIds['geoffrey'], null);
+  insertMatch.run('Océane', 'guest', userIds['oceane'], 5, 4, 220, 'local', userIds['oceane'], null);
+  insertMatch.run('Lucie', 'guest', userIds['lucie'], 5, 1, 190, 'local', userIds['lucie'], null);
+  insertMatch.run('Coco', 'guest', userIds['coco'], 5, 0, 160, 'local', userIds['coco'], null);
+  insertMatch.run('Rydom', 'guest', null, 2, 5, 240, 'local', userIds['rydom'], null);
+  
+  // Matchs contre l'IA
+  insertMatch.run('Adem', 'ia', userIds['adem'], 5, 1, 150, 'ia', userIds['adem'], null);
+  insertMatch.run('Geoffrey', 'ia', userIds['geoffrey'], 5, 3, 170, 'ia', userIds['geoffrey'], null);
+  insertMatch.run('Océane', 'ia', null, 3, 5, 180, 'ia', userIds['oceane'], null);
+  insertMatch.run('Lucie', 'ia', userIds['lucie'], 5, 2, 140, 'ia', userIds['lucie'], null);
+  insertMatch.run('Coco', 'ia', userIds['coco'], 5, 0, 120, 'ia', userIds['coco'], null);
+  insertMatch.run('Rydom', 'ia', null, 1, 5, 200, 'ia', userIds['rydom'], null);
+  
+  // Matchs en remote
+  insertMatch.run('Adem', 'Océane', userIds['adem'], 5, 4, 280, 'remote', userIds['adem'], userIds['oceane']);
+  insertMatch.run('Geoffrey', 'Coco', userIds['coco'], 2, 5, 320, 'remote', userIds['geoffrey'], userIds['coco']);
+  insertMatch.run('Lucie', 'Rydom', userIds['lucie'], 5, 3, 260, 'remote', userIds['lucie'], userIds['rydom']);
+  insertMatch.run('Océane', 'Geoffrey', userIds['oceane'], 5, 2, 290, 'remote', userIds['oceane'], userIds['geoffrey']);
+  insertMatch.run('Coco', 'Lucie', userIds['coco'], 5, 1, 270, 'remote', userIds['coco'], userIds['lucie']);
+  insertMatch.run('Rydom', 'Adem', null, 3, 5, 310, 'remote', userIds['rydom'], userIds['adem']);
+  insertMatch.run('Geoffrey', 'Lucie', null, 4, 5, 250, 'remote', userIds['geoffrey'], userIds['lucie']);
+  insertMatch.run('Adem', 'Coco', userIds['adem'], 5, 3, 300, 'remote', userIds['adem'], userIds['coco']);
+  
+  // Matchs de tournoi
+  insertMatch.run('Adem', 'Lucie', userIds['adem'], 5, 2, 240, 'tournament', userIds['adem'], userIds['lucie']);
+  insertMatch.run('Geoffrey', 'Océane', userIds['geoffrey'], 5, 3, 270, 'tournament', userIds['geoffrey'], userIds['oceane']);
+  insertMatch.run('Coco', 'Adem', userIds['coco'], 5, 4, 300, 'tournament', userIds['coco'], userIds['adem']);
+  insertMatch.run('Lucie', 'Geoffrey', userIds['lucie'], 5, 1, 230, 'tournament', userIds['lucie'], userIds['geoffrey']);
+  insertMatch.run('Océane', 'Rydom', null, 2, 5, 280, 'tournament', userIds['oceane'], userIds['rydom']);
+  insertMatch.run('Coco', 'Océane', userIds['coco'], 5, 0, 220, 'tournament', userIds['coco'], userIds['oceane']);
+  insertMatch.run('Adem', 'Rydom', userIds['adem'], 5, 3, 260, 'tournament', userIds['adem'], userIds['rydom']);
+  insertMatch.run('Geoffrey', 'Coco', null, 1, 5, 290, 'tournament', userIds['geoffrey'], userIds['coco']);
 
-  // Amitiés
+  // Amitiés - tout le monde a au moins un ami
   const insertFriend = db.prepare(`
     INSERT INTO friends (user_id, friend_id)
     VALUES (?, ?)
@@ -76,13 +106,24 @@ export async function seedDatabase(db) {
     insertFriend.run(userIds[b], userIds[a]);
   }
   
-
+  // Réseau d'amitié pour que chacun ait au moins un ami
   addFriend('adem', 'oceane');
   addFriend('adem', 'geoffrey');
+  addFriend('adem', 'lucie');
+  
   addFriend('geoffrey', 'lucie');
+  addFriend('geoffrey', 'coco');
+  
+  addFriend('oceane', 'rydom');
+  addFriend('oceane', 'coco');
+  
   addFriend('lucie', 'coco');
+  addFriend('lucie', 'rydom');
+  
   addFriend('coco', 'rydom');
-  addFriend('rydom', 'oceane');
+  
+  // Rydom est ami avec Adem aussi pour plus de connexions
+  addFriend('rydom', 'adem');
 
-  console.log('✅ Base de données initialisée avec succès : 6 utilisateurs, 6 matchs, 1 tournoi et des amitiés.');
+  console.log('✅ Base de données initialisée avec succès : 6 utilisateurs, 30 matchs (guest, IA, remote, tournoi) et un réseau d\'amitiés complet.');
 }

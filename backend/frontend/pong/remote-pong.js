@@ -1,12 +1,12 @@
 (() => {
-  // Protection : si déjà défini, on sort
+  // Protection
   if (window.RemotePongGame) {
     console.warn("RemotePongGame déjà défini — réutilisation.");
     return;
   }
   class RemotePongGame {
     constructor() {
-      // Déplacer toutes les variables globales ici
+
       this.gameStartTime = null;
       this.gameEndTime = null;
       this.gameDurationSeconds = 0;
@@ -21,7 +21,6 @@
       this.myText = null;
       this.myText2 = null;
 
-      // Variables WebSocket pour le remote
       this.socket = null;
       this.playerId = null;
       this.isPlayer1 = false;
@@ -32,7 +31,6 @@
       this.player1Login = null;
       this.player2Login = null;
 
-      // Variables Babylon.js
       this.canvas = null;
       this.engine = null;
       this.scene = null;
@@ -69,7 +67,6 @@
         }
 
         if (window.gameInitData) {
-          console.log("✅ game_init déjà disponible:", window.gameInitData);
           this.handleGameInit(window.gameInitData);
         }
 
@@ -79,7 +76,7 @@
             data.isRemote = true;
             this.handleServerMessage(data);
           } catch (error) {
-            console.error("❌ Erreur parsing message:", error);
+            console.error("Erreur parsing message:", error);
           }
         };
 
@@ -91,17 +88,15 @@
           console.error("Erreur WebSocket:", error);
         };
 
-        console.log("✅ Connecté au serveur de jeu");
+        console.log("Connecté au serveur de jeu");
       } catch (error) {
         console.error("Erreur connexion serveur:", error);
       }
     }
 
     handleServerMessage(data) {
-      console.log("📬 Message reçu du serveur:", data);
       switch (data.type) {
         case "waiting_for_opponent":
-          // ✅ PREMIER JOUEUR EN ATTENTE
           this.playerId = data.playerId;
           this.isPlayer1 = data.playerSide === "left";
           this.isMaster = data.playerIndex === 0;
@@ -160,9 +155,7 @@
       this.player1Login = data.player1Login;
       this.player2Login = data.player2Login;
 
-      console.log("🎮 game_init traité - Affichage écran de contrôles");
       
-      // Appeler renderControlsScreen via la méthode globale
       if (window.renderControlsScreen) {
         window.renderControlsScreen(data.playerSide);
       }
@@ -189,7 +182,7 @@
         this.engine = null;
       }
 
-      console.log("✅ RemotePongGame nettoyé");
+      console.log("RemotePongGame nettoyé");
     }
 
     async createGameScene() {
@@ -536,19 +529,11 @@
 
         if (goalScored) {
           this.updateScoreTextMeshes();
-          console.log(
-            "But marqué ! Score:",
-            this.scoreLeft,
-            "-",
-            this.scoreRight,
-          );
           this.sendGoalUpdate();
           if (
             this.scoreLeft >= this.GAME_CONFIG.scoreLimit ||
             this.scoreRight >= this.GAME_CONFIG.scoreLimit
           ) {
-            console.log("player 1 name:", this.player1Name);
-            console.log("player 2 name:", this.player2Name);
             this.endGame();
             return;
           }
@@ -687,10 +672,6 @@
           this.scene.ballVelocity.x = data.ballVelocity.x;
           this.scene.ballVelocity.y = data.ballVelocity.y;
           this.scene.ballVelocity.z = data.ballVelocity.z;
-        } else {
-          console.log(
-            "⚠️ Scene pas encore prête pour handleGameStart, sera synchronisé plus tard",
-          );
         }
       }
     }
@@ -712,10 +693,7 @@
       }
 
       if (this.isMaster) {
-        console.log("🎯 Master enregistre le match...");
         await this.saveMatchToDatabase();
-      } else {
-        console.log("👥 Non-master - pas d'enregistrement");
       }
 
       setTimeout(() => {
@@ -726,7 +704,6 @@
 
     async saveMatchToDatabase() {
       try {
-        console.log("💾 Enregistrement du match remote...");
         await GamePage.createMatch(
           "remote",
           this.scoreLeft,
@@ -736,12 +713,12 @@
           this.player2Login,
         );
       } catch (error) {
-        console.error("❌ Erreur lors de l'enregistrement du match:", error);
+        console.error("Erreur lors de l'enregistrement du match:", error);
 
         if (GamePage && GamePage.showProfileAlert) {
           GamePage.showProfileAlert(
             "profile-alert",
-            "❌ Erreur lors de l'enregistrement du match",
+            "Erreur lors de l'enregistrement du match",
           );
         }
       }
@@ -760,7 +737,6 @@
     }
 
     handlePlayerDisconnected(data) {
-      console.log("👋 Gestion de déconnexion côté RemotePong");
 
       this.removeEventListeners();
       this.dispose();
@@ -769,7 +745,6 @@
         this.engine.stopRenderLoop();
       }
 
-      console.log("isGameOver:", this.isGameOver);
       if (this.isGameOver) {
         this.sendGameEnd();
         return;
