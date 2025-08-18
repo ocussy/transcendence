@@ -551,17 +551,55 @@
     ballVelocity.scaleInPlace(1.01);
     }
 
-    // IA suit la balle
-    if (iaPaddle.position.x < ball.position.x - 0.1) {
-    iaPaddle.position.x += iaSpeed;
-    } else if (iaPaddle.position.x > ball.position.x + 0.1) {
-    iaPaddle.position.x -= iaSpeed;
+    if (!window.iaState) {
+      window.iaState = {
+        lastSeen: 0,
+        target: { x: iaPaddle.position.x, y: iaPaddle.position.y },
+        lastBall: ball.position.clone(),
+        anticipation: { x: 0, y: 0 }
+      };
+    }
+    
+    const now = Date.now();
+    if (now - window.iaState.lastSeen > 1000) {
+      window.iaState.lastSeen = now;
+      window.iaState.lastBall = ball.position.clone();
+
+      const dz = ball.position.z - iaPaddle.position.z;
+      const steps = Math.abs(dz / (ballVelocity.z || 0.01));
+      let predX = ball.position.x + ballVelocity.x * steps;
+      let predY = ball.position.y + ballVelocity.y * steps;
+
+      function reflect(val, min, max) {
+      let range = max - min;
+      let n = Math.floor((val - min) / range);
+      if (n % 2 === 0) return min + ((val - min) % range);
+      else return max - ((val - min) % range);
+      }
+      predX = reflect(predX, -tunnelWidth / 2 + 0.5, tunnelWidth / 2 - 0.5);
+      predY = reflect(predY, 0.5, tunnelHeight - 0.5);
+
+      window.iaState.target = { x: predX, y: predY };
+
+      window.iaState.boostUntil = now + 500;
     }
 
-    if (iaPaddle.position.y < ball.position.y - 0.1) {
-    iaPaddle.position.y += iaSpeed;
-    } else if (iaPaddle.position.y > ball.position.y + 0.1) {
-    iaPaddle.position.y -= iaSpeed;
+    let currentIaSpeed = iaSpeed;
+    if (window.iaState.boostUntil && Date.now() < window.iaState.boostUntil) {
+      currentIaSpeed = iaSpeed * 2.5; 
+    }
+
+    const dx = window.iaState.target.x - iaPaddle.position.x;
+    const dy = window.iaState.target.y - iaPaddle.position.y;
+    if (Math.abs(dx) > iaSpeed) {
+      iaPaddle.position.x += iaSpeed * Math.sign(dx);
+    } else {
+      iaPaddle.position.x = window.iaState.target.x;
+    }
+    if (Math.abs(dy) > iaSpeed) {
+      iaPaddle.position.y += iaSpeed * Math.sign(dy);
+    } else {
+      iaPaddle.position.y = window.iaState.target.y;
     }
 
     // Limites IA
