@@ -1,4 +1,3 @@
-// main.ts - Point d'entrée de l'application SPA
 import { Router } from "./router.js";
 import { AuthPage } from "./pages/auth.js";
 import { GamePage } from "./pages/game.js";

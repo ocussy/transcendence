@@ -1932,6 +1932,7 @@ export class GamePage {
                 <div class="font-mono text-gray-300">K - move down</div>
               </div>
             </div>
+            <div class="font-mono text-blue-400 text-xs">5 points to win</div>
           </div>
 
           <button id="start-local-game" class="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-mono font-bold rounded-lg transition-colors">
@@ -1945,21 +1946,15 @@ export class GamePage {
           <div class="text-6xl mb-4 font-mono">[PONG]</div>
           <p class="font-mono mb-6">pong.exe ready</p>
           <p class="font-mono text-purple-400 mb-8">ai mode initialized</p>
-
-          <!-- Contrôles AI -->
           <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-md mx-auto mb-6">
-            <h3 class="font-mono text-white font-bold mb-4">$ controls --ai</h3>
-            <div class="text-center">
-              <div class="font-mono text-blue-400 font-bold mb-3">PLAYER vs AI</div>
-              <div class="font-mono text-gray-300 mb-2">🖱️ Mouse - control paddle</div>
-              <div class="mt-4 p-3 bg-purple-500/10 border border-purple-500/30 rounded">
-                <div class="font-mono text-purple-400 text-sm">AI opponent active</div>
-              </div>
-            </div>
+        <h3 class="font-mono text-white font-bold mb-4">$ controls --ai</h3>
+        <div class="font-mono text-blue-400 font-bold mb-2">PLAYER vs AI</div>
+        <div class="font-mono text-gray-300 mb-2">Mouse - control paddle</div>
+        <div class="font-mono text-purple-400 text-xs mb-2">AI opponent active</div>
+        <div class="font-mono text-purple-400 text-xs">5 points to win</div>
           </div>
-
           <button id="start-ai-game" class="px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white font-mono font-bold rounded-lg transition-colors">
-            $ start-game
+        $ start-game
           </button>
         </div>
       `;
@@ -2232,6 +2227,7 @@ private renderControlsScreen(playerSide: "left" | "right"): void {
 
           <!-- Match title -->
           <h1 class="font-mono text-3xl font-bold text-green-400 mb-8">remote match ready</h1>
+          <div class="font-mono text-green-400 ">5 points to win</div>
 
           <!-- Players cards avec contrôles -->
           <div class="grid grid-cols-3 items-center gap-6 mb-8">
@@ -2778,6 +2774,7 @@ private startLoadingAnimation(): void {
 
 			<!-- Match title -->
 			<h1 class="font-mono text-3xl font-bold text-yellow-400 mb-8">match ready</h1>
+      <div class="font-mono text-amber-400">5 points to win</div>
 
 			<!-- Players cards -->
 			<div class="grid grid-cols-3 items-center gap-6 mb-8">
@@ -2808,22 +2805,6 @@ private startLoadingAnimation(): void {
 
 			</div>
 
-			<!-- Match info -->
-			<div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-6 max-w-sm mx-auto">
-				<div class="grid grid-cols-2 gap-4 text-center font-mono text-sm">
-				<div>
-					<div class="text-yellow-400 font-bold">target</div>
-					<div class="text-white text-lg">7 points</div>
-				</div>
-				<div>
-					<div class="text-yellow-400 font-bold">status</div>
-					<div class="text-white text-lg">
-					${tournamentData.player_id !== -1 ? "playing" : "spectating"}
-					</div>
-				</div>
-				</div>
-			</div>
-
 			<!-- Ready button -->
 			<div id="start-button-container">
 				<button id="ready-to-fight"
@@ -2831,7 +2812,7 @@ private startLoadingAnimation(): void {
 				$ ready to fight
 				</button>
 			</div>
-
+    
 			</div>
 		</div>
 		</div>
